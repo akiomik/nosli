@@ -1,5 +1,5 @@
-import type { Filter, Event } from 'nostr-tools';
-import { SimplePool } from 'nostr-tools';
+import type { Filter, Event, Pub } from 'nostr-tools';
+import { SimplePool, getEventHash, signEvent, validateEvent, verifySignature } from 'nostr-tools';
 
 import Note from '$lib/entities/Note';
 import Profile from '$lib/entities/Profile';
@@ -80,6 +80,41 @@ export default class NostrClient {
 
   public async list(filters: Filter[]): Promise<Event[]> {
     return this.pool.list(this.availableUrls, filters);
+  }
+
+  public async postNote(note: Note, seckey: string): Promise<void> {
+    const event = {
+      id: '',
+      sig: '',
+      kind: 1,
+      content: note.content,
+      pubkey: note.pubkey,
+      created_at: Math.round(note.createdAt.getTime() / 1000),
+      tags: [] // TODO
+    };
+    event.id = getEventHash(event);
+    event.sig = signEvent(event, seckey);
+
+    if (!validateEvent(event) || !verifySignature(event)) {
+      throw new Error('Unexpected error: event is invalid.');
+    }
+
+    const pubs = this.pool.publish(this.availableUrls, event);
+    const promises = pubs.map((pub: Pub) => {
+      return new Promise((resolve, reject) => {
+        pub.on('ok', () => {
+          resolve(null);
+        });
+
+        pub.on('failed', () => {
+          reject();
+        });
+      });
+    });
+
+    return Promise.all(promises).then(() => {
+      return;
+    });
   }
 
   public async close(): Promise<void> {
