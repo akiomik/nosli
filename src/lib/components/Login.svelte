@@ -1,17 +1,17 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { nip19 } from 'nostr-tools';
-  import { npub as npubCookie } from '$lib/stores/cookie.js';
+  import { key as keyCookie } from '$lib/stores/cookie.js';
 
-  let npub: string = $npubCookie; // TODO: support nsec and NIP-07
+  let key: string = $keyCookie; // TODO: support NIP-07
 
-  const npubIsValid = (npub) => {
-    if (!npub.startsWith('npub')) {
+  const keyIsValid = (key) => {
+    if (!key.startsWith('npub') && !key.startsWith('nsec')) {
       return false;
     }
 
     try {
-      nip19.decode(npub);
+      nip19.decode(key);
       return true;
     } catch {
       return false;
@@ -19,15 +19,15 @@
   };
 
   const onLogin = () => {
-    if (browser && npubIsValid(npub)) {
-      $npubCookie = npub;
+    if (browser && keyIsValid(key)) {
+      $keyCookie = key;
     }
   };
 </script>
 
 <label>
-  npub
-  <input type="text" bind:value={npub} required />
+  key (npub | nsec)
+  <input type="text" bind:value={key} required />
 </label>
 
-<button type="submit" on:click={onLogin} disabled={!npubIsValid(npub)}>login</button>
+<button type="submit" on:click={onLogin} disabled={!keyIsValid(key)}>login</button>
