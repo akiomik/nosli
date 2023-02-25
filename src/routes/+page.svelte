@@ -1,2 +1,11 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<script lang="ts">
+  import Login from '$lib/components/Login.svelte';
+  import MyPage from '$lib/components/MyPage.svelte';
+  import { npub } from '$lib/stores/cookie.js';
+</script>
+
+{#if $npub === ''}
+  <Login />
+{:else}
+  <MyPage />
+{/if}
