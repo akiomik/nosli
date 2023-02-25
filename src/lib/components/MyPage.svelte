@@ -15,10 +15,6 @@
       ? nip19.decode($key).data
       : getPublicKey(nip19.decode($key).data);
     asyncProfile = client.getProfile(pubkey);
-    const note = await client.getNote(
-      'f97eff764be2b8787b327c6cfd7631405601652591f8bb412adc838496f23cd7'
-    );
-    console.log(note);
   });
 </script>
 
