@@ -3,6 +3,7 @@ import { SimplePool, getEventHash, signEvent, validateEvent, verifySignature } f
 
 import Note from '$lib/entities/Note';
 import Profile from '$lib/entities/Profile';
+import LongFormContent from '$lib/entities/LongFormContent';
 
 export default class NostrClient {
   private pool = new SimplePool();
@@ -82,7 +83,7 @@ export default class NostrClient {
     return this.pool.list(this.availableUrls, filters);
   }
 
-  public async postNote(note: Note, seckey: string): Promise<void> {
+  public async postNote(note: Note, seckey: string): Promise<Note> {
     const event = {
       id: '',
       sig: '',
@@ -90,7 +91,7 @@ export default class NostrClient {
       content: note.content,
       pubkey: note.pubkey,
       created_at: Math.round(note.createdAt.getTime() / 1000),
-      tags: [] // TODO
+      tags: note.tags.map((tag) => [tag.typ, tag.value])
     };
     event.id = getEventHash(event);
     event.sig = signEvent(event, seckey);
@@ -113,7 +114,66 @@ export default class NostrClient {
     });
 
     return Promise.all(promises).then(() => {
-      return;
+      console.log('new note is published.', event);
+      return Note.fromEvent(event);
+    });
+  }
+
+  public async postLongFormContent(lfc: LongFormContent, seckey: string): Promise<LongFormContent> {
+    const tags = [
+      ['d', lfc.identifier],
+      ['title', lfc.title],
+      ['summary', lfc.summary]
+    ];
+    if (lfc.image) {
+      tags.push(['image', lfc.image]);
+    }
+    if (lfc.publishedAt) {
+      tags.push(['published_at', Math.round(lfc.publishedAt.getTime() / 1000).toString()]);
+    }
+
+    const event = {
+      id: '',
+      sig: '',
+      kind: LongFormContent.KIND,
+      content: lfc.content,
+      pubkey: lfc.pubkey,
+      created_at: Math.round(lfc.createdAt.getTime() / 1000),
+      tags
+    };
+    event.id = getEventHash(event);
+    event.sig = signEvent(event, seckey);
+
+    if (!validateEvent(event) || !verifySignature(event)) {
+      throw new Error('Unexpected error: event is invalid.');
+    }
+
+    const pubs = this.pool.publish(this.availableUrls, event);
+    const promises = pubs.map((pub: Pub) => {
+      return new Promise((resolve, reject) => {
+        pub.on('ok', () => {
+          resolve(null);
+        });
+
+        pub.on('failed', () => {
+          reject();
+        });
+      });
+    });
+
+    return Promise.all(promises).then(() => {
+      console.log('new LFC is published.', event);
+      return new LongFormContent(
+        event.id,
+        event.tags[0][1],
+        event.pubkey,
+        event.content,
+        new Date(event.created_at * 1000),
+        '', // TODO
+        '', // TODO
+        undefined,
+        undefined
+      );
     });
   }
 

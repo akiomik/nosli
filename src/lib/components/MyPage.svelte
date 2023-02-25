@@ -15,6 +15,20 @@
       ? nip19.decode($key).data
       : getPublicKey(nip19.decode($key).data);
     asyncProfile = client.getProfile(pubkey);
+
+    // debug
+    const note = await client.getNote(
+      'f97eff764be2b8787b327c6cfd7631405601652591f8bb412adc838496f23cd7'
+    );
+    console.log(note);
+    const lfc = await client.get([
+      {
+        kind: 30023,
+        authors: ['c5fb6ecc876e0458e3eca9918e370cbcd376901c58460512fe537a46e58c38bb'],
+        '#d': ['nosbin-early-days']
+      }
+    ]);
+    console.log(lfc);
   });
 </script>
 

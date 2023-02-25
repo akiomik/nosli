@@ -2,21 +2,53 @@
   import { nip19, getPublicKey } from 'nostr-tools';
   import NostrClient from '$lib/services/NostrClient';
   import Note from '$lib/entities/Note';
-  // import Tag from '$lib/entities/Tag';
+  import LongFormContent from '$lib/entities/LongFormContent';
+  import Tag from '$lib/entities/Tag';
   import { key } from '$lib/stores/cookie';
 
-  let title = 'Test note';
-  let description = '*YOU ARE NOT AUTHORIZED TO READ THIS CONTENT*';
+  let title = 'Quotable Quote';
+  let summary = 'by Arthur Conan Doyle';
+  let identifier = 'matome-test';
 
   const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
 
   const onCreate = async () => {
     await client.connect();
-    const content = `${title}\n${description}`;
+
     const seckey = nip19.decode($key).data;
     const pubkey = getPublicKey(seckey);
-    const tags = []; // TODO: set addr
-    const note = new Note(undefined, content, pubkey, new Date(), tags, undefined, undefined);
+
+    const lfcContent =
+      'To Sherlock Holmes she is always the woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex.';
+    let lfc = new LongFormContent(
+      undefined,
+      identifier,
+      pubkey,
+      lfcContent,
+      new Date(),
+      title,
+      summary,
+      undefined,
+      undefined
+    );
+    lfc = await client.postLongFormContent(lfc, seckey);
+
+    const noteContent = `${title} is now published.`;
+    const noteTags = [
+      new Tag('e', lfc.id),
+      new Tag('p', lfc.pubkey),
+      new Tag('a', `${LongFormContent.KIND}:${pubkey}:${identifier}`)
+    ];
+    const note = new Note(
+      undefined,
+      noteContent,
+      pubkey,
+      new Date(),
+      noteTags,
+      undefined,
+      undefined
+    );
+
     await client.postNote(note, seckey);
   };
 </script>
@@ -29,13 +61,13 @@
 </label>
 
 <label>
-  description
-  <input type="text" bind:value={description} />
+  summary
+  <input type="text" bind:value={summary} />
 </label>
 
 <label>
   identifier
-  <input type="text" required value="test" />
+  <input type="text" bind:value={identifier} required />
 </label>
 
 <label>
