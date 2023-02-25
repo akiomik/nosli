@@ -31,6 +31,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@macfja/svelte-persistent-store": "^2.2.1",
     "nostr-tools": "^1.6.0"
   }
 }
