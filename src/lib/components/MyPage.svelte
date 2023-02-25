@@ -27,5 +27,11 @@
 {:then profile}
   <p>Hello, {profile?.displayName || profile?.name || 'nostrich'}!</p>
 
+  {#if $key.startsWith('nsec')}
+    <a href="/matome/new">Create matome</a>
+  {:else}
+    <p>Due to you are logged in by npub, you can't post a matome</p>
+  {/if}
+
   <MatomeList />
 {/await}
