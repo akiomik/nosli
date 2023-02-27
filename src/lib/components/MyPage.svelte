@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import type Profile from '$lib/entities/Profile';
   import NostrClient from '$lib/services/NostrClient';
   import { pubkey, seckey } from '$lib/stores/cookie';
@@ -31,6 +31,10 @@
       }
     ]);
     console.log(lfc);
+  });
+
+  onDestroy(async () => {
+    await client.close();
   });
 </script>
 
