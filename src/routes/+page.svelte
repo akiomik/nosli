@@ -1,10 +1,10 @@
 <script lang="ts">
   import Login from '$lib/components/Login.svelte';
   import MyPage from '$lib/components/MyPage.svelte';
-  import { key } from '$lib/stores/cookie.js';
+  import { pubkey, seckey } from '$lib/stores/cookie.js';
 </script>
 
-{#if $key === ''}
+{#if $pubkey === '' && $seckey === ''}
   <Login />
 {:else}
   <MyPage />

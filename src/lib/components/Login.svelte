@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
-  import { nip19 } from 'nostr-tools';
-  import { key as keyCookie } from '$lib/stores/cookie.js';
+  import { nip19, getPublicKey } from 'nostr-tools';
+  import { pubkey, seckey } from '$lib/stores/cookie.js';
 
   let key: string | undefined = undefined; // TODO: support NIP-07
 
@@ -19,8 +19,18 @@
   };
 
   const onLogin = () => {
-    if (browser && keyIsValid(key)) {
-      $keyCookie = key;
+    if (browser && typeof key === 'string' && keyIsValid(key)) {
+      const decoded = nip19.decode(key).data;
+      if (typeof decoded !== 'string') {
+        throw new Error('Unexpected error: decoded key is not string');
+      }
+
+      if (key.startsWith('npub')) {
+        $pubkey = decoded;
+      } else {
+        $seckey = decoded;
+        $pubkey = getPublicKey(decoded);
+      }
     }
   };
 </script>

@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { nip19, getPublicKey } from 'nostr-tools';
+  import { nip19 } from 'nostr-tools';
   import NostrClient from '$lib/services/NostrClient';
   import Note from '$lib/entities/Note';
   import LongFormContent from '$lib/entities/LongFormContent';
   import Tag from '$lib/entities/Tag';
-  import { key } from '$lib/stores/cookie';
+  import { pubkey, seckey } from '$lib/stores/cookie';
 
   let title: string | undefined = undefined;
   let summary: string | undefined = undefined;
@@ -39,14 +39,11 @@
 
     await client.connect();
 
-    const seckey = nip19.decode($key).data;
-    const pubkey = getPublicKey(seckey);
-
     const lfcContent = splittedNoteIds.map((_, i) => `#[${i + 3}]`).join('\n');
     let lfc = new LongFormContent(
       undefined,
       identifier,
-      pubkey,
+      $pubkey,
       lfcContent,
       new Date(),
       title,
@@ -54,21 +51,26 @@
       undefined,
       undefined,
       splittedNoteIds.map((noteId) => {
-        return new Tag('e', nip19.decode(noteId).data);
+        const id = nip19.decode(noteId).data;
+        if (typeof id !== 'string') {
+          throw new Error('Unexpected error: noteId is not string');
+        }
+
+        return new Tag('e', id);
       })
     );
-    lfc = await client.postLongFormContent(lfc, seckey);
+    lfc = await client.postLongFormContent(lfc, $seckey);
 
     if (shareInNote && lfc.id) {
       const noteContent = `${title} is now published.`;
       const noteTags = [
         new Tag('e', lfc.id, '', 'mention'),
-        new Tag('p', lfc.pubkey),
-        new Tag('a', `${LongFormContent.KIND}:${pubkey}:${identifier}`)
+        new Tag('p', $pubkey),
+        new Tag('a', `${LongFormContent.KIND}:${$pubkey}:${identifier}`)
       ];
-      const note = new Note(undefined, noteContent, pubkey, new Date(), noteTags, undefined);
+      const note = new Note(undefined, noteContent, $pubkey, new Date(), noteTags, undefined);
 
-      await client.postNote(note, seckey);
+      await client.postNote(note, $seckey);
     }
   };
 

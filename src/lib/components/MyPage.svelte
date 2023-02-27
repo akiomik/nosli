@@ -1,23 +1,22 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { nip19, getPublicKey } from 'nostr-tools';
   import type Profile from '$lib/entities/Profile';
   import NostrClient from '$lib/services/NostrClient';
-  import { key } from '$lib/stores/cookie';
+  import { pubkey, seckey } from '$lib/stores/cookie';
   import MatomeList from '$lib/components/MatomeList.svelte';
 
   // TODO: cache profile
   let profile: Profile | undefined;
 
   const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
-  const onLogout = () => ($key = '');
+  const onLogout = () => {
+    $pubkey = '';
+    $seckey = '';
+  };
 
   onMount(async () => {
     await client.connect();
-    const pubkey = $key.startsWith('npub')
-      ? nip19.decode($key).data
-      : getPublicKey(nip19.decode($key).data);
-    profile = await client.getProfile(pubkey);
+    profile = await client.getProfile($pubkey);
 
     // debug
     const note = await client.getNote(
@@ -41,7 +40,7 @@
 
 <button class="btn bg-surface-300" on:click={onLogout}>Logout</button>
 
-{#if $key.startsWith('nsec')}
+{#if $seckey !== ''}
   <a href="/matome/new" class="btn bg-primary-500">Create a new matome</a>
 {:else}
   <p class="alert variant-ghost alert-message">
