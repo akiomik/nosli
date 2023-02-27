@@ -182,6 +182,32 @@ export default class NostrClient {
     });
   }
 
+  public async listMatomes(pubkey: string): Promise<LongFormContent[]> {
+    const filter = {
+      kinds: [LongFormContent.KIND],
+      authors: [pubkey],
+      '#t': ['matome']
+    };
+    const events = await this.list([filter]);
+
+    return events.map((event: Event) => {
+      return new LongFormContent(
+        event.id,
+        event.tags[0][1],
+        event.pubkey,
+        event.content,
+        new Date(event.created_at * 1000),
+        event.tags[0][1], // TODO: title
+        event.tags[0][1], // TODO: summary
+        event.tags[0][1], // TODO: image
+        new Date(event.created_at * 1000), // TODO: published_at,
+        event.tags
+          .map((tag) => Tag.fromEvent(tag))
+          .filter((tag: Tag | undefined): tag is Tag => tag !== undefined)
+      );
+    });
+  }
+
   public async close(): Promise<void> {
     try {
       await this.pool.close(this.availableUrls);

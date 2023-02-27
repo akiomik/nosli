@@ -52,4 +52,6 @@
   </p>
 {/if}
 
-<MatomeList />
+<h2>My matomes</h2>
+
+<MatomeList {client} />
