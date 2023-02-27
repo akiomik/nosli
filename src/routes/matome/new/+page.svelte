@@ -33,6 +33,10 @@
   });
 
   const onCreate = async () => {
+    if (identifier === undefined || title === undefined) {
+      throw new Error('Unexpected error: identifier or title is undefined');
+    }
+
     await client.connect();
 
     const seckey = nip19.decode($key).data;
@@ -55,22 +59,14 @@
     );
     lfc = await client.postLongFormContent(lfc, seckey);
 
-    if (shareInNote) {
+    if (shareInNote && lfc.id) {
       const noteContent = `${title} is now published.`;
       const noteTags = [
         new Tag('e', lfc.id, '', 'mention'),
         new Tag('p', lfc.pubkey),
         new Tag('a', `${LongFormContent.KIND}:${pubkey}:${identifier}`)
       ];
-      const note = new Note(
-        undefined,
-        noteContent,
-        pubkey,
-        new Date(),
-        noteTags,
-        undefined,
-        undefined
-      );
+      const note = new Note(undefined, noteContent, pubkey, new Date(), noteTags, undefined);
 
       await client.postNote(note, seckey);
     }
@@ -78,7 +74,7 @@
 
   const onCancel = () => {
     if (confirm('Quit editing?')) {
-      window.location = '/';
+      window.location.href = '/';
     }
   };
 </script>

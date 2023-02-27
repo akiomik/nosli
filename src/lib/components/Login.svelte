@@ -5,7 +5,7 @@
 
   let key: string | undefined = undefined; // TODO: support NIP-07
 
-  const keyIsValid = (key) => {
+  const keyIsValid = (key: string | undefined) => {
     if (key === undefined || (!key.startsWith('npub') && !key.startsWith('nsec'))) {
       return false;
     }
