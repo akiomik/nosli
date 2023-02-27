@@ -6,15 +6,19 @@
   import Tag from '$lib/entities/Tag';
   import { key } from '$lib/stores/cookie';
 
-  let title = 'Quotable Quote';
-  let summary = 'by Arthur Conan Doyle';
-  let identifier = 'matome-test';
+  let title: string | undefined = undefined;
+  let summary: string | undefined = undefined;
+  let identifier: string | undefined = undefined;
   let noteIds = 'note1h2qtg2768r8w8k8ntthv3wawjq7tljks6zh4mxkguma4qztx6djsfg0mwa';
   let shareInNote = false;
 
   const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
 
   $: splittedNoteIds = noteIds.split('\n');
+  $: isIdentifierValid =
+    identifier !== undefined && identifier.length > 0 && identifier.length <= 40;
+  $: isTitleValid = title !== undefined && title.length > 0 && title.length <= 150;
+  $: isSummaryValid = summary === undefined || summary.length <= 300;
   $: areNoteIdsValid = splittedNoteIds.every((noteId: string) => {
     if (!noteId.startsWith('note')) {
       return false;
@@ -42,7 +46,7 @@
       lfcContent,
       new Date(),
       title,
-      summary,
+      summary || '',
       undefined,
       undefined,
       splittedNoteIds.map((noteId) => {
@@ -71,35 +75,75 @@
       await client.postNote(note, seckey);
     }
   };
+
+  const onCancel = () => {
+    if (confirm('Quit editing?')) {
+      window.location = '/';
+    }
+  };
 </script>
 
-<p>create matome</p>
+<h1>create a new matome</h1>
 
-<form>
-  <label>
-    title
-    <input type="text" required bind:value={title} />
+<form class="flex flex-col space-y-4">
+  <label class="label">
+    Identifier (required)
+    <input
+      type="text"
+      bind:value={identifier}
+      required
+      class="input"
+      class:input-error={identifier !== undefined && !isIdentifierValid}
+      maxlength="40"
+    />
   </label>
 
-  <label>
-    summary
-    <textarea bind:value={summary} />
+  <label class="label">
+    Title (required)
+    <input
+      type="text"
+      bind:value={title}
+      required
+      class="input"
+      class:input-error={title !== undefined && !isTitleValid}
+      maxlength="150"
+      placeholder="My awesome notes"
+    />
   </label>
 
-  <label>
-    identifier
-    <input type="text" bind:value={identifier} required />
+  <label class="label">
+    Summary
+    <textarea
+      bind:value={summary}
+      class="textarea"
+      class:input-error={summary !== undefined && !isSummaryValid}
+      maxlength="300"
+    />
   </label>
 
-  <label>
-    note ids (newline separated)
-    <textarea bind:value={noteIds} required />
+  <label class="label">
+    Note ids (newline separated, required)
+    <textarea
+      bind:value={noteIds}
+      required
+      class="textarea"
+      class:input-error={!areNoteIdsValid}
+      rows="8"
+      placeholder="note...."
+    />
   </label>
 
-  <label>
-    <input type="checkbox" bind:checked={shareInNote} />
-    share this matome in a note
+  <label class="label">
+    <input type="checkbox" bind:checked={shareInNote} class="checkbox" />
+    Share this matome in a note
   </label>
 
-  <button on:click={onCreate} disabled={!areNoteIdsValid}>create</button>
+  <div>
+    <button on:click={onCancel} class="btn bg-surface-300">Cancel</button>
+    <button
+      on:click={onCreate}
+      disabled={!isIdentifierValid || !isTitleValid || !isSummaryValid || !areNoteIdsValid}
+      class="btn bg-primary-500">Create</button
+    >
+  </div>
 </form>

@@ -6,15 +6,18 @@
   import { key } from '$lib/stores/cookie';
   import MatomeList from '$lib/components/MatomeList.svelte';
 
-  let asyncProfile: Promise<Profile | undefined>;
+  // TODO: cache profile
+  let profile: Profile | undefined;
 
   const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
+  const onLogout = () => ($key = '');
+
   onMount(async () => {
     await client.connect();
     const pubkey = $key.startsWith('npub')
       ? nip19.decode($key).data
       : getPublicKey(nip19.decode($key).data);
-    asyncProfile = client.getProfile(pubkey);
+    profile = await client.getProfile(pubkey);
 
     // debug
     const note = await client.getNote(
@@ -32,16 +35,18 @@
   });
 </script>
 
-{#await asyncProfile}
-  <p>loading</p>
-{:then profile}
-  <p>Hello, {profile?.displayName || profile?.name || 'nostrich'}!</p>
+<h1>My page</h1>
 
-  {#if $key.startsWith('nsec')}
-    <a href="/matome/new">Create matome</a>
-  {:else}
-    <p>Due to you are logged in by npub, you can't post a matome</p>
-  {/if}
+<p>Hello, {profile?.displayName || profile?.name || 'nostrich'}!</p>
 
-  <MatomeList />
-{/await}
+<button class="btn bg-surface-300" on:click={onLogout}>Logout</button>
+
+{#if $key.startsWith('nsec')}
+  <a href="/matome/new" class="btn bg-primary-500">Create a new matome</a>
+{:else}
+  <p class="alert variant-ghost alert-message">
+    Due to you are logged in by npub, you can't post a matome
+  </p>
+{/if}
+
+<MatomeList />

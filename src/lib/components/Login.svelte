@@ -3,10 +3,10 @@
   import { nip19 } from 'nostr-tools';
   import { key as keyCookie } from '$lib/stores/cookie.js';
 
-  let key: string = $keyCookie; // TODO: support NIP-07
+  let key: string | undefined = undefined; // TODO: support NIP-07
 
   const keyIsValid = (key) => {
-    if (!key.startsWith('npub') && !key.startsWith('nsec')) {
+    if (key === undefined || (!key.startsWith('npub') && !key.startsWith('nsec'))) {
       return false;
     }
 
@@ -25,9 +25,21 @@
   };
 </script>
 
-<label>
+<h1>nostr-matome</h1>
+
+<h2>Login</h2>
+
+<label class="label">
   key (npub | nsec)
-  <input type="text" bind:value={key} required />
+  <input
+    type="text"
+    bind:value={key}
+    required
+    class="input"
+    class:input-error={key !== undefined && !keyIsValid(key)}
+  />
 </label>
 
-<button type="submit" on:click={onLogin} disabled={!keyIsValid(key)}>login</button>
+<button type="submit" on:click={onLogin} disabled={!keyIsValid(key)} class="btn bg-surface-300">
+  login
+</button>
