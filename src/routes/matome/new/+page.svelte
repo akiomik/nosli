@@ -9,8 +9,24 @@
   let title = 'Quotable Quote';
   let summary = 'by Arthur Conan Doyle';
   let identifier = 'matome-test';
+  let noteIds = 'note1h2qtg2768r8w8k8ntthv3wawjq7tljks6zh4mxkguma4qztx6djsfg0mwa';
+  let shareInNote = false;
 
   const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
+
+  $: splittedNoteIds = noteIds.split('\n');
+  $: areNoteIdsValid = splittedNoteIds.every((noteId: string) => {
+    if (!noteId.startsWith('note')) {
+      return false;
+    }
+
+    try {
+      nip19.decode(noteId);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 
   const onCreate = async () => {
     await client.connect();
@@ -18,8 +34,7 @@
     const seckey = nip19.decode($key).data;
     const pubkey = getPublicKey(seckey);
 
-    const lfcContent =
-      'To Sherlock Holmes she is always the woman. I have seldom heard him mention her under any other name. In his eyes she eclipses and predominates the whole of her sex.';
+    const lfcContent = splittedNoteIds.map((_, i) => `#[${i + 3}]`).join('\n');
     let lfc = new LongFormContent(
       undefined,
       identifier,
@@ -29,54 +44,62 @@
       title,
       summary,
       undefined,
-      undefined
+      undefined,
+      splittedNoteIds.map((noteId) => {
+        return new Tag('e', nip19.decode(noteId).data);
+      })
     );
     lfc = await client.postLongFormContent(lfc, seckey);
 
-    const noteContent = `${title} is now published.`;
-    const noteTags = [
-      new Tag('e', lfc.id),
-      new Tag('p', lfc.pubkey),
-      new Tag('a', `${LongFormContent.KIND}:${pubkey}:${identifier}`)
-    ];
-    const note = new Note(
-      undefined,
-      noteContent,
-      pubkey,
-      new Date(),
-      noteTags,
-      undefined,
-      undefined
-    );
+    if (shareInNote) {
+      const noteContent = `${title} is now published.`;
+      const noteTags = [
+        new Tag('e', lfc.id),
+        new Tag('p', lfc.pubkey),
+        new Tag('a', `${LongFormContent.KIND}:${pubkey}:${identifier}`)
+      ];
+      const note = new Note(
+        undefined,
+        noteContent,
+        pubkey,
+        new Date(),
+        noteTags,
+        undefined,
+        undefined
+      );
 
-    await client.postNote(note, seckey);
+      await client.postNote(note, seckey);
+    }
   };
 </script>
 
 <p>create matome</p>
 
-<label>
-  title
-  <input type="text" required bind:value={title} />
-</label>
+<form>
+  <label>
+    title
+    <input type="text" required bind:value={title} />
+  </label>
 
-<label>
-  summary
-  <input type="text" bind:value={summary} />
-</label>
+  <label>
+    summary
+    <textarea bind:value={summary} />
+  </label>
 
-<label>
-  identifier
-  <input type="text" bind:value={identifier} required />
-</label>
+  <label>
+    identifier
+    <input type="text" bind:value={identifier} required />
+  </label>
 
-<label>
-  note ids
-  <input
-    type="text"
-    required
-    value="note1h2qtg2768r8w8k8ntthv3wawjq7tljks6zh4mxkguma4qztx6djsfg0mwa"
-  />
-</label>
+  <label>
+    note ids (newline separated)
+    <textarea bind:value={noteIds} required />
+  </label>
 
-<button on:click={onCreate}>create</button>
+  <label>
+    <input type="checkbox" bind:checked={shareInNote} />
+    share this matome in a note
+  </label>
+
+  <button on:click={onCreate} disabled={!areNoteIdsValid}>create</button>
+</form>

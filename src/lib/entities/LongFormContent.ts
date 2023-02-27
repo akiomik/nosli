@@ -1,3 +1,5 @@
+import type Tag from '$lib/entities/Tag';
+
 export default class LongFormContent {
   public static KIND = 30023;
 
@@ -10,6 +12,7 @@ export default class LongFormContent {
     public title: string,
     public summary: string,
     public image: string | undefined,
-    public publishedAt: Date | undefined
+    public publishedAt: Date | undefined,
+    public tags: Tag[]
   ) {}
 }

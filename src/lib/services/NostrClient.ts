@@ -4,6 +4,7 @@ import { SimplePool, getEventHash, signEvent, validateEvent, verifySignature } f
 import Note from '$lib/entities/Note';
 import Profile from '$lib/entities/Profile';
 import LongFormContent from '$lib/entities/LongFormContent';
+import Tag from '$lib/entities/Tag';
 
 export default class NostrClient {
   private pool = new SimplePool();
@@ -120,10 +121,12 @@ export default class NostrClient {
   }
 
   public async postLongFormContent(lfc: LongFormContent, seckey: string): Promise<LongFormContent> {
+    console.log(lfc);
     const tags = [
       ['d', lfc.identifier],
       ['title', lfc.title],
-      ['summary', lfc.summary]
+      ['summary', lfc.summary],
+      ...lfc.tags.map((tag) => [tag.typ, tag.value])
     ];
     if (lfc.image) {
       tags.push(['image', lfc.image]);
@@ -172,7 +175,8 @@ export default class NostrClient {
         '', // TODO
         '', // TODO
         undefined,
-        undefined
+        undefined,
+        tags.slice(3).map((tag) => new Tag(tag[0], tag[1]))
       );
     });
   }
