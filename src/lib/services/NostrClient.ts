@@ -126,7 +126,8 @@ export default class NostrClient {
       ['d', lfc.identifier],
       ['title', lfc.title],
       ['summary', lfc.summary],
-      ...lfc.tags.map((tag) => [tag.typ, tag.value, '', 'mention'])
+      ...lfc.tags.map((tag) => [tag.typ, tag.value, '', 'mention']),
+      ['t', 'matome']
     ];
     if (lfc.image) {
       tags.push(['image', lfc.image]);
