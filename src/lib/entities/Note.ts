@@ -11,8 +11,7 @@ export default class Note {
     public pubkey: string,
     public createdAt: Date,
     public tags: Tag[],
-    public asyncProfile: Promise<Profile | undefined> | undefined,
-    public reactions: number | undefined
+    public asyncProfile: Promise<Profile | undefined> | undefined
   ) {}
 
   public static fromEvent(note: Event): Note {
@@ -26,7 +25,6 @@ export default class Note {
       note.pubkey,
       new Date(note.created_at * 1000),
       tags,
-      undefined,
       undefined
     );
   }
