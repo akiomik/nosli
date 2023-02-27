@@ -54,7 +54,7 @@
     if (shareInNote) {
       const noteContent = `${title} is now published.`;
       const noteTags = [
-        new Tag('e', lfc.id),
+        new Tag('e', lfc.id, '', 'mention'),
         new Tag('p', lfc.pubkey),
         new Tag('a', `${LongFormContent.KIND}:${pubkey}:${identifier}`)
       ];
