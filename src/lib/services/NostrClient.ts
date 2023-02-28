@@ -187,7 +187,7 @@ export default class NostrClient {
     const filter = {
       kinds: [LongFormContent.KIND],
       authors: [pubkey],
-      '#t': ['matome']
+      '#t': ['nosli']
     };
     const events = await this.list([filter]);
 

@@ -54,7 +54,7 @@
 
         return new Tag('e', id, '', 'mention');
       }),
-      new Tag('t', 'matome')
+      new Tag('t', 'nosli')
     ];
     let lfc = new LongFormContent(
       undefined,
