@@ -3,6 +3,7 @@
   import type NostrClient from '$lib/services/NostrClient';
   import type LongFormContent from '$lib/entities/LongFormContent';
   import { pubkey } from '$lib/stores/cookie';
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
   export let client: NostrClient; // TODO: use context
   let asyncMatomes: Promise<LongFormContent[]> | undefined = undefined;
@@ -14,10 +15,10 @@
 </script>
 
 {#if asyncMatomes === undefined}
-  loading...
+  <LoadingSpinner />
 {:else}
   {#await asyncMatomes}
-    loading...
+    <LoadingSpinner />
   {:then matomes}
     <ul>
       {#each matomes as matome}

@@ -5,6 +5,7 @@
   import type LongFormContent from '$lib/entities/LongFormContent';
   import type NostrClient from '$lib/services/NostrClient';
   import MatomeForm from '$lib/components/MatomeForm.svelte';
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
   export let data: PageData & {
     matome: LongFormContent | undefined;
@@ -28,4 +29,6 @@
   <h1>Edit {data.matome.identifier}</h1>
 
   <MatomeForm matome={data.matome} />
+{:else}
+  <LoadingSpinner />
 {/if}

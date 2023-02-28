@@ -7,6 +7,7 @@
   import type Profile from '$lib/entities/Profile';
   import NoteList from '$lib/components/NoteList.svelte';
   import ProfileLink from '$lib/components/ProfileLink.svelte';
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
   export let data: PageData & {
     matome: LongFormContent | undefined;
@@ -44,4 +45,6 @@
   </p>
 
   <NoteList notes={data.notes} />
+{:else}
+  <LoadingSpinner />
 {/if}
