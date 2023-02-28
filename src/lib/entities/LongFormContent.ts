@@ -1,4 +1,4 @@
-import { nip19 } from 'nostr-tools';
+import { nip19, getEventHash, signEvent } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 import Tag from '$lib/entities/Tag';
 
@@ -33,8 +33,36 @@ export default class LongFormContent {
       event.tags
         .map((tag) => Tag.fromEvent(tag))
         .filter((tag: Tag | undefined): tag is Tag => tag !== undefined)
-        .filter((tag: Tag) => ['e', 'p'].includes(tag.typ))
+        .filter((tag: Tag) => ['e', 'p', 't'].includes(tag.typ))
     );
+  }
+
+  toEvent(seckey: string): Event {
+    const tags = [
+      ['d', this.identifier],
+      ['title', this.title],
+      ['summary', this.summary]
+    ];
+    if (this.image) {
+      tags.push(['image', this.image]);
+    }
+    if (this.publishedAt) {
+      tags.push(['published_at', Math.round(this.publishedAt.getTime() / 1000).toString()]);
+    }
+
+    const event = {
+      id: '',
+      sig: '',
+      kind: LongFormContent.KIND,
+      content: this.content,
+      pubkey: this.pubkey,
+      created_at: Math.round(this.createdAt.getTime() / 1000),
+      tags
+    };
+    event.id = getEventHash(event);
+    event.sig = signEvent(event, seckey);
+
+    return event;
   }
 
   nip19Id(): string {
