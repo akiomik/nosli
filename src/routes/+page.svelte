@@ -1,13 +1,24 @@
 <script lang="ts">
-  import Login from '$lib/components/Login.svelte';
-  import MyPage from '$lib/components/MyPage.svelte';
-  import { pubkey, seckey } from '$lib/stores/cookie.js';
+  import ExternalLink from '$lib/components/ExternalLink.svelte';
 
-  $: loggedIn = $pubkey !== '' || $seckey !== '';
+  const title = 'Nosli | Create curated lists of posts on nostr';
+  const desc = 'Nosli helps you create a curated list of posts on nostr';
 </script>
 
-{#if loggedIn}
-  <MyPage />
-{:else}
-  <Login />
-{/if}
+<svelte:head>
+  <title>{title}</title>
+  <meta name="description" content={desc} />
+  <meta name="keywords" content="nosli,nostr,curated,list,posts,damus,snort" />
+  <meta property="og:url" content="https://nosli.vercel.app" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={desc} />
+</svelte:head>
+
+<h1>Nosli</h1>
+
+<p>
+  {desc}
+  <ExternalLink href="https://nostr.com">nostr</ExternalLink>.
+</p>
+
+<!-- TODO: list matomes -->
