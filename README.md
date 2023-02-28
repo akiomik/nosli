@@ -1,6 +1,6 @@
-# nostr-matome
+# nosli
 
-matome for nostr.
+nosli is a service that helps you create a curated list of posts on [nostr](https://nostr.com).
 
 ## Developing
 
@@ -22,5 +22,3 @@ npm run build
 ```
 
 You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.

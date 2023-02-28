@@ -2,6 +2,7 @@
   import { browser } from '$app/environment';
   import { nip19, getPublicKey } from 'nostr-tools';
   import { pubkey, seckey } from '$lib/stores/cookie.js';
+  import ExternalLink from '$lib/components/ExternalLink.svelte';
 
   let key: string | undefined = undefined; // TODO: support NIP-07
 
@@ -35,7 +36,12 @@
   };
 </script>
 
-<h1>nostr-matome</h1>
+<h1>nosli</h1>
+
+<p>
+  nosli is a service that helps you create a curated list of posts on
+  <ExternalLink href="https://nostr.com">nostr</ExternalLink>.
+</p>
 
 <h2>Login</h2>
 
