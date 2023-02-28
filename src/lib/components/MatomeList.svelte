@@ -16,8 +16,10 @@
     asyncMatomes = client.listMatomes($pubkey);
     asyncMatomes.then((matomes: LongFormContent[]) => {
       matomes.forEach((matome: LongFormContent) => {
-        const asyncProfile = client.getProfile(matome.pubkey);
-        asyncProfileByMatomeId[matome.id] = asyncProfile;
+        if (matome.id) {
+          const asyncProfile = client.getProfile(matome.pubkey);
+          asyncProfileByMatomeId[matome.id] = asyncProfile;
+        }
       });
     });
   });
@@ -31,9 +33,11 @@
   {:then matomes}
     <div class="flex flex-col space-y-4">
       {#each matomes as matome}
-        <a href="/matome/{matome.nip19Id()}" class="unstyled">
-          <MatomeListItem {matome} asyncProfile={asyncProfileByMatomeId[matome.id]} />
-        </a>
+        {#if matome.id}
+          <a href="/matome/{matome.nip19Id()}" class="unstyled">
+            <MatomeListItem {matome} asyncProfile={asyncProfileByMatomeId[matome.id]} />
+          </a>
+        {/if}
       {/each}
     </div>
   {/await}
