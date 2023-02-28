@@ -99,7 +99,7 @@
 
 <form class="flex flex-col space-y-4">
   <label class="label">
-    Identifier (required)
+    Identifier (required, cannot be changed after creation)
     <input
       type="text"
       bind:value={identifier}
@@ -107,6 +107,7 @@
       class="input"
       class:input-error={identifier !== undefined && !isIdentifierValid}
       maxlength="40"
+      disabled={typeof matome !== 'undefined'}
     />
   </label>
 

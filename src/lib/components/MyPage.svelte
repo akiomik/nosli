@@ -24,6 +24,10 @@
   });
 </script>
 
+<svelte:head>
+  <title>My page | Nosli</title>
+</svelte:head>
+
 <h1>My page</h1>
 
 <p>Hello, {profile?.displayName || profile?.name || 'nostrich'}!</p>

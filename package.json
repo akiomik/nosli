@@ -11,7 +11,9 @@
     "test": "npm run test:unit",
     "test:unit": "vitest",
     "lint": "prettier --plugin-search-dir . --check . && eslint .",
-    "format": "prettier --plugin-search-dir . --write ."
+    "format": "prettier --plugin-search-dir . --write .",
+    "favicongen": "qlmanage -t -s 512 -o static static/favicon.svg && mv static/favicon.svg.png static/favicon.png",
+    "touchicongen": "qlmanage -t -s 180 -o static static/favicon.svg && mv static/favicon.svg.png static/apple-touch-icon.png"
   },
   "devDependencies": {
     "@skeletonlabs/skeleton": "^0.132.5",
@@ -40,6 +42,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@fortawesome/free-brands-svg-icons": "^6.3.0",
     "@fortawesome/free-solid-svg-icons": "^6.3.0",
     "@fortawesome/svelte-fontawesome": "^0.2.0",
     "@macfja/svelte-persistent-store": "^2.2.1",

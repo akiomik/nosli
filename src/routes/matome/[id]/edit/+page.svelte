@@ -18,8 +18,14 @@
   });
 </script>
 
-<h1>Edit a matome</h1>
+<svelte:head>
+  {#if data.matome}
+    <title>Edit {data.matome.identifier} | Nosli</title>
+  {/if}
+</svelte:head>
 
 {#if data.matome}
+  <h1>Edit {data.matome.identifier}</h1>
+
   <MatomeForm matome={data.matome} />
 {/if}
