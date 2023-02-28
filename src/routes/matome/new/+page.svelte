@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { nip19 } from 'nostr-tools';
   import NostrClient from '$lib/services/NostrClient';
   import Note from '$lib/entities/Note';
@@ -40,6 +41,17 @@
     await client.connect();
 
     const lfcContent = splittedNoteIds.map((_, i) => `#[${i + 3}]`).join('\n');
+    const tags = [
+      ...splittedNoteIds.map((noteId) => {
+        const id = nip19.decode(noteId).data;
+        if (typeof id !== 'string') {
+          throw new Error('Unexpected error: noteId is not string');
+        }
+
+        return new Tag('e', id, '', 'mention');
+      }),
+      new Tag('t', 'matome')
+    ];
     let lfc = new LongFormContent(
       undefined,
       identifier,
@@ -50,14 +62,7 @@
       summary || '',
       undefined,
       undefined,
-      splittedNoteIds.map((noteId) => {
-        const id = nip19.decode(noteId).data;
-        if (typeof id !== 'string') {
-          throw new Error('Unexpected error: noteId is not string');
-        }
-
-        return new Tag('e', id);
-      })
+      tags
     );
     lfc = await client.postLongFormContent(lfc, $seckey);
 
@@ -72,6 +77,8 @@
 
       await client.postNote(note, $seckey);
     }
+
+    location.href = `/matome/${lfc.nip19Id()}`;
   };
 
   const onCancel = () => {
@@ -79,6 +86,10 @@
       window.location.href = '/';
     }
   };
+
+  onDestroy(async () => {
+    await client.close();
+  });
 </script>
 
 <h1>create a new matome</h1>

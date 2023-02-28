@@ -129,32 +129,7 @@ export default class NostrClient {
   }
 
   public async postLongFormContent(lfc: LongFormContent, seckey: string): Promise<LongFormContent> {
-    const tags = [
-      ['d', lfc.identifier],
-      ['title', lfc.title],
-      ['summary', lfc.summary],
-      ...lfc.tags.map((tag) => [tag.typ, tag.value, '', 'mention']),
-      ['t', 'matome']
-    ];
-    if (lfc.image) {
-      tags.push(['image', lfc.image]);
-    }
-    if (lfc.publishedAt) {
-      tags.push(['published_at', Math.round(lfc.publishedAt.getTime() / 1000).toString()]);
-    }
-
-    const event = {
-      id: '',
-      sig: '',
-      kind: LongFormContent.KIND,
-      content: lfc.content,
-      pubkey: lfc.pubkey,
-      created_at: Math.round(lfc.createdAt.getTime() / 1000),
-      tags
-    };
-    event.id = getEventHash(event);
-    event.sig = signEvent(event, seckey);
-
+    const event = lfc.toEvent(seckey);
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
@@ -174,18 +149,7 @@ export default class NostrClient {
 
     return Promise.all(promises).then(() => {
       console.log('new LFC is published.', event);
-      return new LongFormContent(
-        event.id,
-        event.tags[0][1],
-        event.pubkey,
-        event.content,
-        new Date(event.created_at * 1000),
-        '', // TODO
-        '', // TODO
-        undefined,
-        undefined,
-        tags.slice(3).map((tag) => new Tag(tag[0], tag[1]))
-      );
+      return LongFormContent.fromEvent(event);
     });
   }
 
