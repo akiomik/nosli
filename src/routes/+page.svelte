@@ -17,7 +17,7 @@
 <h1>Nosli</h1>
 
 <p>
-  {desc}
+  Nosli helps you create a curated list of posts on
   <ExternalLink href="https://nostr.com">nostr</ExternalLink>.
 </p>
 

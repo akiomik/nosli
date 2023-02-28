@@ -1,6 +1,6 @@
 # nosli
 
-Nosli is a service that helps you create a curated list of posts on [nostr](https://nostr.com).
+Nosli helps you create a curated list of posts on [nostr](https://nostr.com).
 
 - https://nosli.vercel.app
 
