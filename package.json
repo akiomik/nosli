@@ -44,6 +44,7 @@
     "linkify-plugin-hashtag": "^4.1.0",
     "linkify-plugin-mention": "^4.1.0",
     "linkifyjs": "^4.1.0",
-    "nostr-tools": "1.6.1"
+    "nostr-tools": "1.6.1",
+    "sanitize-html": "^2.10.0"
   }
 }
