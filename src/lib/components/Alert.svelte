@@ -1,14 +1,15 @@
 <script lang="ts">
-  export let variant = 'warning';
+  // FIXME: Doesn't seem to work
+  export let variant: string | undefined = 'warning';
 
   $: className =
     variant === undefined || variant === '' ? 'variant-ghost' : `variant-ghost-${variant}`;
 </script>
 
-<div class="alert {className} my-8">
+<aside class="alert {className}">
   <slot name="icon" />
 
   <div class="alert-message">
     <slot />
   </div>
-</div>
+</aside>

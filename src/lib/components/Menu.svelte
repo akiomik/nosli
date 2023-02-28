@@ -15,7 +15,7 @@
 <nav class="card absolute w-48 p-4 right-0" class:hidden={!show}>
   <ul class="flex flex-col space-y-4">
     <li>
-      <a href="/p/${nip19.npubEncode($pubkey)}" class="inline-block w-full text-left">My page</a>
+      <a href="/p/{nip19.npubEncode($pubkey)}" class="inline-block w-full text-left">My page</a>
     </li>
     <li>
       <button on:click={logout} class="w-full text-left">Logout</button>

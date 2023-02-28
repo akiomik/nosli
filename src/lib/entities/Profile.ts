@@ -9,7 +9,8 @@ export default class Profile {
     public picture: string | undefined,
     public nip05: string | undefined,
     public pubkey: string,
-    public createdAt: Date
+    public createdAt: Date,
+    public about: string
   ) {}
 
   public static fromEvent(event: Event): Profile {
@@ -21,7 +22,8 @@ export default class Profile {
       content.picture,
       content.nip05,
       event.pubkey,
-      new Date(event.created_at * 1000)
+      new Date(event.created_at * 1000),
+      content.about
     );
   }
 

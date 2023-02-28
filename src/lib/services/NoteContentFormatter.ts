@@ -17,6 +17,7 @@ export class NoteContentFormatter {
   private static linkifyOpts(): object {
     return {
       target: '_blank',
+      rel: 'external noreferrer',
       format: (value: string, type: string) => {
         if (type === 'mention') {
           return `${value.substring(0, 9)}:${value.substring(value.length - 8, value.length)}`;
