@@ -216,22 +216,7 @@ export default class NostrClient {
       return undefined;
     }
 
-    const publishedAt = event.tags.find(([typ]) => typ === 'published_at')?.[1];
-    return new LongFormContent(
-      event.id,
-      event.tags[0][1],
-      event.pubkey,
-      event.content,
-      new Date(event.created_at * 1000),
-      event.tags.find(([typ]) => typ === 'title')?.[1] || '',
-      event.tags.find(([typ]) => typ === 'summary')?.[1] || '',
-      event.tags.find(([typ]) => typ === 'image')?.[1],
-      publishedAt === undefined ? undefined : new Date(Number.parseInt(publishedAt, 10) * 1000),
-      event.tags
-        .map((tag) => Tag.fromEvent(tag))
-        .filter((tag: Tag | undefined): tag is Tag => tag !== undefined)
-        .filter((tag: Tag) => ['e', 'p'].includes(tag.typ))
-    );
+    return LongFormContent.fromEvent(event);
   }
 
   public async listMatomes(pubkey: string): Promise<LongFormContent[]> {
@@ -242,22 +227,7 @@ export default class NostrClient {
     };
     const events = await this.list([filter]);
 
-    return events.map((event: Event) => {
-      return new LongFormContent(
-        event.id,
-        event.tags[0][1],
-        event.pubkey,
-        event.content,
-        new Date(event.created_at * 1000),
-        event.tags[0][1], // TODO: title
-        event.tags[0][1], // TODO: summary
-        event.tags[0][1], // TODO: image
-        new Date(event.created_at * 1000), // TODO: published_at,
-        event.tags
-          .map((tag) => Tag.fromEvent(tag))
-          .filter((tag: Tag | undefined): tag is Tag => tag !== undefined)
-      );
-    });
+    return events.map((event: Event) => LongFormContent.fromEvent(event));
   }
 
   public async close(): Promise<void> {
