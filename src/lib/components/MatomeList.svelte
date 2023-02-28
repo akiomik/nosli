@@ -22,7 +22,7 @@
     <ul>
       {#each matomes as matome}
         <li>
-          <p>{matome.title}</p>
+          <a href="/matome/{matome.nip19Id()}">{matome.title}</a>
         </li>
       {/each}
     </ul>

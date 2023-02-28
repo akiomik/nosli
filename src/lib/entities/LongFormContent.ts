@@ -1,3 +1,4 @@
+import { nip19 } from 'nostr-tools';
 import type Tag from '$lib/entities/Tag';
 
 export default class LongFormContent {
@@ -15,4 +16,12 @@ export default class LongFormContent {
     public publishedAt: Date | undefined,
     public tags: Tag[]
   ) {}
+
+  nip19Id(): string {
+    return nip19.naddrEncode({
+      kind: LongFormContent.KIND,
+      pubkey: this.pubkey,
+      identifier: this.identifier
+    });
+  }
 }

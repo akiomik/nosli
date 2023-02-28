@@ -1,5 +1,13 @@
 import type { Filter, Event, Pub } from 'nostr-tools';
-import { SimplePool, getEventHash, signEvent, validateEvent, verifySignature } from 'nostr-tools';
+import {
+  SimplePool,
+  getEventHash,
+  signEvent,
+  validateEvent,
+  verifySignature,
+  nip19
+} from 'nostr-tools';
+import type { AddressPointer, ProfilePointer, EventPointer } from 'nostr-tools/nip19';
 
 import Note from '$lib/entities/Note';
 import Profile from '$lib/entities/Profile';
@@ -121,7 +129,6 @@ export default class NostrClient {
   }
 
   public async postLongFormContent(lfc: LongFormContent, seckey: string): Promise<LongFormContent> {
-    console.log(lfc);
     const tags = [
       ['d', lfc.identifier],
       ['title', lfc.title],
@@ -180,6 +187,51 @@ export default class NostrClient {
         tags.slice(3).map((tag) => new Tag(tag[0], tag[1]))
       );
     });
+  }
+
+  public static checkNAddr(
+    data: string | AddressPointer | ProfilePointer | EventPointer
+  ): data is AddressPointer {
+    if (typeof data === 'string') {
+      return false;
+    }
+
+    return 'kind' in data && 'pubkey' in data && 'identifier' in data;
+  }
+
+  public async getLongFormContent(naddr: string): Promise<LongFormContent | undefined> {
+    const { data } = nip19.decode(naddr);
+    if (!NostrClient.checkNAddr(data)) {
+      throw new Error(`Invalid naddr: ${naddr}`);
+    }
+
+    const { kind, pubkey, identifier } = data;
+    const filter = {
+      kinds: [kind],
+      authors: [pubkey],
+      '#d': [identifier]
+    };
+    const event = await this.get([filter]);
+    if (event === undefined) {
+      return undefined;
+    }
+
+    const publishedAt = event.tags.find(([typ]) => typ === 'published_at')?.[1];
+    return new LongFormContent(
+      event.id,
+      event.tags[0][1],
+      event.pubkey,
+      event.content,
+      new Date(event.created_at * 1000),
+      event.tags.find(([typ]) => typ === 'title')?.[1] || '',
+      event.tags.find(([typ]) => typ === 'summary')?.[1] || '',
+      event.tags.find(([typ]) => typ === 'image')?.[1],
+      publishedAt === undefined ? undefined : new Date(Number.parseInt(publishedAt, 10) * 1000),
+      event.tags
+        .map((tag) => Tag.fromEvent(tag))
+        .filter((tag: Tag | undefined): tag is Tag => tag !== undefined)
+        .filter((tag: Tag) => ['e', 'p'].includes(tag.typ))
+    );
   }
 
   public async listMatomes(pubkey: string): Promise<LongFormContent[]> {
