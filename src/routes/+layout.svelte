@@ -2,6 +2,7 @@
   import { AppShell } from '@skeletonlabs/skeleton';
   import '@skeletonlabs/skeleton/themes/theme-skeleton.css';
   import '@skeletonlabs/skeleton/styles/all.css';
+  import '@fortawesome/fontawesome-svg-core/styles.css';
   import '../app.postcss';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
