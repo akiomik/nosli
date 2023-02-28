@@ -14,7 +14,6 @@
     notes: Note[] | undefined;
     client: NostrClient | undefined;
   };
-  console.log(data.profile);
 </script>
 
 {#if data.matome && data.notes && data.profile}
