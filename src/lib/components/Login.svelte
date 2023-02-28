@@ -48,10 +48,10 @@
   <meta property="og:description" content={desc} />
 </svelte:head>
 
-<h1>nosli</h1>
+<h1>Nosli</h1>
 
 <p>
-  nosli is a service that helps you create a curated list of posts on
+  {desc}
   <ExternalLink href="https://nostr.com">nostr</ExternalLink>.
 </p>
 
