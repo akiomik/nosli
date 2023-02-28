@@ -1,27 +1,23 @@
 <script lang="ts">
-  // import { browser } from '$app/environment';
   import { seckey } from '$lib/stores/cookie';
   import type { PageData } from './$types';
   import type NostrClient from '$lib/services/NostrClient';
   import type LongFormContent from '$lib/entities/LongFormContent';
-  // import Note from '$lib/entities/Note';
-  import ExternalLink from '$lib/components/ExternalLink.svelte';
+  import type Note from '$lib/entities/Note';
+  import type Profile from '$lib/entities/Profile';
+  import NoteList from '$lib/components/NoteList.svelte';
+  import ProfileLink from '$lib/components/ProfileLink.svelte';
 
   export let data: PageData & {
     matome: LongFormContent | undefined;
+    profile: Profile | undefined;
+    notes: Note[] | undefined;
     client: NostrClient | undefined;
   };
-
-  // let notes: Promise<Note>[] = [];
-  // if (browser) {
-  //   const noteIds = data.matome.content.split('\n');
-  //   noteIds.map((noteId) => {
-  //     data.client.getNote(noteId);
-  //   });
-  // }
+  console.log(data.profile);
 </script>
 
-{#if data.matome}
+{#if data.matome && data.notes && data.profile}
   {#if $seckey !== ''}
     <a href="/matome/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
   {/if}
@@ -32,20 +28,10 @@
   {/if}
   <p>
     author:
-    <ExternalLink href="https://snort.social/p/{data.matome.pubkey}">
-      {data.matome.pubkey.slice(0, 8)}:{data.matome.pubkey.slice(-8)}
-    </ExternalLink>
+    <ProfileLink profile={data.profile}>
+      {data.profile.formattedName()}
+    </ProfileLink>
   </p>
-  <p>{data.matome.content}</p>
-  <!-- <ul> -->
-  <!--   {#each notes as note} -->
-  <!--     <ExternalLink href="https://snort.social/e/{note.nip19Id()}"> -->
-  <!--       <li> -->
-  <!--         <p>note.content</p> -->
-  <!--       </li> -->
-  <!--     </ExternalLink> -->
-  <!--   {/each} -->
-  <!-- </ul> -->
-{/if}
 
-<!-- TODO: show edit button -->
+  <NoteList notes={data.notes} />
+{/if}

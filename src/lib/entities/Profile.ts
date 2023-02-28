@@ -75,4 +75,13 @@ export default class Profile {
       return false;
     }
   }
+
+  public formattedName(): string {
+    return (
+      this.displayName ||
+      this.name ||
+      `${this.pubkey.slice(0, 8)}:${this.pubkey.slice(-8)}` ||
+      'nostrich'
+    );
+  }
 }

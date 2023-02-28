@@ -8,6 +8,8 @@ export const load = (async ({ params }) => {
     const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
     await client.connect();
     let matome: LongFormContent;
+    let profile: Profile;
+    let notes: Note[];
 
     try {
       const matomeOpt = await client.getLongFormContent(params.id);
@@ -16,6 +18,19 @@ export const load = (async ({ params }) => {
       }
 
       matome = matomeOpt;
+      const profileOpt = await client.getProfile(matome.pubkey);
+      if (profileOpt === undefined) {
+        throw new Error();
+      }
+      profile = profileOpt;
+
+      // TODO: check ordering
+      const asyncNotes = matome.eventIds().map(async (id: string) => {
+        const note = await client.getNote(id);
+        note.asyncProfile = client.getProfile(note.pubkey);
+        return note;
+      });
+      notes = await Promise.all(asyncNotes);
     } catch {
       throw error(404, 'Not Found 💔');
     }
@@ -23,6 +38,8 @@ export const load = (async ({ params }) => {
     return {
       id: params.id,
       matome,
+      profile,
+      notes,
       client
     };
   }

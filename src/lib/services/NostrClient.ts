@@ -55,6 +55,7 @@ export default class NostrClient {
     });
   }
 
+  // TODO: support note-style id
   public async getNote(id: string): Promise<Note | undefined> {
     const filters = [{ ids: [id] }];
     const event = await this.get(filters);
