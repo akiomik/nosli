@@ -41,7 +41,10 @@ export default class LongFormContent {
     const tags = [
       ['d', this.identifier],
       ['title', this.title],
-      ['summary', this.summary]
+      ['summary', this.summary],
+      ...this.tags.map((tag: Tag) => {
+        return [tag.typ, tag.value];
+      })
     ];
     if (this.image) {
       tags.push(['image', this.image]);
@@ -71,5 +74,13 @@ export default class LongFormContent {
       pubkey: this.pubkey,
       identifier: this.identifier
     });
+  }
+
+  eventIds(): string[] {
+    return this.tags.filter((tag: Tag) => tag.typ === 'e').map((tag) => tag.value);
+  }
+
+  noteIds(): string[] {
+    return this.eventIds().map((id) => nip19.noteEncode(id));
   }
 }

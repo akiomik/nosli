@@ -12,7 +12,6 @@ import type { AddressPointer, ProfilePointer, EventPointer } from 'nostr-tools/n
 import Note from '$lib/entities/Note';
 import Profile from '$lib/entities/Profile';
 import LongFormContent from '$lib/entities/LongFormContent';
-import Tag from '$lib/entities/Tag';
 
 export default class NostrClient {
   private pool = new SimplePool();

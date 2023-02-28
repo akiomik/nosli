@@ -1,5 +1,6 @@
 <script lang="ts">
   // import { browser } from '$app/environment';
+  import { seckey } from '$lib/stores/cookie';
   import type { PageData } from './$types';
   import type NostrClient from '$lib/services/NostrClient';
   import type LongFormContent from '$lib/entities/LongFormContent';
@@ -21,6 +22,10 @@
 </script>
 
 {#if data.matome}
+  {#if $seckey !== ''}
+    <a href="/matome/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
+  {/if}
+
   <h1>{data.matome.title}</h1>
   {#if data.matome.summary}
     <p>{data.matome.summary}</p>
