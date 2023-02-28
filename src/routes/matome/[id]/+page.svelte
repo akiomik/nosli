@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { Avatar } from '@skeletonlabs/skeleton';
   import { pubkey, seckey } from '$lib/stores/cookie';
   import type { PageData } from './$types';
   import type NostrClient from '$lib/services/NostrClient';
@@ -9,6 +8,7 @@
   import NoteList from '$lib/components/NoteList.svelte';
   import ProfileLink from '$lib/components/ProfileLink.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import ProfileLine from '$lib/components/ProfileLine.svelte';
 
   export let data: PageData & {
     matome: LongFormContent | undefined;
@@ -45,19 +45,9 @@
   <div class="flex flex-col space-y-2">
     <div class="flex flex-row items-center space-x-2">
       <p>By</p>
-      <div>
-        <ProfileLink profile={data.profile}>
-          <div class="flex flex-row items-center space-x-2">
-            <Avatar
-              src={data.profile.safePicture()}
-              initials="NO"
-              alt="Profile picture of {data.profile.formattedName()}"
-              class="w-8 h-8"
-            />
-            <p>{data.profile.formattedName()}</p>
-          </div>
-        </ProfileLink>
-      </div>
+      <ProfileLink profile={data.profile}>
+        <ProfileLine profile={data.profile} />
+      </ProfileLink>
     </div>
 
     <p>
