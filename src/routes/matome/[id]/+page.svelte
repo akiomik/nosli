@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Avatar } from '@skeletonlabs/skeleton';
   import { seckey } from '$lib/stores/cookie';
   import type { PageData } from './$types';
   import type NostrClient from '$lib/services/NostrClient';
@@ -29,20 +30,43 @@
 </svelte:head>
 
 {#if data.matome && data.notes && data.profile}
-  {#if $seckey !== ''}
-    <a href="/matome/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
-  {/if}
+  <div class="flex space-x-2">
+    <h1>{data.matome.title}</h1>
 
-  <h1>{data.matome.title}</h1>
+    {#if $seckey !== ''}
+      <a href="/matome/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
+    {/if}
+  </div>
+
   {#if data.matome.summary}
     <p>{data.matome.summary}</p>
   {/if}
-  <p>
-    author:
-    <ProfileLink profile={data.profile}>
-      {data.profile.formattedName()}
-    </ProfileLink>
-  </p>
+
+  <div class="flex flex-col space-y-2">
+    <div class="flex flex-row items-center space-x-2">
+      <p>By</p>
+      <div>
+        <ProfileLink profile={data.profile}>
+          <div class="flex flex-row items-center space-x-2">
+            <Avatar
+              src={data.profile.safePicture()}
+              initials="NO"
+              alt="Profile picture of {data.profile.formattedName()}"
+              class="w-8 h-8"
+            />
+            <p>{data.profile.formattedName()}</p>
+          </div>
+        </ProfileLink>
+      </div>
+    </div>
+
+    <p>
+      Last updated:
+      {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
+        data.matome.createdAt
+      )}
+    </p>
+  </div>
 
   <NoteList notes={data.notes} />
 {:else}
