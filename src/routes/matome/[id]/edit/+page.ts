@@ -2,7 +2,7 @@ import { get } from 'svelte/store';
 import { error, redirect } from '@sveltejs/kit';
 import { browser } from '$app/environment';
 import type { PageLoad } from './$types';
-import { seckey } from '$lib/stores/cookie';
+import { pubkey, seckey } from '$lib/stores/cookie';
 import NostrClient from '$lib/services/NostrClient';
 
 export const load = (async ({ params }) => {
@@ -24,6 +24,10 @@ export const load = (async ({ params }) => {
       matome = matomeOpt;
     } catch {
       throw error(404, 'Not Found 💔');
+    }
+
+    if (matome.pubkey !== get(pubkey)) {
+      throw error(401, 'Unauthorized');
     }
 
     return {

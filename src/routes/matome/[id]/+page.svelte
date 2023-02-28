@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Avatar } from '@skeletonlabs/skeleton';
-  import { seckey } from '$lib/stores/cookie';
+  import { pubkey, seckey } from '$lib/stores/cookie';
   import type { PageData } from './$types';
   import type NostrClient from '$lib/services/NostrClient';
   import type LongFormContent from '$lib/entities/LongFormContent';
@@ -33,7 +33,7 @@
   <div class="flex space-x-2">
     <h1>{data.matome.title}</h1>
 
-    {#if $seckey !== ''}
+    {#if $seckey !== '' && $pubkey === data.matome.pubkey}
       <a href="/matome/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
     {/if}
   </div>
