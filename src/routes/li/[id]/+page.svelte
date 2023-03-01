@@ -45,7 +45,7 @@
   <div class="flex flex-col space-y-2">
     <div class="flex flex-row items-center space-x-2">
       <p>By</p>
-      <ProfileLink profile={data.profile}>
+      <ProfileLink profile={data.profile} local={true}>
         <ProfileLine profile={data.profile} />
       </ProfileLink>
     </div>
