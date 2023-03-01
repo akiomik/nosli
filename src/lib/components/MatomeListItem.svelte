@@ -19,7 +19,7 @@
       {:then profile}
         <ProfileLine {profile} />
       {/await}
-      <p class="text-surface-900/50">
+      <p class="text-surface-900/50 whitespace-nowrap overflow-hidden text-ellipsis">
         {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
           matome.createdAt
         )}
