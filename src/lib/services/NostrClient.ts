@@ -85,7 +85,7 @@ export default class NostrClient {
     // NOTE: this.pool.get does not works...
     // return await this.pool.get(this.availableUrls, filters);
     const events = await this.list(filters);
-    return events[0];
+    return events.find((event: Event | undefined) => event !== undefined);
   }
 
   public async list(filters: Filter[]): Promise<Event[]> {
