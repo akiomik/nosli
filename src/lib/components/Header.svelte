@@ -3,12 +3,18 @@
   import { faBars } from '@fortawesome/free-solid-svg-icons';
   import { AppBar } from '@skeletonlabs/skeleton';
   import { pubkey, seckey } from '$lib/stores/cookie';
+  import { clickOutside } from '$lib/actions/clickOutside';
   import Menu from '$lib/components/Menu.svelte';
 
   let showMenu = false;
 
-  const handleMenu = () => {
+  const handleMenu = (e) => {
     showMenu = !showMenu;
+    e.stopPropagation();
+  };
+
+  const onMenuSelect = () => {
+    showMenu = false;
   };
 
   $: isLoggedIn = $pubkey !== '' && $seckey !== '';
@@ -30,7 +36,9 @@
         <button class="btn-icon hover:variant-soft-surface" on:click={handleMenu}>
           <FontAwesomeIcon icon={faBars} title="Open menu" />
         </button>
-        <Menu show={showMenu} />
+        <div use:clickOutside={() => (showMenu = false)}>
+          <Menu show={showMenu} on:select={onMenuSelect} />
+        </div>
       </div>
     {:else}
       <a href="/login" class="btn bg-primary-500">Login</a>
