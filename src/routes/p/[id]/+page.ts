@@ -6,23 +6,22 @@ import NostrClient from '$lib/services/NostrClient';
 
 export const load = (async ({ params }) => {
   if (browser) {
-    let profile: Profile;
-
     const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
     await client.connect();
 
+    let pubkey: string;
     try {
-      const pubkey = nip19.decode(params.id).data;
-      if (typeof pubkey !== 'string') {
-        throw new Error();
-      }
+      pubkey = nip19.decode(params.id).data;
+    } catch {
+      throw error(404, 'Not Found 💔');
+    }
 
-      const profileOpt = await client.getProfile(pubkey);
-      if (profileOpt === undefined) {
-        throw new Error();
-      }
-      profile = profileOpt;
-    } catch (e) {
+    if (typeof pubkey !== 'string') {
+      throw error(500, 'Internal Server Error');
+    }
+
+    const profile = await client.getProfile(pubkey);
+    if (profile === undefined) {
       throw error(404, 'Not Found 💔');
     }
 
