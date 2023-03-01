@@ -3,8 +3,12 @@
   import { NoteContentFormatter } from '$lib/services/NoteContentFormatter';
   import NoteListItemProfile from '$lib/components/NoteListItemProfile.svelte';
   import ProfileLink from '$lib/components/ProfileLink.svelte';
+  import type NostrClient from '$lib/services/NostrClient';
 
   export let note: Note;
+  export let client: NostrClient;
+
+  note.asyncProfile = client.getProfile(note.pubkey);
 </script>
 
 <div class="card">

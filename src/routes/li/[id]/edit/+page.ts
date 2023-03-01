@@ -14,19 +14,19 @@ export const load = (async ({ params }) => {
 
     const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
     await client.connect();
-    let matome: LongFormContent;
 
+    let matome: LongFormContent | undefined;
     try {
-      const matomeOpt = await client.getLongFormContent(params.id);
-      if (matomeOpt === undefined) {
-        throw new Error();
+      matome = await client.getLongFormContent(params.id);
+    } catch (e) {
+      if (e instanceof TypeError) {
+        throw error(404, 'Not Found 💔');
+      } else {
+        throw error(500, 'Internal Server Error');
       }
+    }
 
-      matome = matomeOpt;
-      if (!matome.includesTag(new Tag('t', 'nosli'))) {
-        throw new Error();
-      }
-    } catch {
+    if (matome === undefined || !matome.includesTag(new Tag('t', 'nosli'))) {
       throw error(404, 'Not Found 💔');
     }
 

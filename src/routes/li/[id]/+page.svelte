@@ -13,7 +13,7 @@
   export let data: PageData & {
     matome: LongFormContent | undefined;
     profile: Profile | undefined;
-    notes: Note[] | undefined;
+    notes: (Note | undefined)[] | undefined;
     client: NostrClient | undefined;
   };
 </script>
@@ -29,7 +29,7 @@
   {/if}
 </svelte:head>
 
-{#if data.matome && data.notes && data.profile}
+{#if data.matome && data.notes && data.profile && data.client}
   <div class="flex space-x-2">
     <h1>{data.matome.title}</h1>
 
@@ -58,7 +58,7 @@
     </p>
   </div>
 
-  <NoteList notes={data.notes} />
+  <NoteList notes={data.notes} client={data.client} />
 {:else}
   <LoadingSpinner />
 {/if}
