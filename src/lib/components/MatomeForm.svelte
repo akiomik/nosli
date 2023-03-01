@@ -82,12 +82,12 @@
       await client.postNote(note, $seckey);
     }
 
-    window.location.href = `/matome/${lfc.nip19Id()}`;
+    window.location.href = `/li/${lfc.nip19Id()}`;
   };
 
   const onCancel = () => {
     if (confirm('Quit editing?')) {
-      const path = matome ? `/matome/${matome.nip19Id()}` : '/';
+      const path = matome ? `/li/${matome.nip19Id()}` : '/';
       window.location.href = path;
     }
   };

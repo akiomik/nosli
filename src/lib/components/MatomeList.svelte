@@ -47,7 +47,7 @@
       <div class="flex flex-col space-y-4">
         {#each matomes as matome}
           {#if matome.id}
-            <a href="/matome/{matome.nip19Id()}" class="unstyled">
+            <a href="/li/{matome.nip19Id()}" class="unstyled">
               <MatomeListItem {matome} asyncProfile={asyncProfileByMatomeId[matome.id]} />
             </a>
           {/if}

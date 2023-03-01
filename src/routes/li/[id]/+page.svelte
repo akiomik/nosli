@@ -34,7 +34,7 @@
     <h1>{data.matome.title}</h1>
 
     {#if $seckey !== '' && $pubkey === data.matome.pubkey}
-      <a href="/matome/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
+      <a href="/li/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
     {/if}
   </div>
 

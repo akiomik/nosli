@@ -25,7 +25,7 @@
   </svelte:fragment>
   <svelte:fragment slot="trail">
     {#if isLoggedIn}
-      <a href="/matome/new" class="btn bg-primary-500">Create</a>
+      <a href="/li/new" class="btn bg-primary-500">Create</a>
       <div class="relative">
         <button class="btn-icon hover:variant-soft-surface" on:click={handleMenu}>
           <FontAwesomeIcon icon={faBars} title="Open menu" />
