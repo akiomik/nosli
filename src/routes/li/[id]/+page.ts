@@ -28,7 +28,6 @@ export const load = (async ({ params }) => {
       throw error(404, 'Not Found 💔');
     }
 
-    // TODO: check ordering
     const asyncNotes = matome.eventIds().map(async (id: string) => client.getNote(id));
     const notes = await Promise.all(asyncNotes);
 

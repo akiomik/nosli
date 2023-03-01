@@ -69,6 +69,20 @@ export default class NostrClient {
     return Note.fromEvent(event);
   }
 
+  public async listNotes(ids: string[]): Promise<Note[]> {
+    const filters = [{ kinds: [1], ids: ids }];
+
+    const events = await this.list(filters);
+    return events.reduce((acc: Note[], event: Event) => {
+      if (event !== null && event !== undefined) {
+        const note = Note.fromEvent(event);
+        acc.push(note);
+      }
+
+      return acc;
+    }, []);
+  }
+
   public async getProfile(pubkey: string): Promise<Profile | undefined> {
     const filters = [{ authors: [pubkey], kinds: [0] }];
     const events = await this.list(filters);
