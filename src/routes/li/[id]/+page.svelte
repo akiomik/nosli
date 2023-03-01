@@ -30,11 +30,13 @@
 </svelte:head>
 
 {#if data.matome && data.notes && data.profile && data.client}
-  <div class="flex space-x-2">
-    <h1>{data.matome.title}</h1>
+  <div class="flex items-center space-x-2">
+    <h1 class="flex-none">{data.matome.title}</h1>
 
     {#if $seckey !== '' && $pubkey === data.matome.pubkey}
-      <a href="/li/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
+      <div>
+        <a href="/li/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
+      </div>
     {/if}
   </div>
 
