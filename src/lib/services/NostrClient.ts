@@ -12,8 +12,11 @@ import type { AddressPointer, ProfilePointer, EventPointer } from 'nostr-tools/n
 import Note from '$lib/entities/Note';
 import Profile from '$lib/entities/Profile';
 import LongFormContent from '$lib/entities/LongFormContent';
+import Tag from '$lib/entities/Tag';
 
 export default class NostrClient {
+  static TAG = 'nosli';
+
   private pool = new SimplePool();
   private availableUrls: string[] = [];
   private connectionStatus: Promise<void>;
@@ -57,7 +60,7 @@ export default class NostrClient {
 
   // TODO: support note-style id
   public async getNote(id: string): Promise<Note | undefined> {
-    const filters = [{ ids: [id] }];
+    const filters = [{ kinds: [1], ids: [id] }];
     const event = await this.get(filters);
     if (event === null || event === undefined) {
       return undefined;
@@ -181,6 +184,32 @@ export default class NostrClient {
     }
 
     return LongFormContent.fromEvent(event);
+  }
+
+  public async getMatome(naddr: string) {
+    const { data } = nip19.decode(naddr);
+    if (!NostrClient.checkNAddr(data)) {
+      throw new Error(`Invalid naddr: ${naddr}`);
+    }
+
+    const { kind, pubkey, identifier } = data;
+    const filter = {
+      kinds: [kind],
+      authors: [pubkey],
+      '#d': [identifier]
+      // '#t': [NostrClient.TAG] // this does not seems to work with snort
+    };
+    const event = await this.get([filter]);
+    if (event === undefined) {
+      return undefined;
+    }
+
+    const lfc = LongFormContent.fromEvent(event);
+    if (!lfc.includesTag(new Tag('t', NostrClient.TAG))) {
+      return undefined;
+    }
+
+    return lfc;
   }
 
   public async listMatomes(pubkey: string): Promise<LongFormContent[]> {

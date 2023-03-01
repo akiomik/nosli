@@ -2,7 +2,6 @@ import type { PageLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { browser } from '$app/environment';
 import NostrClient from '$lib/services/NostrClient';
-import Tag from '$lib/entities/Tag';
 
 export const load = (async ({ params }) => {
   if (browser) {
@@ -11,7 +10,7 @@ export const load = (async ({ params }) => {
 
     let matome: LongFormContent | undefined;
     try {
-      matome = await client.getLongFormContent(params.id);
+      matome = await client.getMatome(params.id);
     } catch (e) {
       if (e instanceof TypeError) {
         throw error(404, 'Not Found 💔');
@@ -20,7 +19,7 @@ export const load = (async ({ params }) => {
       }
     }
 
-    if (matome === undefined || !matome.includesTag(new Tag('t', 'nosli'))) {
+    if (matome === undefined) {
       throw error(404, 'Not Found 💔');
     }
 
