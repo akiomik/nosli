@@ -4,6 +4,7 @@ import { browser } from '$app/environment';
 import type { PageLoad } from './$types';
 import { pubkey, seckey } from '$lib/stores/cookie';
 import NostrClient from '$lib/services/NostrClient';
+import Tag from '$lib/entities/Tag';
 
 export const load = (async ({ params }) => {
   if (browser) {
@@ -22,6 +23,9 @@ export const load = (async ({ params }) => {
       }
 
       matome = matomeOpt;
+      if (!matome.includesTag(new Tag('t', 'nosli'))) {
+        throw new Error();
+      }
     } catch {
       throw error(404, 'Not Found 💔');
     }

@@ -83,4 +83,10 @@ export default class LongFormContent {
   noteIds(): string[] {
     return this.eventIds().map((id) => nip19.noteEncode(id));
   }
+
+  includesTag(tag: Tag): boolean {
+    return this.tags.some((t) => {
+      return t.equals(tag);
+    });
+  }
 }

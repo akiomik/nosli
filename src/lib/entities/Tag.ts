@@ -29,4 +29,13 @@ export default class Tag {
   public isTag(): boolean {
     return this.typ === 't';
   }
+
+  public equals(that: Tag): boolean {
+    return (
+      this.typ === that.typ &&
+      this.value === that.value &&
+      this.relay === that.relay &&
+      this.marker === that.marker
+    );
+  }
 }
