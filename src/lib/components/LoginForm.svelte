@@ -40,7 +40,7 @@
 <label class="label">
   key (npub | nsec)
   <input
-    type="text"
+    type="password"
     bind:value={key}
     required
     class="input"
