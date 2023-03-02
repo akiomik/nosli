@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { nip19 } from 'nostr-tools';
+  import { nip19, Kind } from 'nostr-tools';
   import NostrClient from '$lib/services/NostrClient';
   import Note from '$lib/entities/Note';
   import LongFormContent from '$lib/entities/LongFormContent';
@@ -75,7 +75,7 @@
       const noteTags = [
         new Tag('e', lfc.id, '', 'mention'),
         new Tag('p', lfc.pubkey),
-        new Tag('a', `${LongFormContent.KIND}:${lfc.pubkey}:${identifier}`)
+        new Tag('a', `${Kind.Article}:${lfc.pubkey}:${identifier}`)
       ];
       const note = new Note(undefined, shareContent, '', new Date(), noteTags, undefined);
 
