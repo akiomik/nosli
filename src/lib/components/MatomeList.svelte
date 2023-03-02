@@ -29,7 +29,7 @@
   <LoadingSpinner />
 {:else if matomes.length === 0}
   <Alert>
-    <p>No matomes found.</p>
+    <p>No lists found &#x1f914;</p>
   </Alert>
 {:else}
   <div class="flex flex-col space-y-4">
