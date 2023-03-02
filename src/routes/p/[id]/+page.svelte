@@ -4,15 +4,18 @@
   import { browser } from '$app/environment';
   import type { PageData } from './$types';
   import type Profile from '$lib/entities/Profile';
-  import NostrClient from '$lib/services/NostrClient';
+  import type LongFormContent from '$lib/entities/LongFormContent';
+  import type NostrClient from '$lib/services/NostrClient';
   import { NoteContentFormatter } from '$lib/services/NoteContentFormatter';
   import { pubkey, seckey } from '$lib/stores/cookie';
   import MatomeList from '$lib/components/MatomeList.svelte';
   import Alert from '$lib/components/Alert.svelte';
   import ProfileNip05 from '$lib/components/ProfileNip05.svelte';
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
   export let data: PageData & {
     profile: Profile | undefined;
+    matomes: LongFormContent[] | undefined;
     client: NostrClient | undefined;
   };
 
@@ -54,4 +57,8 @@
 
 <h2>Matomes</h2>
 
-<MatomeList id={data.id} client={data.client} />
+{#if data.matomes && data.client}
+  <MatomeList matomes={data.matomes} client={data.client} />
+{:else}
+  <LoadingSpinner />
+{/if}

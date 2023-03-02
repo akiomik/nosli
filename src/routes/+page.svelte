@@ -1,5 +1,15 @@
 <script lang="ts">
+  import type { PageData } from './$types';
+  import type NostrClient from '$lib/services/NostrClient';
+  import type LongFormContent from '$lib/entities/LongFormContent';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
+  import MatomeList from '$lib/components/MatomeList.svelte';
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+
+  export let data: PageData & {
+    matomes: LongFormContent[] | undefined;
+    client: NostrClient | undefined;
+  };
 
   const title = 'Nosli | Create curated lists of posts on nostr';
   const desc = 'Nosli helps you create a curated list of posts on nostr';
@@ -21,4 +31,10 @@
   <ExternalLink href="https://nostr.com">nostr</ExternalLink>.
 </p>
 
-<!-- TODO: list matomes -->
+<h2>Global matomes</h2>
+
+{#if data.matomes && data.client}
+  <MatomeList matomes={data.matomes} client={data.client} />
+{:else}
+  <LoadingSpinner />
+{/if}

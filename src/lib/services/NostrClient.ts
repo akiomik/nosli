@@ -226,6 +226,17 @@ export default class NostrClient {
     return lfc;
   }
 
+  public async listGlobalMatomes(limit: number): Promise<LongFormContent[]> {
+    const filter = {
+      kinds: [LongFormContent.KIND],
+      limit: limit,
+      '#t': ['nosli']
+    };
+    const events = await this.list([filter]);
+
+    return events.map((event: Event) => LongFormContent.fromEvent(event));
+  }
+
   public async listMatomes(pubkey: string): Promise<LongFormContent[]> {
     const filter = {
       kinds: [LongFormContent.KIND],

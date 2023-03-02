@@ -25,9 +25,12 @@ export const load = (async ({ params }) => {
       throw error(404, 'Not Found 💔');
     }
 
+    const matomes = await client.listMatomes(pubkey);
+
     return {
       id: params.id,
       profile,
+      matomes,
       client
     };
   }
