@@ -1,11 +1,13 @@
 <script lang="ts">
   export let variant = '';
 
-  $: className =
-    variant === undefined || variant === '' ? 'variant-ghost' : `variant-ghost-${variant}`;
+  $: className = variant === '' ? 'variant-ghost' : `variant-ghost-${variant}`;
+  // $: className = 'variant-ghost';
 </script>
 
-<aside class="alert {className}">
+<!-- FIXME: This does not seems to work -->
+<!-- <aside class="alert {className}"> -->
+<aside class="alert variant-ghost">
   <slot name="icon" />
 
   <div class="alert-message">
