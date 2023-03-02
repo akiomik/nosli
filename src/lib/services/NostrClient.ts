@@ -1,18 +1,12 @@
 import type { Filter, Event, Pub } from 'nostr-tools';
-import {
-  SimplePool,
-  getEventHash,
-  signEvent,
-  validateEvent,
-  verifySignature,
-  nip19
-} from 'nostr-tools';
+import { SimplePool, getEventHash, validateEvent, verifySignature, nip19 } from 'nostr-tools';
 import type { AddressPointer, ProfilePointer, EventPointer } from 'nostr-tools/nip19';
 
 import Note from '$lib/entities/Note';
 import Profile from '$lib/entities/Profile';
 import LongFormContent from '$lib/entities/LongFormContent';
 import Tag from '$lib/entities/Tag';
+import KeyManager from '$lib/services/KeyManager';
 
 export default class NostrClient {
   static TAG = 'nosli';
@@ -109,18 +103,22 @@ export default class NostrClient {
     return this.pool.list(this.availableUrls, filters);
   }
 
-  public async postNote(note: Note, seckey: string): Promise<Note> {
-    const event = {
+  public async postNote(note: Note): Promise<Note> {
+    let event = {
       id: '',
       sig: '',
       kind: 1,
       content: note.content,
-      pubkey: note.pubkey,
+      pubkey: '',
       created_at: Math.round(note.createdAt.getTime() / 1000),
       tags: note.tags.map((tag) => [tag.typ, tag.value])
     };
-    event.id = getEventHash(event);
-    event.sig = signEvent(event, seckey);
+    try {
+      event = await KeyManager.signEvent(event);
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
 
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
@@ -145,8 +143,8 @@ export default class NostrClient {
     });
   }
 
-  public async postLongFormContent(lfc: LongFormContent, seckey: string): Promise<LongFormContent> {
-    const event = lfc.toEvent(seckey);
+  public async postLongFormContent(lfc: LongFormContent): Promise<LongFormContent> {
+    const event = await KeyManager.signEvent(lfc.toEvent());
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }

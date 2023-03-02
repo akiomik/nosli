@@ -2,8 +2,8 @@
   import { FontAwesomeIcon } from '@fortawesome/svelte-fontawesome';
   import { faBars } from '@fortawesome/free-solid-svg-icons';
   import { AppBar } from '@skeletonlabs/skeleton';
-  import { pubkey, seckey } from '$lib/stores/cookie';
   import { clickOutside } from '$lib/actions/clickOutside';
+  import KeyManager from '$lib/services/KeyManager';
   import Menu from '$lib/components/Menu.svelte';
 
   let showMenu = false;
@@ -16,8 +16,6 @@
   const onMenuSelect = () => {
     showMenu = false;
   };
-
-  $: isLoggedIn = $pubkey !== '' && $seckey !== '';
 </script>
 
 <AppBar>
@@ -30,8 +28,11 @@
     </a>
   </svelte:fragment>
   <svelte:fragment slot="trail">
-    {#if isLoggedIn}
-      <a href="/li/new" class="btn bg-primary-500">Create</a>
+    {#if KeyManager.isLoggedIn()}
+      {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
+        <a href="/li/new" class="btn bg-primary-500">Create</a>
+      {/if}
+
       <div class="relative">
         <button class="btn-icon hover:variant-soft-surface" on:click={handleMenu}>
           <FontAwesomeIcon icon={faBars} title="Open menu" />

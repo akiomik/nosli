@@ -1,10 +1,9 @@
-import { redirect } from '@sveltejs/kit';
-import { get } from 'svelte/store';
+import { error } from '@sveltejs/kit';
 import { browser } from '$app/environment';
-import { seckey } from '$lib/stores/cookie';
+import KeyManager from '$lib/services/KeyManager';
 
 export function load() {
-  if (browser && get(seckey) === '') {
-    throw redirect(302, '/');
+  if (browser && KeyManager.isLoggedInWithPublicKey()) {
+    throw error(401, '/');
   }
 }

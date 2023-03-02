@@ -5,7 +5,6 @@
   import Note from '$lib/entities/Note';
   import LongFormContent from '$lib/entities/LongFormContent';
   import Tag from '$lib/entities/Tag';
-  import { pubkey, seckey } from '$lib/stores/cookie';
 
   export let matome: LongFormContent | undefined = undefined;
 
@@ -61,7 +60,7 @@
     let lfc = new LongFormContent(
       undefined,
       identifier,
-      $pubkey,
+      '',
       lfcContent,
       new Date(),
       title,
@@ -70,17 +69,17 @@
       undefined,
       tags
     );
-    lfc = await client.postLongFormContent(lfc, $seckey);
+    lfc = await client.postLongFormContent(lfc);
 
     if (shareInNote && shareContent && lfc.id) {
       const noteTags = [
         new Tag('e', lfc.id, '', 'mention'),
-        new Tag('p', $pubkey),
-        new Tag('a', `${LongFormContent.KIND}:${$pubkey}:${identifier}`)
+        new Tag('p', lfc.pubkey),
+        new Tag('a', `${LongFormContent.KIND}:${lfc.pubkey}:${identifier}`)
       ];
-      const note = new Note(undefined, shareContent, $pubkey, new Date(), noteTags, undefined);
+      const note = new Note(undefined, shareContent, '', new Date(), noteTags, undefined);
 
-      await client.postNote(note, $seckey);
+      await client.postNote(note);
     }
 
     window.location.href = `/li/${lfc.nip19Id()}`;

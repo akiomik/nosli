@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { pubkey, seckey } from '$lib/stores/cookie';
   import type { PageData } from './$types';
   import type NostrClient from '$lib/services/NostrClient';
   import type LongFormContent from '$lib/entities/LongFormContent';
   import type Note from '$lib/entities/Note';
   import type Profile from '$lib/entities/Profile';
+  import KeyManager from '$lib/services/KeyManager';
   import NoteList from '$lib/components/NoteList.svelte';
   import ProfileLink from '$lib/components/ProfileLink.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -33,7 +33,7 @@
   <div class="flex items-center space-x-2">
     <h1 class="flex-none">{data.matome.title}</h1>
 
-    {#if $seckey !== '' && $pubkey === data.matome.pubkey}
+    {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
       <div>
         <a href="/li/{data.matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
       </div>

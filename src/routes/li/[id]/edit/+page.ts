@@ -1,14 +1,13 @@
-import { get } from 'svelte/store';
-import { error, redirect } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { browser } from '$app/environment';
 import type { PageLoad } from './$types';
-import { pubkey, seckey } from '$lib/stores/cookie';
 import NostrClient from '$lib/services/NostrClient';
+import KeyManager from '$lib/services/KeyManager';
 
 export const load = (async ({ params }) => {
   if (browser) {
-    if (get(seckey) === '') {
-      throw redirect(302, '/');
+    if (KeyManager.isLoggedInWithPublicKey()) {
+      throw error(401, '/');
     }
 
     const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
@@ -30,7 +29,12 @@ export const load = (async ({ params }) => {
       throw error(404, 'Not Found 💔');
     }
 
-    if (matome.pubkey !== get(pubkey)) {
+    try {
+      const loggedInAs = await KeyManager.isLoggedInAs(matome.pubkey);
+      if (!loggedInAs) {
+        throw error(401, 'Unauthorized');
+      }
+    } catch {
       throw error(401, 'Unauthorized');
     }
 

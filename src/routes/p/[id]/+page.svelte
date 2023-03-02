@@ -7,7 +7,7 @@
   import type LongFormContent from '$lib/entities/LongFormContent';
   import type NostrClient from '$lib/services/NostrClient';
   import { NoteContentFormatter } from '$lib/services/NoteContentFormatter';
-  import { pubkey, seckey } from '$lib/stores/cookie';
+  import KeyManager from '$lib/services/KeyManager';
   import MatomeList from '$lib/components/MatomeList.svelte';
   import Alert from '$lib/components/Alert.svelte';
   import ProfileNip05 from '$lib/components/ProfileNip05.svelte';
@@ -49,13 +49,19 @@
   <p>{@html NoteContentFormatter.format(data.profile.about)}</p>
 {/if}
 
-{#if data?.profile?.pubkey === $pubkey && $seckey === ''}
-  <Alert>
-    <p>You are logged in with npub and unable to create or edit a list.</p>
-  </Alert>
+{#if data?.profile?.pubkey && KeyManager.isLoggedInWithPublicKey()}
+  {#await KeyManager.isLoggedInAs(data?.profile?.pubkey)}
+    <!-- noop -->
+  {:then isLoggedIn}
+    {#if isLoggedIn}
+      <Alert>
+        <p>You are logged in with npub and unable to create or edit a list.</p>
+      </Alert>
+    {/if}
+  {/await}
 {/if}
 
-<h2>Your lists</h2>
+<h2>Lists</h2>
 
 {#if data.matomes && data.client}
   <MatomeList matomes={data.matomes} client={data.client} />

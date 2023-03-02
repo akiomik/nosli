@@ -37,7 +37,7 @@ export default class LongFormContent {
     );
   }
 
-  toEvent(seckey: string): Event {
+  toEvent(): Event {
     const tags = [
       ['d', this.identifier],
       ['title', this.title],
@@ -54,7 +54,7 @@ export default class LongFormContent {
     }
 
     const event = {
-      id: '',
+      id: this.id || '',
       sig: '',
       kind: LongFormContent.KIND,
       content: this.content,
@@ -62,8 +62,6 @@ export default class LongFormContent {
       created_at: Math.round(this.createdAt.getTime() / 1000),
       tags
     };
-    event.id = getEventHash(event);
-    event.sig = signEvent(event, seckey);
 
     return event;
   }

@@ -6,6 +6,6 @@
   <title>Create a new list | Nosli</title>
 </svelte:head>
 
-<h1>create a new list</h1>
+<h1>Create a new list</h1>
 
 <MatomeForm />
