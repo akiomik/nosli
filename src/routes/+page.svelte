@@ -35,18 +35,17 @@
 
 <div>
   <p>
-    Matomes are just
+    A curated list is simply
     <ExternalLink href="https://github.com/nostr-protocol/nips/blob/master/23.md">
       NIP-23 Long Form Content
     </ExternalLink>
-    with
-    <code>"losli"</code>
-    tag.
+    tagged with
+    <code>"losli"</code>.
   </p>
-  <p>These are saved in relays and can be viewed and edited by other NIP-23 supported clients.</p>
+  <p>It is stored in relays and can be viewed and edited by other NIP-23 supported clients.</p>
 </div>
 
-<h2>Global matomes</h2>
+<h2>Global lists</h2>
 
 {#if data.matomes && data.client}
   <MatomeList matomes={data.matomes} client={data.client} />

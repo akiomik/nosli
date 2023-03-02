@@ -51,11 +51,11 @@
 
 {#if data?.profile?.pubkey === $pubkey && $seckey === ''}
   <Alert>
-    <p>Due to you are logged in by npub, you can't post a matome</p>
+    <p>You are logged in with npub and unable to create or edit a list.</p>
   </Alert>
 {/if}
 
-<h2>Matomes</h2>
+<h2>Your lists</h2>
 
 {#if data.matomes && data.client}
   <MatomeList matomes={data.matomes} client={data.client} />

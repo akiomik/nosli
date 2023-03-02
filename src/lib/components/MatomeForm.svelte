@@ -148,7 +148,7 @@
 
   <label class="label">
     <input type="checkbox" bind:checked={shareInNote} class="checkbox" />
-    Share this matome in a note
+    Share this list in a note
   </label>
 
   <div>

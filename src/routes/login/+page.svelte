@@ -27,7 +27,7 @@
     </h2>
   </div>
 
-  <p>You can create or edit matomes by logging in with nsec.</p>
+  <p>You can create or edit your lists by logging in with nsec.</p>
 </Alert>
 
 <LoginForm />

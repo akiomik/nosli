@@ -6,8 +6,8 @@ Nosli helps you create a curated list of posts on [nostr](https://nostr.com).
 
 ## How it works
 
-Matomes are just [NIP-23 Long Form Content](https://github.com/nostr-protocol/nips/blob/master/23.md) with `"losli"` tag.
-These are saved in relays and can be viewed and edited by other NIP-23 supported clients.
+A curated list is simply [NIP-23 Long Form Content](https://github.com/nostr-protocol/nips/blob/master/23.md) tagged with `"losli"`.
+It is stored in relays and can be viewed and edited by other NIP-23 supported clients.
 
 ## Developing
 
