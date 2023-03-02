@@ -24,10 +24,16 @@
       await data?.client.close();
     }
   });
+
+  $: name = data?.profile?.formattedName() || 'nostrich';
 </script>
 
 <svelte:head>
-  <title>{data?.profile?.formattedName() || 'nostrich'} | Nosli</title>
+  <title>{name} | Nosli</title>
+  <meta name="description" content="View {name}'s profile and lists" />
+  <meta property="og:url" content="https://nosli.vercel.app/p/{data.id}" />
+  <meta property="og:title" content="{name} | Nosli" />
+  <meta property="og:description" content="View {name}'s profile and lists" />
 </svelte:head>
 
 <div class="flex space-x-4 items-center">

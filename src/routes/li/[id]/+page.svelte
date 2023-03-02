@@ -23,7 +23,7 @@
     <title>{data.matome.title} by {data.profile.formattedName()} | Nosli</title>
     <meta name="description" content={data.matome.summary} />
     <meta name="keywords" content="nostr,curated,list,damus,snort" />
-    <meta property="og:url" content="https://nosli.vercel.app/matome/{data.matome.nip19Id()}" />
+    <meta property="og:url" content="https://nosli.vercel.app/li/{data.matome.nip19Id()}" />
     <meta property="og:title" content="{data.matome.title} | Nosli" />
     <meta property="og:description" content={data.matome.summary} />
   {/if}
