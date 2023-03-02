@@ -16,12 +16,12 @@
         <NoteListItem {note} {client} />
       </ExternalLink>
     {:else}
-      <Alert>
+      <Alert variant="warning">
         <p>Failed to get a note.</p>
       </Alert>
     {/if}
   {:else}
-    <Alert>
+    <Alert variant="warning">
       <p>No data found &#128064;</p>
     </Alert>
   {/each}

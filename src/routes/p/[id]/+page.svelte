@@ -50,7 +50,7 @@
 {/if}
 
 {#if data?.profile?.pubkey === $pubkey && $seckey === ''}
-  <Alert class="alert variant-ghost alert-message">
+  <Alert>
     <p>Due to you are logged in by npub, you can't post a matome</p>
   </Alert>
 {/if}

@@ -19,9 +19,9 @@
 
 <h1>Login</h1>
 
-<Alert variant="">
+<Alert>
   <div slot="icon">
-    <h2 class="flex space-x-2">
+    <h2 class="flex items-center space-x-2">
       <FontAwesomeIcon icon={faCircleInfo} />
       <p>Note</p>
     </h2>

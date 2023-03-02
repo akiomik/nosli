@@ -1,6 +1,5 @@
 <script lang="ts">
-  // FIXME: Doesn't seem to work
-  export let variant: string | undefined = 'warning';
+  export let variant = '';
 
   $: className =
     variant === undefined || variant === '' ? 'variant-ghost' : `variant-ghost-${variant}`;

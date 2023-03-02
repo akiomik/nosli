@@ -28,7 +28,7 @@
 {#if matomes === undefined}
   <LoadingSpinner />
 {:else if matomes.length === 0}
-  <Alert variant="">
+  <Alert>
     <p>No matomes found.</p>
   </Alert>
 {:else}
