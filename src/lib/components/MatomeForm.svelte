@@ -14,6 +14,7 @@
   let identifier: string | undefined = matome?.identifier;
   let noteIds: string | undefined = matome?.noteIds()?.join('\n');
   let shareInNote = false;
+  let shareContent = `${title || 'My new list'} is now published.`;
 
   const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
 
@@ -36,6 +37,7 @@
         return false;
       }
     });
+  $: isShareContentValid = !shareInNote || shareContent !== '';
 
   const onCreate = async () => {
     if (identifier === undefined || title === undefined || splittedNoteIds === undefined) {
@@ -70,14 +72,13 @@
     );
     lfc = await client.postLongFormContent(lfc, $seckey);
 
-    if (shareInNote && lfc.id) {
-      const noteContent = `${title} is now published.`;
+    if (shareInNote && shareContent && lfc.id) {
       const noteTags = [
         new Tag('e', lfc.id, '', 'mention'),
         new Tag('p', $pubkey),
         new Tag('a', `${LongFormContent.KIND}:${$pubkey}:${identifier}`)
       ];
-      const note = new Note(undefined, noteContent, $pubkey, new Date(), noteTags, undefined);
+      const note = new Note(undefined, shareContent, $pubkey, new Date(), noteTags, undefined);
 
       await client.postNote(note, $seckey);
     }
@@ -97,7 +98,7 @@
   });
 </script>
 
-<form class="flex flex-col space-y-4">
+<form class="flex flex-col space-y-6">
   <label class="label">
     Identifier (required, cannot be changed after creation)
     <input
@@ -151,11 +152,26 @@
     Share this list in a note
   </label>
 
+  <input
+    type="text"
+    bind:value={shareContent}
+    disabled={!shareInNote}
+    required={shareInNote}
+    class="input"
+    class:input-error={!isShareContentValid}
+  />
+
+  <hr />
+
   <div>
     <button on:click={onCancel} class="btn bg-surface-300">Cancel</button>
     <button
       on:click={onCreate}
-      disabled={!isIdentifierValid || !isTitleValid || !isSummaryValid || !areNoteIdsValid}
+      disabled={!isIdentifierValid ||
+        !isTitleValid ||
+        !isSummaryValid ||
+        !areNoteIdsValid ||
+        !isShareContentValid}
       class="btn bg-primary-500"
     >
       {#if matome}
