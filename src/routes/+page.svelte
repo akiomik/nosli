@@ -31,6 +31,21 @@
   <ExternalLink href="https://nostr.com">nostr</ExternalLink>.
 </p>
 
+<h2>How it works</h2>
+
+<div>
+  <p>
+    Matomes are just
+    <ExternalLink href="https://github.com/nostr-protocol/nips/blob/master/23.md">
+      NIP-23 Long Form Content
+    </ExternalLink>
+    with
+    <code>"losli"</code>
+    tag.
+  </p>
+  <p>These are saved in relays and can be viewed and edited by other NIP-23 supported clients.</p>
+</div>
+
 <h2>Global matomes</h2>
 
 {#if data.matomes && data.client}
