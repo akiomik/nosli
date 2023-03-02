@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import { nip19 } from 'nostr-tools';
+  import { nip19, Kind } from 'nostr-tools';
   import NostrClient from '$lib/services/NostrClient';
   import Note from '$lib/entities/Note';
   import LongFormContent from '$lib/entities/LongFormContent';
@@ -75,7 +75,7 @@
       const noteTags = [
         new Tag('e', lfc.id, '', 'mention'),
         new Tag('p', lfc.pubkey),
-        new Tag('a', `${LongFormContent.KIND}:${lfc.pubkey}:${identifier}`)
+        new Tag('a', `${Kind.Article}:${lfc.pubkey}:${identifier}`)
       ];
       const note = new Note(undefined, shareContent, '', new Date(), noteTags, undefined);
 
@@ -89,6 +89,14 @@
     if (confirm('Quit editing?')) {
       const path = matome ? `/li/${matome.nip19Id()}` : '/';
       window.location.href = path;
+    }
+  };
+
+  const onDelete = async () => {
+    if (matome?.id && confirm('Are you sure you want to delete this list?')) {
+      await client.deleteEvent(matome.id);
+
+      window.location.href = `/p/${nip19.npubEncode(matome.pubkey)}`;
     }
   };
 
@@ -180,4 +188,12 @@
       {/if}
     </button>
   </div>
+
+  {#if matome}
+    <hr />
+
+    <div>
+      <button on:click={onDelete} class="btn bg-error-400">Delete</button>
+    </div>
+  {/if}
 </form>

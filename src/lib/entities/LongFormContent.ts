@@ -1,10 +1,8 @@
-import { nip19, getEventHash, signEvent } from 'nostr-tools';
+import { nip19, Kind } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 import Tag from '$lib/entities/Tag';
 
 export default class LongFormContent {
-  public static KIND = 30023;
-
   constructor(
     public id: string | undefined,
     public identifier: string,
@@ -56,7 +54,7 @@ export default class LongFormContent {
     const event = {
       id: this.id || '',
       sig: '',
-      kind: LongFormContent.KIND,
+      kind: Kind.Article,
       content: this.content,
       pubkey: this.pubkey,
       created_at: Math.round(this.createdAt.getTime() / 1000),
@@ -68,7 +66,7 @@ export default class LongFormContent {
 
   nip19Id(): string {
     return nip19.naddrEncode({
-      kind: LongFormContent.KIND,
+      kind: Kind.Article,
       pubkey: this.pubkey,
       identifier: this.identifier
     });

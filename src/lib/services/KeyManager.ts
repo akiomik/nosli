@@ -29,9 +29,9 @@ export default class KeyManager {
     if (get(nip07)) {
       return window.nostr.signEvent(event);
     } else {
+      event.pubkey = get(pubkey);
       event.id = getEventHash(event);
       event.sig = signEvent(event, get(seckey));
-      event.pubkey = get(pubkey);
       return event;
     }
   }

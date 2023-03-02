@@ -1,5 +1,5 @@
 import type { Filter, Event, Pub } from 'nostr-tools';
-import { SimplePool, getEventHash, validateEvent, verifySignature, nip19 } from 'nostr-tools';
+import { SimplePool, validateEvent, verifySignature, nip19, Kind } from 'nostr-tools';
 import type { AddressPointer, ProfilePointer, EventPointer } from 'nostr-tools/nip19';
 
 import Note from '$lib/entities/Note';
@@ -54,7 +54,7 @@ export default class NostrClient {
 
   // TODO: support note-style id
   public async getNote(id: string): Promise<Note | undefined> {
-    const filters = [{ kinds: [1], ids: [id] }];
+    const filters = [{ kinds: [Kind.Text], ids: [id] }];
     const event = await this.get(filters);
     if (event === null || event === undefined) {
       return undefined;
@@ -64,7 +64,7 @@ export default class NostrClient {
   }
 
   public async listNotes(ids: string[]): Promise<Note[]> {
-    const filters = [{ kinds: [1], ids: ids }];
+    const filters = [{ kinds: [Kind.Text], ids: ids }];
 
     const events = await this.list(filters);
     return events.reduce((acc: Note[], event: Event) => {
@@ -78,7 +78,7 @@ export default class NostrClient {
   }
 
   public async getProfile(pubkey: string): Promise<Profile | undefined> {
-    const filters = [{ authors: [pubkey], kinds: [0] }];
+    const filters = [{ authors: [pubkey], kinds: [Kind.Metadata] }];
     const events = await this.list(filters);
 
     // Selecting the most recent kind0
@@ -107,18 +107,13 @@ export default class NostrClient {
     let event = {
       id: '',
       sig: '',
-      kind: 1,
+      kind: Kind.Text,
       content: note.content,
       pubkey: '',
       created_at: Math.round(note.createdAt.getTime() / 1000),
       tags: note.tags.map((tag) => [tag.typ, tag.value])
     };
-    try {
-      event = await KeyManager.signEvent(event);
-    } catch (e) {
-      console.error(e);
-      throw e;
-    }
+    event = await KeyManager.signEvent(event);
 
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
@@ -226,9 +221,9 @@ export default class NostrClient {
 
   public async listGlobalMatomes(limit: number): Promise<LongFormContent[]> {
     const filter = {
-      kinds: [LongFormContent.KIND],
+      kinds: [Kind.Article],
       limit: limit,
-      '#t': ['nosli']
+      '#t': [NostrClient.TAG]
     };
     const events = await this.list([filter]);
 
@@ -237,13 +232,47 @@ export default class NostrClient {
 
   public async listMatomes(pubkey: string): Promise<LongFormContent[]> {
     const filter = {
-      kinds: [LongFormContent.KIND],
+      kinds: [Kind.Article],
       authors: [pubkey],
-      '#t': ['nosli']
+      '#t': [NostrClient.TAG]
     };
     const events = await this.list([filter]);
 
     return events.map((event: Event) => LongFormContent.fromEvent(event));
+  }
+
+  public async deleteEvent(id: string): Promise<void> {
+    let event = {
+      id: '',
+      sig: '',
+      kind: Kind.EventDeletion,
+      content: 'Deleted',
+      pubkey: '',
+      created_at: Math.round(new Date().getTime() / 1000),
+      tags: [['e', id]]
+    };
+    event = await KeyManager.signEvent(event);
+
+    if (!validateEvent(event) || !verifySignature(event)) {
+      throw new Error('Unexpected error: event is invalid.');
+    }
+
+    const pubs = this.pool.publish(this.availableUrls, event);
+    const promises = pubs.map((pub: Pub) => {
+      return new Promise((resolve, reject) => {
+        pub.on('ok', () => {
+          resolve(null);
+        });
+
+        pub.on('failed', () => {
+          reject();
+        });
+      });
+    });
+
+    return Promise.all(promises).then(() => {
+      return;
+    });
   }
 
   public async close(): Promise<void> {
