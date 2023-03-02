@@ -92,6 +92,14 @@
     }
   };
 
+  const onDelete = async () => {
+    if (matome?.id && confirm('Are you sure you want to delete this list?')) {
+      await client.deleteEvent(matome.id);
+
+      window.location.href = `/p/${nip19.npubEncode(matome.pubkey)}`;
+    }
+  };
+
   onDestroy(async () => {
     await client.close();
   });
@@ -180,4 +188,12 @@
       {/if}
     </button>
   </div>
+
+  {#if matome}
+    <hr />
+
+    <div>
+      <button on:click={onDelete} class="btn bg-error-400">Delete</button>
+    </div>
+  {/if}
 </form>
