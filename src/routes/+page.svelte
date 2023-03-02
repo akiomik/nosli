@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import type NostrClient from '$lib/services/NostrClient';
+  import NostrClient from '$lib/services/NostrClient';
   import type LongFormContent from '$lib/entities/LongFormContent';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
   import MatomeList from '$lib/components/MatomeList.svelte';
@@ -40,7 +40,7 @@
       NIP-23 Long Form Content
     </ExternalLink>
     tagged with
-    <code>"losli"</code>.
+    <code>"{NostrClient.TAG}"</code>.
   </p>
   <p>It is stored in relays and can be viewed and edited by other NIP-23 supported clients.</p>
 </div>
