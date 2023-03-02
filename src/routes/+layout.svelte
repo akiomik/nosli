@@ -10,7 +10,7 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
   let loading = false;
-  let timeout: number;
+  let timeout: ReturnType<typeof setTimeout>;
 
   beforeNavigate(() => {
     timeout = setTimeout(() => {

@@ -8,7 +8,7 @@
 
   let showMenu = false;
 
-  const handleMenu = (e) => {
+  const handleMenu = (e: MouseEvent) => {
     showMenu = !showMenu;
     e.stopPropagation();
   };
