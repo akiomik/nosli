@@ -5,6 +5,7 @@
   import Note from '$lib/entities/Note';
   import LongFormContent from '$lib/entities/LongFormContent';
   import Tag from '$lib/entities/Tag';
+  import * as settings from '$lib/services/settings';
 
   export let matome: LongFormContent | undefined = undefined;
 
@@ -15,7 +16,7 @@
   let shareInNote = false;
   let shareContent = `${title || 'My new list'} is now published.`;
 
-  const client = new NostrClient(['wss://relay.damus.io', 'wss://relay.snort.social']);
+  const client = new NostrClient(settings.defaultRelays);
 
   $: splittedNoteIds = noteIds?.split('\n');
   $: isIdentifierValid =
