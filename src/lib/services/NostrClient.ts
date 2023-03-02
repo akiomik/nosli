@@ -246,6 +246,40 @@ export default class NostrClient {
     return events.map((event: Event) => LongFormContent.fromEvent(event));
   }
 
+  public async deleteEvent(id: string): Promise<void> {
+    let event = {
+      id: '',
+      sig: '',
+      kind: 5,
+      content: 'Deleted',
+      pubkey: '',
+      created_at: Math.round(new Date().getTime() / 1000),
+      tags: [['e', id]]
+    };
+    event = await KeyManager.signEvent(event);
+
+    if (!validateEvent(event) || !verifySignature(event)) {
+      throw new Error('Unexpected error: event is invalid.');
+    }
+
+    const pubs = this.pool.publish(this.availableUrls, event);
+    const promises = pubs.map((pub: Pub) => {
+      return new Promise((resolve, reject) => {
+        pub.on('ok', () => {
+          resolve(null);
+        });
+
+        pub.on('failed', () => {
+          reject();
+        });
+      });
+    });
+
+    return Promise.all(promises).then(() => {
+      return;
+    });
+  }
+
   public async close(): Promise<void> {
     try {
       await this.pool.close(this.availableUrls);
