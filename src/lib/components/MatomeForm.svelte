@@ -72,12 +72,14 @@
     lfc = await client.postLongFormContent(lfc);
 
     if (shareInNote && shareContent && lfc.id) {
+      const matomeUrl = `https://nosli.vercel.app/li/${lfc.nip19Id()}`;
+      const content = `${shareContent}\n\n${matomeUrl}`;
       const noteTags = [
         new Tag('e', lfc.id, '', 'mention'),
         new Tag('p', lfc.pubkey),
         new Tag('a', `${Kind.Article}:${lfc.pubkey}:${identifier}`)
       ];
-      const note = new Note(undefined, shareContent, '', new Date(), noteTags, undefined);
+      const note = new Note(undefined, content, '', new Date(), noteTags, undefined);
 
       await client.postNote(note);
     }
