@@ -11,7 +11,7 @@
 
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
-  let identifier: string | undefined = matome?.identifier;
+  let identifier: string | undefined = matome?.identifier || `nosli-${new Date().getTime()}`;
   let noteIds: string | undefined = matome?.noteIds()?.join('\n');
   let shareInNote = false;
   let shareContent = `${title || 'My new list'} is now published.`;
