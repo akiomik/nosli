@@ -3,6 +3,7 @@ import { derived, writable } from 'svelte/store';
 import type Note from '$lib/entities/Note';
 import type LongFormContent from '$lib/entities/LongFormContent';
 import NostrClient, { note1ToHex } from '$lib/services/NostrClient';
+import KeyManager from '$lib/services/KeyManager';
 
 interface MaybeNote {
   noteId: string;
@@ -12,9 +13,12 @@ interface MaybeNote {
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: NostrClient }) {
   const { matome, client } = params;
   const initNoteIds = matome?.noteIds()?.map(note1ToHex) ?? [];
-  const initialized = writable(false);
+  const editorInitialized = writable(false);
+  const searchInitialized = writable(false);
   const notes = writable<MaybeNote[]>([]);
+  const searchedNotes = writable<Note[]>([]);
 
+  // Initialize Editor tab
   if (initNoteIds.length > 0) {
     client
       .connect()
@@ -36,26 +40,38 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
             }
           })
         );
-        initialized.set(true);
       })
-      .catch(() => {
+      .finally(() => {
+        editorInitialized.set(true);
         /* Should show error message */
       });
   } else {
-    initialized.set(true);
+    editorInitialized.set(true);
   }
 
+  // Initialize Search tab
+  Promise.all([KeyManager.getPublicKey(), client.connect()])
+    .then(([pubkey]) => client.listLikedPost(pubkey, { includesMe: true }))
+    .then((notes) => {
+      searchedNotes.set(notes);
+    })
+    .finally(() => {
+      searchInitialized.set(true);
+    });
+
   const appendNote = (noteId: string) => {
+    const hex = noteId.startsWith('note1') ? note1ToHex(noteId) : noteId;
     notes.update((prev) => [
       ...prev,
       {
-        noteId: note1ToHex(noteId),
-        asyncNote: client.getNote(note1ToHex(noteId))
+        noteId: hex,
+        asyncNote: client.getNote(hex)
       }
     ]);
   };
   const removeNote = (noteId: string) => {
-    notes.update((prev) => prev.filter((e) => e.noteId !== noteId));
+    const hex = noteId.startsWith('note1') ? note1ToHex(noteId) : noteId;
+    notes.update((prev) => prev.filter((e) => e.noteId !== hex));
   };
   const moveUp = (noteId: string) => {
     notes.update((prev) => {
@@ -89,10 +105,15 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
     });
   };
 
-  const { subscribe } = derived([initialized, notes], ([initialized, notes]) => ({
-    initialized,
-    notes
-  }));
+  const { subscribe } = derived(
+    [editorInitialized, searchInitialized, notes, searchedNotes],
+    ([editorInitialized, searchInitialized, notes, searchedNotes]) => ({
+      editorInitialized,
+      searchInitialized,
+      notes,
+      searchedNotes
+    })
+  );
   return { subscribe, appendNote, removeNote, moveUp, moveDown };
 }
 

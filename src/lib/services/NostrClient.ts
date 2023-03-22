@@ -82,6 +82,26 @@ export default class NostrClient {
     }, []);
   }
 
+  public async listLikedPost(
+    pubkey: string,
+    options?: { includesMe?: boolean; limit?: number }
+  ): Promise<Note[]> {
+    const { includesMe = false, limit = 100 } = options ?? {};
+    const likedEvents = await this.list([{ kinds: [Kind.Reaction], authors: [pubkey], limit }]);
+    const likedNoteIds = likedEvents.flatMap((ev) =>
+      ev.tags.flatMap(([tag, id]) => (tag === 'e' ? [id] : []))
+    );
+
+    const filters: Filter[] = [{ kinds: [Kind.Text], ids: likedNoteIds, limit }];
+    if (includesMe) {
+      filters.push({ kinds: [Kind.Text], authors: [pubkey] });
+    }
+
+    const noteEvents = await this.list(filters);
+    noteEvents.sort((a, b) => b.created_at - a.created_at);
+    return noteEvents.slice(0, limit).map(Note.fromEvent);
+  }
+
   public async getProfile(pubkey: string): Promise<Profile | undefined> {
     const filters = [{ authors: [pubkey], kinds: [Kind.Metadata] }];
     const events = await this.list(filters);

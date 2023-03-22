@@ -2,9 +2,11 @@
   import { goto } from '$app/navigation';
   import { Kind, nip19 } from 'nostr-tools';
   import { onDestroy } from 'svelte';
+  import { TabGroup, Tab } from '@skeletonlabs/skeleton';
 
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import Editor from '$lib/components/NoteEditor/Editor.svelte';
+  import RecentLikes from '$lib/components/NoteEditor/RecentLikes.svelte';
   import LongFormContent from '$lib/entities/LongFormContent';
   import Note from '$lib/entities/Note';
   import Tag from '$lib/entities/Tag';
@@ -22,6 +24,7 @@
   let identifier: string | undefined = matome?.identifier || `nosli-${new Date().getTime()}`;
   let shareInNote = false;
   let shareContent = `${title || 'My new list'} is now published.`;
+  let tabActive = 0;
 
   $: isIdentifierValid =
     identifier !== undefined && identifier.length > 0 && identifier.length <= 40;
@@ -135,11 +138,23 @@
   <section>
     <h6>Notes (required)</h6>
 
-    {#if !$editor.initialized}
-      <LoadingSpinner />
-    {/if}
-
-    <Editor {client} {editor} />
+    <TabGroup>
+      <Tab bind:group={tabActive} name="edit" value={0}>Edit</Tab>
+      <Tab bind:group={tabActive} name="recent-your-likes" value={1}>Recent your likes</Tab>
+      <svelte:fragment slot="panel">
+        {#if tabActive === 0}
+          {#if $editor.editorInitialized}
+            <Editor {client} {editor} />
+          {:else}
+            <LoadingSpinner />
+          {/if}
+        {:else if $editor.searchInitialized}
+          <RecentLikes {client} {editor} />
+        {:else}
+          <LoadingSpinner />
+        {/if}
+      </svelte:fragment>
+    </TabGroup>
   </section>
 
   <hr />
