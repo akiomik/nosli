@@ -1,60 +1,49 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { Kind, nip19 } from 'nostr-tools';
   import { onDestroy } from 'svelte';
-  import { nip19, Kind } from 'nostr-tools';
-  import NostrClient from '$lib/services/NostrClient';
-  import Note from '$lib/entities/Note';
+  import { TabGroup, Tab } from '@skeletonlabs/skeleton';
+
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import Editor from '$lib/components/NoteEditor/Editor.svelte';
+  import RecentLikes from '$lib/components/NoteEditor/RecentLikes.svelte';
   import LongFormContent from '$lib/entities/LongFormContent';
+  import Note from '$lib/entities/Note';
   import Tag from '$lib/entities/Tag';
+  import NostrClient from '$lib/services/NostrClient';
   import * as settings from '$lib/services/settings';
+  import { createNoteEditorStore } from '$lib/stores/noteEditor';
 
   export let matome: LongFormContent | undefined = undefined;
+
+  const client = new NostrClient(settings.defaultRelays);
+  const editor = createNoteEditorStore({ matome, client });
 
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
   let identifier: string | undefined = matome?.identifier || `nosli-${new Date().getTime()}`;
-  let noteIds: string | undefined = matome?.noteIds()?.join('\n');
   let shareInNote = false;
   let shareContent = `${title || 'My new list'} is now published.`;
+  let tabActive = 0;
 
-  const client = new NostrClient(settings.defaultRelays);
-
-  $: splittedNoteIds = noteIds?.split('\n');
   $: isIdentifierValid =
     identifier !== undefined && identifier.length > 0 && identifier.length <= 40;
   $: isTitleValid = title !== undefined && title.length > 0 && title.length <= 150;
   $: isSummaryValid = summary === undefined || summary.length <= 300;
-  $: areNoteIdsValid =
-    splittedNoteIds !== undefined &&
-    splittedNoteIds.every((noteId: string) => {
-      if (!noteId.startsWith('note')) {
-        return false;
-      }
 
-      try {
-        nip19.decode(noteId);
-        return true;
-      } catch {
-        return false;
-      }
-    });
   $: isShareContentValid = !shareInNote || shareContent !== '';
 
   const onCreate = async () => {
-    if (identifier === undefined || title === undefined || splittedNoteIds === undefined) {
+    if (identifier === undefined || title === undefined || $editor.notes.length <= 0) {
       throw new Error('Unexpected error: identifier or title is undefined');
     }
 
     await client.connect();
 
-    const lfcContent = splittedNoteIds.map((_, i) => `#[${i + 3}]`).join('\n');
+    const lfcContent = $editor.notes.map((_, i) => `#[${i + 3}]`).join('\n');
     const tags = [
-      ...splittedNoteIds.map((noteId) => {
-        const id = nip19.decode(noteId).data;
-        if (typeof id !== 'string') {
-          throw new Error('Unexpected error: noteId is not string');
-        }
-
-        return new Tag('e', id, '', 'mention');
+      ...$editor.notes.map(({ noteId }) => {
+        return new Tag('e', noteId, '', 'mention');
       }),
       new Tag('t', 'nosli')
     ];
@@ -70,6 +59,7 @@
       undefined,
       tags
     );
+
     lfc = await client.postLongFormContent(lfc);
 
     if (shareInNote && shareContent && lfc.id) {
@@ -85,7 +75,7 @@
       await client.postNote(note);
     }
 
-    window.location.href = `/li/${lfc.nip19Id()}`;
+    goto(`/li/${lfc.nip19Id()}`);
   };
 
   const onCancel = () => {
@@ -108,7 +98,7 @@
   });
 </script>
 
-<form class="flex flex-col space-y-6">
+<form class="flex flex-col space-y-6" novalidate>
   <label class="label">
     Identifier (required, cannot be changed after creation)
     <input
@@ -145,17 +135,29 @@
     />
   </label>
 
-  <label class="label">
-    Note ids (newline separated, required)
-    <textarea
-      bind:value={noteIds}
-      required
-      class="textarea"
-      class:input-error={noteIds !== undefined && !areNoteIdsValid}
-      rows="8"
-      placeholder="note...."
-    />
-  </label>
+  <section>
+    <h6>Notes (required)</h6>
+
+    <TabGroup>
+      <Tab bind:group={tabActive} name="edit" value={0}>Edit</Tab>
+      <Tab bind:group={tabActive} name="recent-your-likes" value={1}>Recent your likes</Tab>
+      <svelte:fragment slot="panel">
+        {#if tabActive === 0}
+          {#if $editor.editorInitialized}
+            <Editor {client} {editor} />
+          {:else}
+            <LoadingSpinner />
+          {/if}
+        {:else if $editor.searchInitialized}
+          <RecentLikes {client} {editor} />
+        {:else}
+          <LoadingSpinner />
+        {/if}
+      </svelte:fragment>
+    </TabGroup>
+  </section>
+
+  <hr />
 
   <label class="label">
     <input type="checkbox" bind:checked={shareInNote} class="checkbox" />
@@ -171,8 +173,6 @@
     class:input-error={!isShareContentValid}
   />
 
-  <hr />
-
   <div>
     <button on:click={onCancel} class="btn bg-surface-300">Cancel</button>
     <button
@@ -180,8 +180,8 @@
       disabled={!isIdentifierValid ||
         !isTitleValid ||
         !isSummaryValid ||
-        !areNoteIdsValid ||
-        !isShareContentValid}
+        !isShareContentValid ||
+        $editor.notes.length <= 0}
       class="btn bg-primary-500"
     >
       {#if matome}

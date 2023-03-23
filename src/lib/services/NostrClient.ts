@@ -1,12 +1,17 @@
-import type { Filter, Event, Pub } from 'nostr-tools';
-import { SimplePool, validateEvent, verifySignature, nip19, Kind } from 'nostr-tools';
-import type { AddressPointer, ProfilePointer, EventPointer } from 'nostr-tools/nip19';
+import * as secp256k1 from '@noble/secp256k1';
+import { bech32 } from '@scure/base';
+import type { Event, Filter, Pub } from 'nostr-tools';
+import { Kind, nip19, SimplePool, validateEvent, verifySignature } from 'nostr-tools';
+import type { AddressPointer, EventPointer, ProfilePointer } from 'nostr-tools/nip19';
 
+import LongFormContent from '$lib/entities/LongFormContent';
 import Note from '$lib/entities/Note';
 import Profile from '$lib/entities/Profile';
-import LongFormContent from '$lib/entities/LongFormContent';
 import Tag from '$lib/entities/Tag';
 import KeyManager from '$lib/services/KeyManager';
+
+export const note1ToHex = (note1: string) =>
+  secp256k1.utils.bytesToHex(new Uint8Array(bech32.fromWords(bech32.decode(note1, 5000).words)));
 
 export default class NostrClient {
   static TAG = 'nosli';
@@ -75,6 +80,26 @@ export default class NostrClient {
 
       return acc;
     }, []);
+  }
+
+  public async listLikedPost(
+    pubkey: string,
+    options?: { includesMe?: boolean; limit?: number }
+  ): Promise<Note[]> {
+    const { includesMe = false, limit = 100 } = options ?? {};
+    const likedEvents = await this.list([{ kinds: [Kind.Reaction], authors: [pubkey], limit }]);
+    const likedNoteIds = likedEvents.flatMap((ev) =>
+      ev.tags.flatMap(([tag, id]) => (tag === 'e' ? [id] : []))
+    );
+
+    const filters: Filter[] = [{ kinds: [Kind.Text], ids: likedNoteIds, limit }];
+    if (includesMe) {
+      filters.push({ kinds: [Kind.Text], authors: [pubkey] });
+    }
+
+    const noteEvents = await this.list(filters);
+    noteEvents.sort((a, b) => b.created_at - a.created_at);
+    return noteEvents.slice(0, limit).map(Note.fromEvent);
   }
 
   public async getProfile(pubkey: string): Promise<Profile | undefined> {
