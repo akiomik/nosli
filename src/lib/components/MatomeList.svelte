@@ -1,6 +1,6 @@
 <script lang="ts">
-  import LongFormContent from '$lib/entities/LongFormContent';
-  import Profile from '$lib/entities/Profile';
+  import type LongFormContent from '$lib/entities/LongFormContent';
+  import type Profile from '$lib/entities/Profile';
   import MatomeListItem from '$lib/components/MatomeListItem.svelte';
   import Alert from '$lib/components/Alert.svelte';
 

@@ -23,6 +23,10 @@
   };
 
   const onLoginWithNip07 = async () => {
+    if (!window.nostr?.getPublicKey) {
+      return;
+    }
+
     try {
       const npub = await window.nostr.getPublicKey();
       $nip07 = true;

@@ -19,7 +19,7 @@ export default class RxNostrClient {
     timeout = 500
   }: {
     ids: string[];
-    timeout: number;
+    timeout?: number;
   }): Observable<EventPacket> {
     const req = new RxBackwardReq();
     req.emit([{ kinds: [Kind.Text], ids }]);
@@ -32,7 +32,7 @@ export default class RxNostrClient {
     timeout = 500
   }: {
     pubkey: string;
-    timeout: number;
+    timeout?: number;
   }): Observable<EventPacket> {
     const req = new RxBackwardReq();
     req.emit([
@@ -51,8 +51,8 @@ export default class RxNostrClient {
     timeout = 500
   }: {
     pubkey: string;
-    limit: number;
-    timeout: number;
+    limit?: number;
+    timeout?: number;
   }): Observable<EventPacket> {
     const req = new RxBackwardReq();
     req.emit([
@@ -72,7 +72,7 @@ export default class RxNostrClient {
     timeout = 500
   }: {
     limit: number;
-    timeout: number;
+    timeout?: number;
   }): Observable<EventPacket> {
     const req = new RxBackwardReq();
     req.emit([

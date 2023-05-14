@@ -47,7 +47,7 @@
 <svelte:head>
   <title>{name} | Nosli</title>
   <meta name="description" content="View {name}'s profile and lists" />
-  <meta property="og:url" content="https://nosli.vercel.app/p/{data.id}" />
+  <meta property="og:url" content="https://nosli.vercel.app/p/{data.pubkey}" />
   <meta property="og:title" content="{name} | Nosli" />
   <meta property="og:description" content="View {name}'s profile and lists" />
 </svelte:head>
@@ -86,7 +86,7 @@
 <h2>Lists</h2>
 
 {#if matomes && data.client}
-  <MatomeList {matomes} {profilesByPubkey} client={data.client} />
+  <MatomeList {matomes} {profilesByPubkey} />
 {:else}
   <LoadingSpinner />
 {/if}
