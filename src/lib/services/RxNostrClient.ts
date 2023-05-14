@@ -1,0 +1,66 @@
+import { delay, Observable } from 'rxjs';
+import type { RxNostr, EventPacket } from 'rx-nostr';
+import { RxBackwardReq, uniq, verify, latest, createRxNostr } from 'rx-nostr';
+import { Kind } from 'nostr-tools';
+import NostrClient from '$lib/services/NostrClient';
+
+export default class RxNostrClient {
+  private relays: string[];
+  private rxNostr: RxNostr;
+
+  constructor({ relays }: { relays: string[] }) {
+    this.relays = relays;
+    this.rxNostr = createRxNostr();
+    this.rxNostr.setRelays(this.relays);
+  }
+
+  observableNotes({
+    ids,
+    timeout = 500
+  }: {
+    ids: string[];
+    timeout: number;
+  }): Observable<EventPacket> {
+    const req = new RxBackwardReq();
+    req.emit([{ kinds: [Kind.Text], ids }]);
+
+    return this.rxNostr.use(req.pipe(delay(timeout))).pipe(uniq(), verify());
+  }
+
+  observableProfile({
+    pubkey,
+    timeout = 500
+  }: {
+    pubkey: string;
+    timeout: number;
+  }): Observable<EventPacket> {
+    const req = new RxBackwardReq();
+    req.emit([
+      {
+        kinds: [Kind.Metadata],
+        authors: [pubkey]
+      }
+    ]);
+
+    return this.rxNostr.use(req.pipe(delay(timeout))).pipe(verify(), latest());
+  }
+
+  observableGlobalArticles({
+    limit,
+    timeout = 500
+  }: {
+    limit: number;
+    timeout: number;
+  }): Observable<EventPacket> {
+    const req = new RxBackwardReq();
+    req.emit([
+      {
+        kinds: [Kind.Article],
+        '#t': [NostrClient.TAG],
+        limit
+      }
+    ]);
+
+    return this.rxNostr.use(req.pipe(delay(timeout))).pipe(uniq(), verify());
+  }
+}
