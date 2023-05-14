@@ -6,7 +6,6 @@ import RxNostrClient from '$lib/services/RxNostrClient';
 import * as settings from '$lib/services/settings';
 
 export const load = (async ({ params }) => {
-  console.log(params);
   let pubkey: string;
   try {
     pubkey = nip19.decode(params.id).data;

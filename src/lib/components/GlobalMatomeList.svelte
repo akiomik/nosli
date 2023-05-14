@@ -16,7 +16,6 @@
     if (browser) {
       client.observableGlobalArticles({ limit: 25 }).subscribe((envelope) => {
         const matome = LongFormContent.fromEvent(envelope.event);
-        console.log('matome', matome);
         if (matomes === undefined) {
           matomes = [];
         }
