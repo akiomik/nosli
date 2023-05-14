@@ -38,7 +38,8 @@ export default class RxNostrClient {
     req.emit([
       {
         kinds: [Kind.Metadata],
-        authors: [pubkey]
+        authors: [pubkey],
+        limit: 1
       }
     ]);
 
@@ -84,5 +85,28 @@ export default class RxNostrClient {
     ]);
 
     return this.rxNostr.use(req.pipe(delay(timeout))).pipe(uniq(), verify());
+  }
+
+  observableMatome({
+    pubkey,
+    identifier,
+    timeout = 500
+  }: {
+    pubkey: string;
+    identifier: string;
+    timeout?: number;
+  }): Observable<EventPacket> {
+    const req = new RxBackwardReq();
+    req.emit([
+      {
+        kinds: [Kind.Article],
+        authors: [pubkey],
+        '#d': [identifier],
+        '#t': [NostrClient.TAG],
+        limit: 1
+      }
+    ]);
+
+    return this.rxNostr.use(req.pipe(delay(timeout))).pipe(verify(), latest());
   }
 }
