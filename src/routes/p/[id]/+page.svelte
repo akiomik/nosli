@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { Avatar } from '@skeletonlabs/skeleton';
   import { browser } from '$app/environment';
   import type { PageData } from './$types';
-  import type Profile from '$lib/entities/Profile';
-  import type LongFormContent from '$lib/entities/LongFormContent';
-  import type NostrClient from '$lib/services/NostrClient';
+  import Profile from '$lib/entities/Profile';
+  import LongFormContent from '$lib/entities/LongFormContent';
+  import type RxNostrClient from '$lib/services/RxNostrClient';
   import { NoteContentFormatter } from '$lib/services/NoteContentFormatter';
   import KeyManager from '$lib/services/KeyManager';
   import MatomeList from '$lib/components/MatomeList.svelte';
@@ -14,18 +14,34 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
   export let data: PageData & {
-    profile: Profile | undefined;
-    matomes: LongFormContent[] | undefined;
-    client: NostrClient | undefined;
+    client: RxNostrClient | undefined;
+    pubkey: string;
   };
 
-  onDestroy(async () => {
-    if (browser && data?.client) {
-      await data?.client.close();
+  let matomes: LongFormContent[] | undefined = undefined;
+  let profile: Profile | undefined = undefined;
+  let profilesByPubkey: Record<string, Profile> = {};
+
+  onMount(() => {
+    if (browser && data.pubkey && data?.client) {
+      data.client.observableProfile({ pubkey: data.pubkey }).subscribe((enveolope) => {
+        profile = Profile.fromEvent(enveolope.event);
+        profilesByPubkey[data.pubkey] = profile;
+      });
+
+      data.client.observableUserArticles({ pubkey: data.pubkey }).subscribe((enveolope) => {
+        const matome = LongFormContent.fromEvent(enveolope.event);
+
+        if (matomes === undefined) {
+          matomes = [];
+        }
+
+        matomes = [...matomes, matome];
+      });
     }
   });
 
-  $: name = data?.profile?.formattedName() || 'nostrich';
+  $: name = profile?.formattedName() || 'nostrich';
 </script>
 
 <svelte:head>
@@ -38,25 +54,25 @@
 
 <div class="flex space-x-4 items-center">
   <Avatar
-    src={data?.profile?.safePicture()}
+    src={profile?.safePicture()}
     initials="NO"
-    alt="Profile picture of {data.profile?.formattedName() || 'nostrich'}"
+    alt="Profile picture of {profile?.formattedName() || 'nostrich'}"
     class="w-12 h-12"
   />
   <div class="flex flex-col">
-    <h1>{data?.profile?.formattedName() || 'nostrich'}</h1>
-    {#if data?.profile}
-      <ProfileNip05 profile={data.profile} />
+    <h1>{profile?.formattedName() || 'nostrich'}</h1>
+    {#if profile}
+      <ProfileNip05 {profile} />
     {/if}
   </div>
 </div>
 
-{#if data?.profile}
-  <p>{@html NoteContentFormatter.format(data.profile.about)}</p>
+{#if profile}
+  <p>{@html NoteContentFormatter.format(profile.about)}</p>
 {/if}
 
-{#if data?.profile?.pubkey && KeyManager.isLoggedInWithPublicKey()}
-  {#await KeyManager.isLoggedInAs(data?.profile?.pubkey)}
+{#if profile?.pubkey && KeyManager.isLoggedInWithPublicKey()}
+  {#await KeyManager.isLoggedInAs(profile?.pubkey)}
     <!-- noop -->
   {:then isLoggedIn}
     {#if isLoggedIn}
@@ -69,8 +85,8 @@
 
 <h2>Lists</h2>
 
-{#if data.matomes && data.client}
-  <MatomeList matomes={data.matomes} client={data.client} />
+{#if matomes && data.client}
+  <MatomeList {matomes} {profilesByPubkey} client={data.client} />
 {:else}
   <LoadingSpinner />
 {/if}

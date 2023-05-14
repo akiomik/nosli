@@ -1,38 +1,29 @@
-import { nip19 } from 'nostr-tools';
 import { error } from '@sveltejs/kit';
+import { nip19 } from 'nostr-tools';
 import { browser } from '$app/environment';
 import type { PageLoad } from './$types';
-import NostrClient from '$lib/services/NostrClient';
+import RxNostrClient from '$lib/services/RxNostrClient';
 import * as settings from '$lib/services/settings';
 
 export const load = (async ({ params }) => {
+  console.log(params);
+  let pubkey: string;
+  try {
+    pubkey = nip19.decode(params.id).data;
+  } catch {
+    throw error(404, 'Not Found 💔');
+  }
+
+  if (typeof pubkey !== 'string') {
+    throw error(500, 'Internal Server Error 🤯');
+  }
+
   if (browser) {
-    const client = new NostrClient(settings.defaultRelays);
-    await client.connect();
-
-    let pubkey: string;
-    try {
-      pubkey = nip19.decode(params.id).data;
-    } catch {
-      throw error(404, 'Not Found 💔');
-    }
-
-    if (typeof pubkey !== 'string') {
-      throw error(500, 'Internal Server Error');
-    }
-
-    const profile = await client.getProfile(pubkey);
-    if (profile === undefined) {
-      throw error(404, 'Not Found 💔');
-    }
-
-    const matomes = await client.listMatomes(pubkey);
+    const client = new RxNostrClient({ relays: settings.defaultRelays });
 
     return {
-      id: params.id,
-      profile,
-      matomes,
-      client
+      client,
+      pubkey
     };
   }
 }) satisfies PageLoad;

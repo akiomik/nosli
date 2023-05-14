@@ -45,6 +45,28 @@ export default class RxNostrClient {
     return this.rxNostr.use(req.pipe(delay(timeout))).pipe(verify(), latest());
   }
 
+  observableUserArticles({
+    pubkey,
+    limit = 100,
+    timeout = 500
+  }: {
+    pubkey: string;
+    limit: number;
+    timeout: number;
+  }): Observable<EventPacket> {
+    const req = new RxBackwardReq();
+    req.emit([
+      {
+        kinds: [Kind.Article],
+        authors: [pubkey],
+        '#t': [NostrClient.TAG],
+        limit
+      }
+    ]);
+
+    return this.rxNostr.use(req.pipe(delay(timeout))).pipe(uniq(), verify());
+  }
+
   observableGlobalArticles({
     limit,
     timeout = 500
