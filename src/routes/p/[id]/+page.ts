@@ -17,12 +17,13 @@ export const load = (async ({ params }) => {
     throw error(500, 'Internal Server Error 🤯');
   }
 
+  let client: RxNostrClient;
   if (browser) {
-    const client = new RxNostrClient({ relays: settings.defaultRelays });
-
-    return {
-      client,
-      pubkey
-    };
+    client = new RxNostrClient({ relays: settings.defaultRelays });
   }
+
+  return {
+    client,
+    pubkey
+  };
 }) satisfies PageLoad;
