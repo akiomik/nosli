@@ -1,13 +1,11 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import NostrClient from '$lib/services/NostrClient';
-  import type LongFormContent from '$lib/entities/LongFormContent';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
-  import MatomeList from '$lib/components/MatomeList.svelte';
+  import GlobalMatomeList from '$lib/components/GlobalMatomeList.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
   export let data: PageData & {
-    matomes: LongFormContent[] | undefined;
     client: NostrClient | undefined;
   };
 
@@ -47,8 +45,8 @@
 
 <h2>Global lists</h2>
 
-{#if data.matomes && data.client}
-  <MatomeList matomes={data.matomes} client={data.client} />
+{#if data.client}
+  <GlobalMatomeList client={data.client} />
 {:else}
   <LoadingSpinner />
 {/if}

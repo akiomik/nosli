@@ -4,7 +4,7 @@
   import ProfileLine from '$lib/components/ProfileLine.svelte';
 
   export let matome: LongFormContent;
-  export let asyncProfile: Promise<Profile | undefined>;
+  export let profile: Profile | undefined;
 </script>
 
 <div class="card">
@@ -14,11 +14,7 @@
       {matome.summary}
     </p>
     <div class="flex flex-row items-center mt-4 space-x-2">
-      {#await asyncProfile}
-        <p>nostrich</p>
-      {:then profile}
-        <ProfileLine {profile} />
-      {/await}
+      <ProfileLine {profile} />
       <p class="text-surface-900/50 whitespace-nowrap overflow-hidden text-ellipsis">
         {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
           matome.createdAt
