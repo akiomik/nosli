@@ -14,7 +14,7 @@
   </Alert>
 {:else}
   <div class="flex flex-col space-y-4">
-    {#each matomes as matome}
+    {#each matomes as matome (matome.id)}
       {#if matome.id}
         <a href="/li/{matome.nip19Id()}" class="unstyled">
           <MatomeListItem {matome} profile={profilesByPubkey[matome.pubkey]} />
