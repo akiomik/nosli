@@ -67,7 +67,7 @@ export default class RxNostrClient {
     return this.rxNostr.use(req.pipe(delay(timeout))).pipe(uniq(), verify());
   }
 
-  observableGlobalArticles({
+  observableGlobalMatomes({
     limit,
     timeout = 500
   }: {

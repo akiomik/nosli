@@ -14,7 +14,7 @@
 
   onMount(() => {
     if (browser) {
-      client.observableGlobalArticles({ limit: 25 }).subscribe((envelope) => {
+      client.observableGlobalMatomes({ limit: 25 }).subscribe((envelope) => {
         const matome = LongFormContent.fromEvent(envelope.event);
         if (matomes === undefined) {
           matomes = [];
