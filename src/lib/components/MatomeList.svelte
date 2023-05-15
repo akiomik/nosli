@@ -14,6 +14,7 @@
   </Alert>
 {:else}
   <div class="flex flex-col space-y-4">
+    <!-- TODO: To avoid duplication, make this unique by pubkey and identifier -->
     {#each matomes as matome (matome.id)}
       {#if matome.id}
         <a href="/li/{matome.nip19Id()}" class="unstyled">

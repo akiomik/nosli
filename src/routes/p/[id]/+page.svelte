@@ -29,7 +29,7 @@
         profilesByPubkey[data.pubkey] = profile;
       });
 
-      data.client.observableUserArticles({ pubkey: data.pubkey }).subscribe((enveolope) => {
+      data.client.observableUserMatomes({ pubkey: data.pubkey }).subscribe((enveolope) => {
         const matome = LongFormContent.fromEvent(enveolope.event);
 
         if (matomes === undefined) {

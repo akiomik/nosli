@@ -46,7 +46,7 @@ export default class RxNostrClient {
     return this.rxNostr.use(req.pipe(delay(timeout))).pipe(verify(), latest());
   }
 
-  observableUserArticles({
+  observableUserMatomes({
     pubkey,
     limit = 100,
     timeout = 500
@@ -65,6 +65,7 @@ export default class RxNostrClient {
       }
     ]);
 
+    // FIXME: To avoid duplication, make this unique by pubkey and indentifier
     return this.rxNostr.use(req.pipe(delay(timeout))).pipe(uniq(), verify());
   }
 
