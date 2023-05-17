@@ -1,48 +1,35 @@
 import { error } from '@sveltejs/kit';
+import { Kind, nip19 } from 'nostr-tools';
 import { browser } from '$app/environment';
 import type { PageLoad } from './$types';
-import NostrClient from '$lib/services/NostrClient';
+import RxNostrClient from '$lib/services/RxNostrClient';
 import KeyManager from '$lib/services/KeyManager';
 import * as settings from '$lib/services/settings';
+import { ensureAddressPointer } from '$lib/helper';
 
-export const load = (async ({ params }) => {
+export const load = (({ params }) => {
+  let data;
+  try {
+    data = nip19.decode(params.id).data;
+  } catch {
+    throw error(404, 'Not Found 💔');
+  }
+
+  if (!ensureAddressPointer(data) || data.kind != Kind.Article) {
+    throw error(404, 'Not Found 💔');
+  }
+
+  let client: RxNostrClient;
   if (browser) {
-    if (KeyManager.isLoggedInWithPublicKey()) {
+    if (!KeyManager.isLoggedIn() || KeyManager.isLoggedInWithPublicKey()) {
       throw error(401, '/');
     }
 
-    const client = new NostrClient(settings.defaultRelays);
-    await client.connect();
-
-    let matome: LongFormContent | undefined;
-    try {
-      matome = await client.getMatome(params.id);
-    } catch (e) {
-      console.error(e);
-      if (e instanceof TypeError) {
-        throw error(404, 'Not Found 💔');
-      } else {
-        throw error(500, 'Internal Server Error');
-      }
-    }
-
-    if (matome === undefined) {
-      throw error(404, 'Not Found 💔');
-    }
-
-    try {
-      const loggedInAs = await KeyManager.isLoggedInAs(matome.pubkey);
-      if (!loggedInAs) {
-        throw error(401, 'Unauthorized');
-      }
-    } catch {
-      throw error(401, 'Unauthorized');
-    }
-
-    return {
-      id: params.id,
-      matome,
-      client
-    };
+    client = new RxNostrClient({ relays: settings.defaultRelays });
   }
+
+  return {
+    params: data,
+    client
+  };
 }) satisfies PageLoad;

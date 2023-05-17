@@ -51,6 +51,7 @@
     "linkify-plugin-mention": "^4.1.0",
     "linkifyjs": "^4.1.0",
     "nostr-tools": "1.6.1",
+    "rx-nostr": "^0.5.0",
     "sanitize-html": "^2.10.0"
   }
 }

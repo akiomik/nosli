@@ -1,10 +1,10 @@
 <script lang="ts">
   import NoteListItem from '$lib/components/NoteListItem.svelte';
-  import type NostrClient from '$lib/services/NostrClient';
+  import type RxNostrClient from '$lib/services/RxNostrClient';
   import type { NoteEditorStore } from '$lib/stores/noteEditor';
 
   export let editor: NoteEditorStore;
-  export let client: NostrClient;
+  export let client: RxNostrClient;
 
   const toggle = (noteId: string | undefined): void => {
     if (!noteId) {

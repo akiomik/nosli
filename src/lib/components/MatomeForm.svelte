@@ -11,10 +11,12 @@
   import Note from '$lib/entities/Note';
   import Tag from '$lib/entities/Tag';
   import NostrClient from '$lib/services/NostrClient';
+  import type RxNostrClient from '$lib/services/RxNostrClient';
   import * as settings from '$lib/services/settings';
   import { createNoteEditorStore } from '$lib/stores/noteEditor';
 
   export let matome: LongFormContent | undefined = undefined;
+  export let rxClient: RxNostrClient;
 
   const client = new NostrClient(settings.defaultRelays);
   const editor = createNoteEditorStore({ matome, client });
@@ -144,12 +146,12 @@
       <svelte:fragment slot="panel">
         {#if tabActive === 0}
           {#if $editor.editorInitialized}
-            <Editor {client} {editor} />
+            <Editor client={rxClient} {editor} />
           {:else}
             <LoadingSpinner />
           {/if}
         {:else if $editor.searchInitialized}
-          <RecentLikes {client} {editor} />
+          <RecentLikes client={rxClient} {editor} />
         {:else}
           <LoadingSpinner />
         {/if}

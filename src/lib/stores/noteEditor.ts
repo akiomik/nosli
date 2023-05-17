@@ -1,8 +1,9 @@
 import { derived, writable } from 'svelte/store';
 
-import type Note from '$lib/entities/Note';
+import Note from '$lib/entities/Note';
 import type LongFormContent from '$lib/entities/LongFormContent';
-import NostrClient, { note1ToHex } from '$lib/services/NostrClient';
+import type RxNostrClient from '$lib/services/RxNostrClient';
+import { note1ToHex } from '$lib/services/NostrClient';
 import KeyManager from '$lib/services/KeyManager';
 
 interface MaybeNote {

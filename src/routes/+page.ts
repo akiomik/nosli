@@ -1,18 +1,12 @@
 import { browser } from '$app/environment';
 import type { PageLoad } from './$types';
-import NostrClient from '$lib/services/NostrClient';
 import * as settings from '$lib/services/settings';
+import RxNostrClient from '$lib/services/RxNostrClient';
 
 export const load = (async () => {
   if (browser) {
-    const client = new NostrClient(settings.defaultRelays);
-    await client.connect();
+    const client = new RxNostrClient({ relays: settings.defaultRelays });
 
-    const matomes = await client.listGlobalMatomes(25);
-
-    return {
-      matomes,
-      client
-    };
+    return { client };
   }
 }) satisfies PageLoad;

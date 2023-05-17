@@ -13,6 +13,7 @@ export default class Profile {
     public about: string
   ) {}
 
+  // TODO: use Result/Either type
   public static fromEvent(event: Event): Profile {
     const content = JSON.parse(event.content);
     return new Profile(
@@ -20,7 +21,7 @@ export default class Profile {
       content.name,
       content.display_name,
       content.picture,
-      content.nip05,
+      content.nip05 ?? undefined,
       event.pubkey,
       new Date(event.created_at * 1000),
       content.about
