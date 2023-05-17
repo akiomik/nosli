@@ -2,12 +2,12 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import NoteListItem from '$lib/components/NoteListItem.svelte';
   import NoteActions from '$lib/components/NoteEditor/NoteActions.svelte';
-  import type NostrClient from '$lib/services/NostrClient';
+  import type RxNostrClient from '$lib/services/RxNostrClient';
   import type { NoteEditorStore } from '$lib/stores/noteEditor';
   import { nip19 } from 'nostr-tools';
 
   export let editor: NoteEditorStore;
-  export let client: NostrClient;
+  export let client: RxNostrClient;
 
   let newNoteId = '';
 

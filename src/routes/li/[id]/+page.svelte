@@ -28,11 +28,11 @@
   };
 
   onMount(() => {
-    if (browser) {
+    if (browser && data.client) {
       // TODO: Display "not found" on timeout
       data.client
-        ?.observableMatome({ pubkey: data.params.pubkey, identifier: data.params.identifier })
-        ?.subscribe((envelope0) => {
+        .observableMatome({ pubkey: data.params.pubkey, identifier: data.params.identifier })
+        .subscribe((envelope0) => {
           matome = LongFormContent.fromEvent(envelope0.event);
           const ids = matome.eventIds();
           data.client?.observableNotes({ ids }).subscribe((envelope1) => {
@@ -46,7 +46,7 @@
           });
         });
 
-      data.client?.observableProfile({ pubkey: data.params.pubkey })?.subscribe((envelope) => {
+      data.client.observableProfile({ pubkey: data.params.pubkey })?.subscribe((envelope) => {
         profile = Profile.fromEvent(envelope.event);
       });
     }
@@ -97,7 +97,7 @@
     </p>
   </div>
 
-  {#if notesById === undefined}
+  {#if data.client === undefined || notesById === undefined}
     <LoadingSpinner />
   {:else}
     <NoteList {notes} client={data.client} />
