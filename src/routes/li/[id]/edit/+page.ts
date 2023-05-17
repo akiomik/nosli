@@ -21,7 +21,7 @@ export const load = (({ params }) => {
 
   let client: RxNostrClient;
   if (browser) {
-    if (KeyManager.isLoggedInWithPublicKey()) {
+    if (!KeyManager.isLoggedIn() || KeyManager.isLoggedInWithPublicKey()) {
       throw error(401, '/');
     }
 
