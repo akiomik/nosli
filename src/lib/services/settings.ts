@@ -1,5 +1,4 @@
 export const defaultRelays = [
-  'wss://brb.io',
   'wss://no.str.cr',
   'wss://nos.lol',
   'wss://nostr.bitcoiner.social',
@@ -8,6 +7,5 @@ export const defaultRelays = [
   'wss://nostr-pub.wellorder.net',
   'wss://relay.current.fyi',
   'wss://relay.damus.io',
-  'wss://relay.nostr.bg',
   'wss://relay.snort.social'
 ];
