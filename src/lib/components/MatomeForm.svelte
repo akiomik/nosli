@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { Kind, nip19 } from 'nostr-tools';
+  import { nip19 } from 'nostr-tools';
   import { onDestroy } from 'svelte';
   import { TabGroup, Tab } from '@skeletonlabs/skeleton';
 
@@ -8,7 +8,6 @@
   import Editor from '$lib/components/NoteEditor/Editor.svelte';
   import RecentLikes from '$lib/components/NoteEditor/RecentLikes.svelte';
   import LongFormContent from '$lib/entities/LongFormContent';
-  import Note from '$lib/entities/Note';
   import Tag from '$lib/entities/Tag';
   import NostrClient from '$lib/services/NostrClient';
   import type RxNostrClient from '$lib/services/RxNostrClient';
@@ -24,16 +23,12 @@
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
   let identifier: string | undefined = matome?.identifier || `nosli-${new Date().getTime()}`;
-  let shareInNote = false;
-  let shareContent = `${title || 'My new list'} is now published.`;
   let tabActive = 0;
 
   $: isIdentifierValid =
     identifier !== undefined && identifier.length > 0 && identifier.length <= 40;
   $: isTitleValid = title !== undefined && title.length > 0 && title.length <= 150;
   $: isSummaryValid = summary === undefined || summary.length <= 300;
-
-  $: isShareContentValid = !shareInNote || shareContent !== '';
 
   const onCreate = async () => {
     if (identifier === undefined || title === undefined || $editor.notes.length <= 0) {
@@ -63,19 +58,6 @@
     );
 
     lfc = await client.postLongFormContent(lfc);
-
-    if (shareInNote && shareContent && lfc.id) {
-      const matomeUrl = `https://nosli.vercel.app/li/${lfc.nip19Id()}`;
-      const content = `${shareContent}\n\n${matomeUrl}`;
-      const noteTags = [
-        new Tag('e', lfc.id, '', 'mention'),
-        new Tag('p', lfc.pubkey),
-        new Tag('a', `${Kind.Article}:${lfc.pubkey}:${identifier}`)
-      ];
-      const note = new Note(undefined, content, '', new Date(), noteTags, undefined);
-
-      await client.postNote(note);
-    }
 
     goto(`/li/${lfc.nip19Id()}`);
   };
@@ -161,29 +143,11 @@
 
   <hr />
 
-  <label class="label">
-    <input type="checkbox" bind:checked={shareInNote} class="checkbox" />
-    Share this list in a note
-  </label>
-
-  <input
-    type="text"
-    bind:value={shareContent}
-    disabled={!shareInNote}
-    required={shareInNote}
-    class="input"
-    class:input-error={!isShareContentValid}
-  />
-
   <div>
     <button on:click={onCancel} class="btn bg-surface-300">Cancel</button>
     <button
       on:click={onCreate}
-      disabled={!isIdentifierValid ||
-        !isTitleValid ||
-        !isSummaryValid ||
-        !isShareContentValid ||
-        $editor.notes.length <= 0}
+      disabled={!isIdentifierValid || !isTitleValid || !isSummaryValid || $editor.notes.length <= 0}
       class="btn bg-primary-500"
     >
       {#if matome}
