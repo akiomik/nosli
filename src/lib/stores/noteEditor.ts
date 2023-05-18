@@ -114,7 +114,6 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   };
   const moveDown = (noteId: string) => {
     notes.update((prev) => {
-      console.log(prev);
       const idx = prev.findIndex((e) => e.noteId === noteId);
       if (idx < 0 || idx + 1 >= prev.length) {
         return prev;
