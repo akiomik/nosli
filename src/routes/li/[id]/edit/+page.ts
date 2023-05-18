@@ -12,17 +12,17 @@ export const load = (({ params }) => {
   try {
     data = nip19.decode(params.id).data;
   } catch {
-    throw error(404, 'Not Found 💔');
+    throw error(404, 'Not Found &#128148;');
   }
 
   if (!ensureAddressPointer(data) || data.kind != Kind.Article) {
-    throw error(404, 'Not Found 💔');
+    throw error(404, 'Not Found &#128148;');
   }
 
   let client: RxNostrClient;
   if (browser) {
     if (!KeyManager.isLoggedIn() || KeyManager.isLoggedInWithPublicKey()) {
-      throw error(401, '/');
+      throw error(401, 'Unauthorized &#128581;');
     }
 
     client = new RxNostrClient({ relays: settings.defaultRelays });
