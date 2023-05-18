@@ -65,7 +65,7 @@
   const onCancel = () => {
     if (confirm('Quit editing?')) {
       const path = matome ? `/li/${matome.nip19Id()}` : '/';
-      window.location.href = path;
+      goto(path);
     }
   };
 
@@ -73,7 +73,7 @@
     if (matome?.id && confirm('Are you sure you want to delete this list?')) {
       await client.deleteEvent(matome.id);
 
-      window.location.href = `/p/${nip19.npubEncode(matome.pubkey)}`;
+      goto(`/p/${nip19.npubEncode(matome.pubkey)}`);
     }
   };
 

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { goto } from '$app/navigation';
   import { nip19, getPublicKey } from 'nostr-tools';
   import { pubkey, seckey, nip07 } from '$lib/stores/cookie.js';
   import Alert from '$lib/components/Alert.svelte';
@@ -30,7 +31,7 @@
     try {
       const npub = await window.nostr.getPublicKey();
       $nip07 = true;
-      window.location.href = `/p/${nip19.npubEncode(npub)}`;
+      goto(`/p/${nip19.npubEncode(npub)}`);
     } catch (e) {
       alert(e);
     }
@@ -50,7 +51,7 @@
         $pubkey = getPublicKey(decoded);
       }
 
-      window.location.href = `/p/${nip19.npubEncode($pubkey)}`;
+      goto(`/p/${nip19.npubEncode($pubkey)}`);
     }
   };
 </script>

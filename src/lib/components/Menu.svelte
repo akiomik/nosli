@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { nip19 } from 'nostr-tools';
+  import { goto } from '$app/navigation';
   import KeyManager from '$lib/services/KeyManager';
 
   export let show = false;
@@ -10,7 +11,7 @@
   const logout = () => {
     dispatch('select', 'logout');
     KeyManager.logout();
-    window.location.href = '/';
+    goto('/');
   };
 </script>
 
