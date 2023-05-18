@@ -5,7 +5,7 @@ import { nip07, pubkey, seckey } from '$lib/stores/cookie';
 
 declare global {
   interface Window {
-    nostr: {
+    nostr?: {
       getPublicKey: () => Promise<string>;
       signEvent: (event: Event) => Promise<Event>;
     };
@@ -19,6 +19,10 @@ export default class KeyManager {
 
   static async getPublicKey(): Promise<string> {
     if (get(nip07)) {
+      if (!window.nostr) {
+        return Promise.reject(new Error('Failed to resolve NIP-07'));
+      }
+
       return window.nostr.getPublicKey();
     } else {
       return get(pubkey);
@@ -27,6 +31,10 @@ export default class KeyManager {
 
   static async signEvent(event: Event): Promise<Event> {
     if (get(nip07)) {
+      if (!window.nostr) {
+        return Promise.reject(new Error('Failed to resolve NIP-07'));
+      }
+
       return window.nostr.signEvent(event);
     } else {
       event.pubkey = get(pubkey);
