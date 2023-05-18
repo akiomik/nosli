@@ -1,6 +1,7 @@
 import { derived, writable } from 'svelte/store';
 
 import Note from '$lib/entities/Note';
+import Reaction from '$lib/entities/Reaction';
 import type LongFormContent from '$lib/entities/LongFormContent';
 import type RxNostrClient from '$lib/services/RxNostrClient';
 import { note1ToHex } from '$lib/services/NostrClient';
@@ -11,64 +12,86 @@ interface MaybeNote {
   asyncNote: Promise<Note | undefined>;
 }
 
-export function createNoteEditorStore(params: { matome?: LongFormContent; client: NostrClient }) {
+function sortReactions(xs: Reaction[]): Reaction[] {
+  return [...xs].sort((a, b) => {
+    // order by desc
+    return b.createdAt.valueOf() - a.createdAt.valueOf();
+  });
+}
+
+export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostrClient }) {
   const { matome, client } = params;
   const initNoteIds = matome?.noteIds()?.map(note1ToHex) ?? [];
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const notes = writable<MaybeNote[]>([]);
+  const notesById: Record<string, Note> = {};
+  let sortedReactions: Reaction[] = [];
   const searchedNotes = writable<Note[]>([]);
+  const searchedNotesById: Record<string, Note> = {};
 
   // Initialize Editor tab
   if (initNoteIds.length > 0) {
-    client
-      .connect()
-      .then(() => client.listNotes(initNoteIds))
-      .then((loaded) => {
-        notes.set(
-          initNoteIds.map((noteId) => {
-            const note = loaded.find((note) => note.id === noteId);
-            if (note) {
-              return {
-                noteId,
-                asyncNote: Promise.resolve(note)
-              };
-            } else {
-              return {
-                noteId,
-                asyncNote: Promise.resolve(undefined)
-              };
-            }
-          })
-        );
-      })
-      .finally(() => {
-        editorInitialized.set(true);
-        /* Should show error message */
-      });
+    const timeout = 500;
+    client.observableNotes({ ids: initNoteIds, timeout }).subscribe((envelope) => {
+      const note = Note.fromEvent(envelope.event);
+      notesById[envelope.event.id] = note;
+
+      notes.set(
+        initNoteIds.map((noteId) => {
+          const note = notesById[noteId];
+
+          return {
+            noteId,
+            asyncNote: Promise.resolve(note)
+          };
+        })
+      );
+    });
+
+    // TODO: Wait completion of client.observableNotes
+    setTimeout(() => {
+      editorInitialized.set(true);
+    }, timeout);
   } else {
     editorInitialized.set(true);
   }
 
   // Initialize Search tab
-  Promise.all([KeyManager.getPublicKey(), client.connect()])
-    .then(([pubkey]) => client.listLikedPost(pubkey, { includesMe: true }))
-    .then((notes) => {
-      searchedNotes.set(notes);
+  KeyManager.getPublicKey()
+    .then((pubkey) => {
+      const limit = 100;
+      client
+        .observableReactedNotes({ pubkey, limit })
+        .subscribe(([reactionEnvelope, noteEnvelope]) => {
+          // TODO: sort notes
+          const reaction = Reaction.fromEvent(reactionEnvelope.event);
+          const note = Note.fromEvent(noteEnvelope.event);
+          sortedReactions = sortReactions([...sortedReactions, reaction]);
+          searchedNotesById[reaction.eventId()] = note;
+          const sortedNotes = sortedReactions.map(
+            (reaction) => searchedNotesById[reaction.eventId()]
+          );
+          searchedNotes.set(sortedNotes.slice(0, limit));
+        });
     })
     .finally(() => {
+      // TODO: Wait completion of client.observableReactedNotes
       searchInitialized.set(true);
     });
 
   const appendNote = (noteId: string) => {
     const hex = noteId.startsWith('note1') ? note1ToHex(noteId) : noteId;
-    notes.update((prev) => [
-      ...prev,
-      {
-        noteId: hex,
-        asyncNote: client.getNote(hex)
-      }
-    ]);
+    client.observableNote({ id: hex }).subscribe((envelope) => {
+      const note = Note.fromEvent(envelope.event);
+      notes.update((prev) => [
+        ...prev,
+        {
+          noteId: hex,
+          asyncNote: Promise.resolve(note)
+        }
+      ]);
+    });
   };
   const removeNote = (noteId: string) => {
     const hex = noteId.startsWith('note1') ? note1ToHex(noteId) : noteId;
