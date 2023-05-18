@@ -10,11 +10,11 @@ export const load = (async ({ params }) => {
   try {
     pubkey = nip19.decode(params.id).data;
   } catch {
-    throw error(404, 'Not Found 💔');
+    throw error(404, 'Not Found &#128148;');
   }
 
   if (typeof pubkey !== 'string') {
-    throw error(500, 'Internal Server Error 🤯');
+    throw error(500, 'Internal Server Error &#129327;');
   }
 
   let client: RxNostrClient;

@@ -10,7 +10,7 @@ export const load = (() => {
 
   if (browser) {
     if (!KeyManager.isLoggedIn() || KeyManager.isLoggedInWithPublicKey()) {
-      throw error(401, '/');
+      throw error(401, 'Unauthorized &#128581;');
     }
 
     client = new RxNostrClient({ relays: settings.defaultRelays });
