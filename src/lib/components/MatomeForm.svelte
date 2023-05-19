@@ -6,7 +6,7 @@
 
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import Editor from '$lib/components/NoteEditor/Editor.svelte';
-  import RecentLikes from '$lib/components/NoteEditor/RecentLikes.svelte';
+  import RecentReactionList from '$lib/components/NoteEditor/RecentReactionList.svelte';
   import LongFormContent from '$lib/entities/LongFormContent';
   import Tag from '$lib/entities/Tag';
   import NostrClient from '$lib/services/NostrClient';
@@ -18,7 +18,7 @@
   export let rxClient: RxNostrClient;
 
   const client = new NostrClient(settings.defaultRelays);
-  const editor = createNoteEditorStore({ matome, client });
+  const editor = createNoteEditorStore({ matome, client: rxClient });
 
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
@@ -124,7 +124,7 @@
 
     <TabGroup>
       <Tab bind:group={tabActive} name="edit" value={0}>Edit</Tab>
-      <Tab bind:group={tabActive} name="recent-your-likes" value={1}>Recent your likes</Tab>
+      <Tab bind:group={tabActive} name="recent-your-reactions" value={1}>Recent your reactions</Tab>
       <svelte:fragment slot="panel">
         {#if tabActive === 0}
           {#if $editor.editorInitialized}
@@ -133,7 +133,7 @@
             <LoadingSpinner />
           {/if}
         {:else if $editor.searchInitialized}
-          <RecentLikes client={rxClient} {editor} />
+          <RecentReactionList client={rxClient} {editor} />
         {:else}
           <LoadingSpinner />
         {/if}

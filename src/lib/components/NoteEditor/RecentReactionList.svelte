@@ -21,7 +21,6 @@
 </script>
 
 <div class="flex flex-col space-y-8">
-  <p>It shows your recent notes and the notes you have liked:</p>
   {#each $editor.searchedNotes as note (note.id)}
     <NoteListItem {note} {client}>
       <div slot="footer">
