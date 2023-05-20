@@ -1,11 +1,9 @@
 <script lang="ts">
   import type LongFormContent from '$lib/entities/LongFormContent';
-  import type Profile from '$lib/entities/Profile';
   import MatomeListItem from '$lib/components/MatomeListItem.svelte';
   import Alert from '$lib/components/Alert.svelte';
 
   export let matomes: LongFormContent[];
-  export let profilesByPubkey: Record<string, Profile>;
 </script>
 
 {#if matomes.length === 0}
@@ -18,7 +16,7 @@
     {#each matomes as matome (matome.id)}
       {#if matome.id}
         <a href="/li/{matome.nip19Id()}" class="unstyled">
-          <MatomeListItem {matome} profile={profilesByPubkey[matome.pubkey]} />
+          <MatomeListItem {matome} />
         </a>
       {/if}
     {/each}

@@ -1,16 +1,23 @@
 <script lang="ts">
+  import { setContext } from 'svelte';
   import { AppShell } from '@skeletonlabs/skeleton';
   import '@skeletonlabs/skeleton/themes/theme-skeleton.css';
   import '@skeletonlabs/skeleton/styles/all.css';
   import '@fortawesome/fontawesome-svg-core/styles.css';
+  import { createRxNostr } from 'rx-nostr';
   import { beforeNavigate, afterNavigate } from '$app/navigation';
   import '../app.postcss';
+  import * as settings from '$lib/services/settings';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
   let loading = false;
   let timeout: ReturnType<typeof setTimeout>;
+
+  const client = createRxNostr();
+  client.setRelays(settings.defaultRelays);
+  setContext('nostr-client', client);
 
   beforeNavigate(() => {
     timeout = setTimeout(() => {

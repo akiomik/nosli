@@ -1,13 +1,7 @@
 <script lang="ts">
-  import type { PageData } from './$types';
   import NostrClient from '$lib/services/NostrClient';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
   import GlobalMatomeList from '$lib/components/GlobalMatomeList.svelte';
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
-
-  export let data: PageData & {
-    client: NostrClient | undefined;
-  };
 
   const title = 'Nosli | Create curated lists of posts on nostr';
   const desc = 'Nosli helps you create a curated list of posts on nostr';
@@ -45,8 +39,4 @@
 
 <h2>Global lists</h2>
 
-{#if data.client}
-  <GlobalMatomeList client={data.client} />
-{:else}
-  <LoadingSpinner />
-{/if}
+<GlobalMatomeList />
