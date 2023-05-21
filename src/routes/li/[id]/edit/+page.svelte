@@ -44,7 +44,7 @@
 
       <MatomeForm rxClient={data.client} {matome} />
     {:else}
-      <Alert variant="danger">
+      <Alert variant="error">
         <p>Unauthorized &#128581;</p>
       </Alert>
     {/if}
