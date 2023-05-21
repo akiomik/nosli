@@ -1,35 +1,26 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
+  import { getContext } from 'svelte';
+  import type { RxNostr } from 'rx-nostr';
   import type Note from '$lib/entities/Note';
-  import Profile from '$lib/entities/Profile';
+  import { profileStore } from '$lib/stores/nostr';
   import { NoteContentFormatter } from '$lib/services/NoteContentFormatter';
   import NoteListItemProfile from '$lib/components/NoteListItemProfile.svelte';
   import ProfileLink from '$lib/components/ProfileLink.svelte';
-  import type RxNostrClient from '$lib/services/RxNostrClient';
 
   export let note: Note;
-  export let client: RxNostrClient;
 
-  let profile: Profile | undefined = undefined;
-
-  onMount(() => {
-    if (browser) {
-      client.observableProfile({ pubkey: note.pubkey }).subscribe((envelope) => {
-        profile = Profile.fromEvent(envelope.event);
-      });
-    }
-  });
+  const client: RxNostr = getContext('nostr-client');
+  const profile = profileStore({ client, pubkey: note.pubkey });
 </script>
 
 <div class="card">
   <div class="p-4">
-    {#if profile?.id}
-      <ProfileLink {profile} class="unstyled">
-        <NoteListItemProfile {profile} />
+    {#if $profile?.id}
+      <ProfileLink profile={$profile} class="unstyled">
+        <NoteListItemProfile profile={$profile} />
       </ProfileLink>
     {:else}
-      <NoteListItemProfile {profile} />
+      <NoteListItemProfile profile={$profile} />
     {/if}
 
     <p class="text-ellipsis overflow-hidden line-clamp-8 mt-4">

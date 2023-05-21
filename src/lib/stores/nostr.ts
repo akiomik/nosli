@@ -7,6 +7,7 @@ import { Kind } from 'nostr-tools';
 import NostrClient from '$lib/services/NostrClient';
 import LongFormContent from '$lib/entities/LongFormContent';
 import Profile from '$lib/entities/Profile';
+import Note from '$lib/entities/Note';
 
 // TODO: Return Readable or Observable
 export function globalMatomesStore({
@@ -30,6 +31,7 @@ export function globalMatomesStore({
   ]);
 
   // TODO: make matomes unique by naddr
+  // TODO: sort by created_at
   client
     .use(req.pipe(delay(delayTime)))
     .pipe(
@@ -73,6 +75,7 @@ export function userMatomesStore({
   ]);
 
   // TODO: make matomes unique by naddr
+  // TODO: sort by created_at
   client
     .use(req.pipe(delay(delayTime)))
     .pipe(
@@ -89,6 +92,43 @@ export function userMatomesStore({
         }
       });
     });
+
+  return store;
+}
+
+// TODO: Return Readable or Observable
+export function matomeStore({
+  client,
+  pubkey,
+  identifier,
+  delayTime = 500
+}: {
+  client: RxNostr;
+  pubkey: string;
+  identifier: string;
+  delayTime?: number;
+}): Writable<LongFormContent | undefined> {
+  const store = writable<LongFormContent | undefined>(undefined);
+
+  const req = new RxBackwardReq();
+  req.emit([
+    {
+      kinds: [Kind.Article],
+      authors: [pubkey],
+      '#d': [identifier],
+      '#t': [NostrClient.TAG],
+      limit: 1
+    }
+  ]);
+
+  client
+    .use(req.pipe(delay(delayTime)))
+    .pipe(
+      verify(),
+      latest(),
+      map((envelope) => LongFormContent.fromEvent(envelope.event))
+    )
+    .subscribe((matome) => store.set(matome));
 
   return store;
 }
@@ -122,6 +162,47 @@ export function profileStore({
       map((envelope) => Profile.fromEvent(envelope.event))
     )
     .subscribe((profile) => store.set(profile));
+
+  return store;
+}
+
+// TODO: Return Readable or Observable
+export function notesStore({
+  client,
+  ids,
+  delayTime = 500
+}: {
+  client: RxNostr;
+  ids: string[];
+  delayTime?: number;
+}): Writable<(Note | undefined)[] | undefined> {
+  const store = writable<(Note | undefined)[] | undefined>(undefined);
+  const noteById: Record<string, Note> = {};
+
+  const req = new RxBackwardReq();
+  req.emit([
+    {
+      kinds: [Kind.Text],
+      ids: ids
+    }
+  ]);
+
+  // TODO: make matomes unique by naddr
+  client
+    .use(req.pipe(delay(delayTime)))
+    .pipe(
+      uniq(),
+      verify(),
+      map((envelope) => Note.fromEvent(envelope.event))
+    )
+    .subscribe((note) => {
+      if (note.id === undefined) {
+        return;
+      }
+
+      noteById[note.id] = note;
+      store.set(ids.map((id) => noteById[id]));
+    });
 
   return store;
 }

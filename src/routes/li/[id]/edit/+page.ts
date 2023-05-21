@@ -1,10 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { Kind, nip19 } from 'nostr-tools';
-import { browser } from '$app/environment';
 import type { PageLoad } from './$types';
-import RxNostrClient from '$lib/services/RxNostrClient';
 import KeyManager from '$lib/services/KeyManager';
-import * as settings from '$lib/services/settings';
 import { ensureAddressPointer } from '$lib/helper';
 
 export const load = (({ params }) => {
@@ -19,17 +16,11 @@ export const load = (({ params }) => {
     throw error(404, 'Not Found &#128148;');
   }
 
-  let client: RxNostrClient;
-  if (browser) {
-    if (!KeyManager.isLoggedIn() || KeyManager.isLoggedInWithPublicKey()) {
-      throw error(401, 'Unauthorized &#128581;');
-    }
-
-    client = new RxNostrClient({ relays: settings.defaultRelays });
+  if (!KeyManager.isLoggedIn() || KeyManager.isLoggedInWithPublicKey()) {
+    throw error(401, 'Unauthorized &#128581;');
   }
 
   return {
-    params: data,
-    client
+    params: data
   };
 }) satisfies PageLoad;
