@@ -65,8 +65,8 @@
 </svelte:head>
 
 {#if matome}
-  <div class="flex items-center space-x-2">
-    <h1 class="flex-none">{matome.title}</h1>
+  <div class="flex items-center justify-between space-x-2">
+    <h1>{matome.title}</h1>
 
     {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
       <div>
@@ -97,10 +97,10 @@
     </p>
   </div>
 
-  {#if data.client === undefined || notesById === undefined}
-    <LoadingSpinner />
-  {:else}
+  {#if data.client && notesById}
     <NoteList {notes} client={data.client} />
+  {:else}
+    <LoadingSpinner />
   {/if}
 {:else}
   <LoadingSpinner />
