@@ -29,7 +29,7 @@
     <Header />
   </svelte:fragment>
 
-  <div class="container mx-auto p-4 space-y-8 mt-4">
+  <div class="container mx-auto max-w-4xl p-4 space-y-8 mt-4">
     {#if loading}
       <LoadingSpinner />
     {:else}
