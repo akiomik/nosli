@@ -13,7 +13,7 @@
 {:then valid}
   {#if valid}
     <p class="flex items-center gap-x-1">
-      <span class="text-ellipsis overflow-hidden shrink">
+      <span class="text-ellipsis overflow-hidden whitespace-nowrap">
         {profile.formattedNip05()}
       </span>
       <span class="badge-icon variant-ghost-primary flex-none">
@@ -21,7 +21,7 @@
       </span>
     </p>
   {:else}
-    <p class="text-ellipsis overflow-hidden line-through">
+    <p class="text-ellipsis overflow-hidden whitespace-nowrap line-through">
       {profile.formattedNip05()}
     </p>
   {/if}
