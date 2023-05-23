@@ -1,13 +1,15 @@
-import { writable } from 'svelte/store';
-import type { Writable } from 'svelte/store';
-import { delay, map } from 'rxjs';
-import { RxBackwardReq, uniq, verify, latest } from 'rx-nostr';
-import type { RxNostr } from 'rx-nostr';
+import { writable, derived } from 'svelte/store';
+import type { Readable, Writable } from 'svelte/store';
+import { delay, map, take, toArray } from 'rxjs';
+import { RxBackwardReq, uniq, verify, latest, rxOneshotReq } from 'rx-nostr';
+import type { RxNostr, EventPacket } from 'rx-nostr';
 import { Kind } from 'nostr-tools';
+import { sortedBy, takeTimeout } from '$lib/stores/operators';
 import NostrClient from '$lib/services/NostrClient';
 import LongFormContent from '$lib/entities/LongFormContent';
 import Profile from '$lib/entities/Profile';
 import Note from '$lib/entities/Note';
+import Reaction from '$lib/entities/Reaction';
 
 // TODO: Return Readable or Observable
 export function globalMatomesStore({
@@ -60,7 +62,6 @@ export function userMatomesStore({
 }: {
   client: RxNostr;
   pubkey: string;
-  limit: number;
   delayTime?: number;
 }): Writable<LongFormContent[] | undefined> {
   const store = writable<LongFormContent[] | undefined>(undefined);
@@ -205,4 +206,106 @@ export function notesStore({
     });
 
   return store;
+}
+
+export function noteStore({
+  client,
+  id,
+  delayTime = 500
+}: {
+  client: RxNostr;
+  id: string;
+  delayTime?: number;
+}): Writable<Note | undefined> {
+  const store = writable<Note | undefined>(undefined);
+
+  const req = new RxBackwardReq();
+  req.emit([
+    {
+      kinds: [Kind.Text],
+      ids: [id],
+      limit: 1
+    }
+  ]);
+
+  client
+    .use(req.pipe(delay(delayTime)))
+    .pipe(
+      uniq(),
+      verify(),
+      map((envelope) => Note.fromEvent(envelope.event))
+    )
+    .subscribe(store.set);
+
+  return store;
+}
+
+// TODO: Return Readable or Observable
+export function userReactionsStore({
+  client,
+  pubkey,
+  limit,
+  timeout = 500,
+  sortKey = (packet: EventPacket) => -packet.event.created_at
+}: {
+  client: RxNostr;
+  pubkey: string;
+  limit: number;
+  timeout?: number;
+  sortKey?: (packet: EventPacket) => number;
+}): Writable<Reaction[] | undefined> {
+  const store = writable<Reaction[] | undefined>(undefined);
+
+  const req = rxOneshotReq({
+    filters: [
+      {
+        kinds: [Kind.Reaction],
+        authors: [pubkey],
+        limit
+      }
+    ]
+  });
+
+  client
+    .use(req)
+    .pipe(
+      uniq(),
+      verify(),
+      takeTimeout(timeout),
+      sortedBy(sortKey),
+      take(limit),
+      map((envelope) => Reaction.fromEvent(envelope.event)),
+      toArray()
+    )
+    .subscribe(store.set);
+
+  return store;
+}
+
+// TODO: Return Readable or Observable
+export function userReactedNotesStore({
+  client,
+  pubkey,
+  limit,
+  timeout = 500,
+  sortKey = (packet: EventPacket) => -packet.event.created_at
+}: {
+  client: RxNostr;
+  pubkey: string;
+  limit: number;
+  timeout?: number;
+  sortKey?: (packet: EventPacket) => number;
+}): Readable<(Note | undefined)[] | undefined> {
+  return derived(
+    userReactionsStore({ client, pubkey, limit, timeout, sortKey }),
+    ($reactions, set) => {
+      if ($reactions === undefined) {
+        set(undefined);
+        return;
+      }
+
+      const ids = $reactions.map((reaction) => reaction.eventId());
+      notesStore({ client, ids, delayTime: timeout }).subscribe(set);
+    }
+  );
 }
