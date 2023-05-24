@@ -130,31 +130,33 @@ export function matomeStore({
 export function profileStore({
   client,
   pubkey,
-  delayTime = 500
+  timeout = 500
 }: {
   client: RxNostr;
   pubkey: string;
-  delayTime?: number;
+  timeout?: number;
 }): Writable<Profile | undefined> {
   const store = writable<Profile | undefined>(undefined);
 
-  const req = new RxBackwardReq();
-  req.emit([
-    {
-      kinds: [Kind.Metadata],
-      authors: [pubkey],
-      limit: 1
-    }
-  ]);
+  const req = rxOneshotReq({
+    filters: [
+      {
+        kinds: [Kind.Metadata],
+        authors: [pubkey],
+        limit: 1
+      }
+    ]
+  });
 
   client
-    .use(req.pipe(delay(delayTime)))
+    .use(req)
     .pipe(
       verify(),
       latest(),
-      map((envelope) => Profile.fromEvent(envelope.event))
+      takeTimeout(timeout),
+      map(({ event }) => Profile.fromEvent(event))
     )
-    .subscribe((profile) => store.set(profile));
+    .subscribe(store.set);
 
   return store;
 }
