@@ -5,7 +5,7 @@ import type Note from '$lib/entities/Note';
 import type LongFormContent from '$lib/entities/LongFormContent';
 import { note1ToHex } from '$lib/services/NostrClient';
 import KeyManager from '$lib/services/KeyManager';
-import { notesStore, noteStore, userReactedNotesStore } from '$lib/stores/nostr';
+import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/nostr';
 
 interface MaybeNote {
   noteId: string;
@@ -52,7 +52,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   // Initialize Search tab
   KeyManager.getPublicKey().then((pubkey) => {
     const limit = 100;
-    userReactedNotesStore({
+    recentUserReactedNotesStore({
       client,
       pubkey,
       limit

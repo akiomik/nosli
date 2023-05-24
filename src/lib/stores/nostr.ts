@@ -2,7 +2,7 @@ import { writable, derived } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
 import { delay, map, take, toArray } from 'rxjs';
 import { RxBackwardReq, uniq, verify, latest, rxOneshotReq } from 'rx-nostr';
-import type { RxNostr, EventPacket } from 'rx-nostr';
+import type { RxNostr } from 'rx-nostr';
 import { Kind } from 'nostr-tools';
 import { sortedBy, takeTimeout, latestEachNaddr } from '$lib/stores/operators';
 import NostrClient from '$lib/services/NostrClient';
@@ -230,18 +230,16 @@ export function noteStore({
 }
 
 // TODO: Return Readable or Observable
-export function userReactionsStore({
+export function recentUserReactionsStore({
   client,
   pubkey,
   limit,
-  timeout = 500,
-  sortKey = (packet: EventPacket) => -packet.event.created_at
+  timeout = 500
 }: {
   client: RxNostr;
   pubkey: string;
   limit: number;
   timeout?: number;
-  sortKey?: (packet: EventPacket) => number;
 }): Writable<Reaction[] | undefined> {
   const store = writable<Reaction[] | undefined>(undefined);
 
@@ -261,7 +259,7 @@ export function userReactionsStore({
       uniq(),
       verify(),
       takeTimeout(timeout),
-      sortedBy(sortKey),
+      sortedBy(({ event }) => -event.created_at),
       take(limit),
       map((envelope) => Reaction.fromEvent(envelope.event)),
       toArray()
@@ -272,21 +270,19 @@ export function userReactionsStore({
 }
 
 // TODO: Return Readable or Observable
-export function userReactedNotesStore({
+export function recentUserReactedNotesStore({
   client,
   pubkey,
   limit,
-  timeout = 500,
-  sortKey = (packet: EventPacket) => -packet.event.created_at
+  timeout = 500
 }: {
   client: RxNostr;
   pubkey: string;
   limit: number;
   timeout?: number;
-  sortKey?: (packet: EventPacket) => number;
 }): Readable<(Note | undefined)[] | undefined> {
   return derived(
-    userReactionsStore({ client, pubkey, limit, timeout, sortKey }),
+    recentUserReactionsStore({ client, pubkey, limit, timeout }),
     ($reactions, set) => {
       if ($reactions === undefined) {
         set(undefined);
