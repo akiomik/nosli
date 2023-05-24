@@ -1,7 +1,8 @@
 <script lang="ts">
   import { getContext } from 'svelte';
+  import type { RxNostr } from 'rx-nostr';
   import { Avatar } from '@skeletonlabs/skeleton';
-  import type RxNostr from 'rx-nostr';
+
   import type { PageData } from './$types';
   import { recentUserMatomesStore, profileStore } from '$lib/stores/nostr';
   import { NoteContentFormatter } from '$lib/services/NoteContentFormatter';

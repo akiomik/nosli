@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getContext } from 'svelte';
-  import type RxNostr from 'rx-nostr';
+  import type { RxNostr } from 'rx-nostr';
   import { profileStore } from '$lib/stores/nostr';
   import type LongFormContent from '$lib/entities/LongFormContent';
   import ProfileLine from '$lib/components/ProfileLine.svelte';

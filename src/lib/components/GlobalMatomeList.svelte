@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getContext } from 'svelte';
-  import type RxNostr from 'rx-nostr';
+  import type { RxNostr } from 'rx-nostr';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import MatomeList from '$lib/components/MatomeList.svelte';
   import { recentGlobalMatomesStore } from '$lib/stores/nostr';

@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import { nip19 } from 'nostr-tools';
   import { onDestroy, getContext } from 'svelte';
+  import type { RxNostr } from 'rx-nostr';
   import { TabGroup, Tab } from '@skeletonlabs/skeleton';
 
+  import { goto } from '$app/navigation';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import Editor from '$lib/components/NoteEditor/Editor.svelte';
   import RecentReactionList from '$lib/components/NoteEditor/RecentReactionList.svelte';
@@ -15,7 +16,7 @@
 
   export let matome: LongFormContent | undefined = undefined;
 
-  const rxClient = getContext('nostr-client');
+  const rxClient: RxNostr = getContext('nostr-client');
   const client = new NostrClient(settings.defaultRelays);
   const editor = createNoteEditorStore({ matome, client: rxClient });
 
