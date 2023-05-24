@@ -268,7 +268,7 @@ export function recentUserReactionsStore({
       takeTimeout(timeout),
       sortedBy(({ event }) => -event.created_at),
       take(limit),
-      map((envelope) => Reaction.fromEvent(envelope.event)),
+      map(({ event }) => Reaction.fromEvent(event)),
       toArray()
     )
     .subscribe(store.set);
