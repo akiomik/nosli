@@ -50,44 +50,39 @@ export function recentGlobalMatomesStore({
 }
 
 // TODO: Return Readable or Observable
-export function userMatomesStore({
+export function recentUserMatomesStore({
   client,
   pubkey,
-  delayTime = 500
+  timeout = 500
 }: {
   client: RxNostr;
   pubkey: string;
-  delayTime?: number;
+  timeout?: number;
 }): Writable<LongFormContent[] | undefined> {
   const store = writable<LongFormContent[] | undefined>(undefined);
 
-  const req = new RxBackwardReq();
-  req.emit([
-    {
-      kinds: [Kind.Article],
-      authors: [pubkey],
-      '#t': [NostrClient.TAG]
-    }
-  ]);
+  const req = rxOneshotReq({
+    filters: [
+      {
+        kinds: [Kind.Article],
+        authors: [pubkey],
+        '#t': [NostrClient.TAG]
+      }
+    ]
+  });
 
-  // TODO: sort by created_at
   client
-    .use(req.pipe(delay(delayTime)))
+    .use(req)
     .pipe(
-      latestEachNaddr(),
       uniq(),
       verify(),
-      map((envelope) => LongFormContent.fromEvent(envelope.event))
+      takeTimeout(timeout),
+      sortedBy(({ event }) => -event.created_at),
+      latestEachNaddr(),
+      map(({ event }) => LongFormContent.fromEvent(event)),
+      toArray()
     )
-    .subscribe((matome) => {
-      store.update((matomes) => {
-        if (matomes === undefined) {
-          return [matome];
-        } else {
-          return [...matomes, matome];
-        }
-      });
-    });
+    .subscribe(store.set);
 
   return store;
 }

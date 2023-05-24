@@ -3,7 +3,7 @@
   import { Avatar } from '@skeletonlabs/skeleton';
   import type RxNostr from 'rx-nostr';
   import type { PageData } from './$types';
-  import { userMatomesStore, profileStore } from '$lib/stores/nostr';
+  import { recentUserMatomesStore, profileStore } from '$lib/stores/nostr';
   import { NoteContentFormatter } from '$lib/services/NoteContentFormatter';
   import KeyManager from '$lib/services/KeyManager';
   import MatomeList from '$lib/components/MatomeList.svelte';
@@ -16,7 +16,7 @@
   };
 
   const client: RxNostr = getContext('nostr-client');
-  const matomes = userMatomesStore({ client, pubkey: data.pubkey });
+  const matomes = recentUserMatomesStore({ client, pubkey: data.pubkey });
   const profile = profileStore({ client, pubkey: data.pubkey });
 
   $: name = $profile?.formattedName() || 'nostrich';
