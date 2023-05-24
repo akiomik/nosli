@@ -174,13 +174,14 @@ export function notesStore({
   const store = writable<(Note | undefined)[] | undefined>(undefined);
   const noteById: Record<string, Note> = {};
 
-  const req = new RxBackwardReq();
-  req.emit([
-    {
-      kinds: [Kind.Text],
-      ids: ids
-    }
-  ]);
+  const req = rxOneshotReq({
+    filters: [
+      {
+        kinds: [Kind.Text],
+        ids: ids
+      }
+    ]
+  });
 
   client
     .use(req)
@@ -297,7 +298,7 @@ export function recentUserReactedNotesStore({
       }
 
       const ids = $reactions.map((reaction) => reaction.eventId());
-      notesStore({ client, ids, delayTime: timeout }).subscribe(set);
+      notesStore({ client, ids, timeout }).subscribe(set);
     }
   );
 }
