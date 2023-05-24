@@ -20,7 +20,5 @@ export function takeTimeout<A>(timeout: number | Date): MonoTypeOperatorFunction
 }
 
 export function latestEachNaddr(): MonoTypeOperatorFunction<EventPacket> {
-  return latestEach(
-    (packet) => `${packet.event.kind}:${packet.event.pubkey}:${packet.event.tags[0][1]}`
-  );
+  return latestEach(({ event }) => `${event.kind}:${event.pubkey}:${event.tags[0][1]}`);
 }
