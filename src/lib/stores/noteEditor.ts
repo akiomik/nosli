@@ -43,7 +43,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       notes.set(maybeNotes);
     });
 
-    // TODO: Wait completion of client.observableNotes
+    // TODO: Wait completion of notesStore
     setTimeout(() => editorInitialized.set(true), timeout);
   } else {
     editorInitialized.set(true);
