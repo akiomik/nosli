@@ -92,34 +92,36 @@ export function matomeStore({
   client,
   pubkey,
   identifier,
-  delayTime = 500
+  timeout = 500
 }: {
   client: RxNostr;
   pubkey: string;
   identifier: string;
-  delayTime?: number;
+  timeout?: number;
 }): Writable<LongFormContent | undefined> {
   const store = writable<LongFormContent | undefined>(undefined);
 
-  const req = new RxBackwardReq();
-  req.emit([
-    {
-      kinds: [Kind.Article],
-      authors: [pubkey],
-      '#d': [identifier],
-      '#t': [NostrClient.TAG],
-      limit: 1
-    }
-  ]);
+  const req = rxOneshotReq({
+    filters: [
+      {
+        kinds: [Kind.Article],
+        authors: [pubkey],
+        '#d': [identifier],
+        '#t': [NostrClient.TAG],
+        limit: 1
+      }
+    ]
+  });
 
   client
-    .use(req.pipe(delay(delayTime)))
+    .use(req)
     .pipe(
       verify(),
       latest(),
-      map((envelope) => LongFormContent.fromEvent(envelope.event))
+      takeTimeout(timeout),
+      map(({ event }) => LongFormContent.fromEvent(event))
     )
-    .subscribe((matome) => store.set(matome));
+    .subscribe(store.set);
 
   return store;
 }
