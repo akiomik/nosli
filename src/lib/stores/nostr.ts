@@ -4,7 +4,7 @@ import { delay, map, take, toArray } from 'rxjs';
 import { RxBackwardReq, uniq, verify, latest, rxOneshotReq } from 'rx-nostr';
 import type { RxNostr, EventPacket } from 'rx-nostr';
 import { Kind } from 'nostr-tools';
-import { sortedBy, takeTimeout } from '$lib/stores/operators';
+import { sortedBy, takeTimeout, latestEachNaddr } from '$lib/stores/operators';
 import NostrClient from '$lib/services/NostrClient';
 import LongFormContent from '$lib/entities/LongFormContent';
 import Profile from '$lib/entities/Profile';
@@ -32,11 +32,11 @@ export function globalMatomesStore({
     }
   ]);
 
-  // TODO: make matomes unique by naddr
   // TODO: sort by created_at
   client
     .use(req.pipe(delay(delayTime)))
     .pipe(
+      latestEachNaddr(),
       uniq(),
       verify(),
       map((envelope) => LongFormContent.fromEvent(envelope.event))
@@ -75,11 +75,11 @@ export function userMatomesStore({
     }
   ]);
 
-  // TODO: make matomes unique by naddr
   // TODO: sort by created_at
   client
     .use(req.pipe(delay(delayTime)))
     .pipe(
+      latestEachNaddr(),
       uniq(),
       verify(),
       map((envelope) => LongFormContent.fromEvent(envelope.event))
@@ -188,7 +188,6 @@ export function notesStore({
     }
   ]);
 
-  // TODO: make matomes unique by naddr
   client
     .use(req.pipe(delay(delayTime)))
     .pipe(
