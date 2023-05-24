@@ -165,11 +165,11 @@ export function profileStore({
 export function notesStore({
   client,
   ids,
-  delayTime = 500
+  timeout = 500
 }: {
   client: RxNostr;
   ids: string[];
-  delayTime?: number;
+  timeout?: number;
 }): Writable<(Note | undefined)[] | undefined> {
   const store = writable<(Note | undefined)[] | undefined>(undefined);
   const noteById: Record<string, Note> = {};
@@ -183,11 +183,12 @@ export function notesStore({
   ]);
 
   client
-    .use(req.pipe(delay(delayTime)))
+    .use(req)
     .pipe(
       uniq(),
       verify(),
-      map((envelope) => Note.fromEvent(envelope.event))
+      takeTimeout(timeout),
+      map(({ event }) => Note.fromEvent(event))
     )
     .subscribe((note) => {
       if (note.id === undefined) {
@@ -204,29 +205,31 @@ export function notesStore({
 export function noteStore({
   client,
   id,
-  delayTime = 500
+  timeout = 500
 }: {
   client: RxNostr;
   id: string;
-  delayTime?: number;
+  timeout?: number;
 }): Writable<Note | undefined> {
   const store = writable<Note | undefined>(undefined);
 
-  const req = new RxBackwardReq();
-  req.emit([
-    {
-      kinds: [Kind.Text],
-      ids: [id],
-      limit: 1
-    }
-  ]);
+  const req = rxOneshotReq({
+    filters: [
+      {
+        kinds: [Kind.Text],
+        ids: [id],
+        limit: 1
+      }
+    ]
+  });
 
   client
-    .use(req.pipe(delay(delayTime)))
+    .use(req)
     .pipe(
       uniq(),
       verify(),
-      map((envelope) => Note.fromEvent(envelope.event))
+      takeTimeout(timeout),
+      map(({ event }) => Note.fromEvent(event))
     )
     .subscribe(store.set);
 
