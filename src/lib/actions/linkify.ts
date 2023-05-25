@@ -15,9 +15,9 @@ export const linkifyOpts = {
   formatHref: (href: string, type: string) => {
     if (type === 'hashtag') {
       return `https://snort.social/t/${href.substring(1)}`;
-    } else if (type === 'mention' && href.startsWith('/npub')) {
+    } else if (type === 'mention' && (href.startsWith('/npub1') || href.startsWith('/nprofile1'))) {
       return `https://snort.social/p/${href.substring(1)}`;
-    } else if (type === 'mention' && href.startsWith('/note')) {
+    } else if (type === 'mention' && (href.startsWith('/note1') || href.startsWith('/nevent1'))) {
       return `https://snort.social/e/${href.substring(1)}`;
     } else {
       return href;
