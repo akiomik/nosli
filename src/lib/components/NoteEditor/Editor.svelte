@@ -2,12 +2,10 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import NoteListItem from '$lib/components/NoteListItem.svelte';
   import NoteActions from '$lib/components/NoteEditor/NoteActions.svelte';
-  import type RxNostrClient from '$lib/services/RxNostrClient';
   import type { NoteEditorStore } from '$lib/stores/noteEditor';
   import { nip19 } from 'nostr-tools';
 
   export let editor: NoteEditorStore;
-  export let client: RxNostrClient;
 
   let newNoteId = '';
 
@@ -31,7 +29,7 @@
       <LoadingSpinner size="sm" />
     {:then note}
       {#if note}
-        <NoteListItem {note} {client}>
+        <NoteListItem {note}>
           <NoteActions
             slot="footer"
             {editor}

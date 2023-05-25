@@ -1,10 +1,14 @@
 <script lang="ts">
+  import { getContext } from 'svelte';
+  import type { RxNostr } from 'rx-nostr';
+  import { profileStore } from '$lib/stores/nostr';
   import type LongFormContent from '$lib/entities/LongFormContent';
-  import type Profile from '$lib/entities/Profile';
   import ProfileLine from '$lib/components/ProfileLine.svelte';
 
   export let matome: LongFormContent;
-  export let profile: Profile | undefined;
+
+  const client: RxNostr = getContext('nostr-client');
+  const profile = profileStore({ client, pubkey: matome.pubkey });
 </script>
 
 <div class="card">
@@ -14,7 +18,7 @@
       {matome.summary}
     </p>
     <div class="flex flex-row items-center mt-4 space-x-2">
-      <ProfileLine {profile} />
+      <ProfileLine profile={$profile} />
       <p class="text-surface-900/50 whitespace-nowrap overflow-hidden text-ellipsis">
         {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
           matome.createdAt

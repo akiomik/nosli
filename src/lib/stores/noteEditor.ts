@@ -1,89 +1,75 @@
 import { derived, writable } from 'svelte/store';
+import type { RxNostr } from 'rx-nostr';
 
-import Note from '$lib/entities/Note';
-import Reaction from '$lib/entities/Reaction';
+import type Note from '$lib/entities/Note';
 import type LongFormContent from '$lib/entities/LongFormContent';
-import type RxNostrClient from '$lib/services/RxNostrClient';
 import { note1ToHex } from '$lib/services/NostrClient';
 import KeyManager from '$lib/services/KeyManager';
+import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/nostr';
 
 interface MaybeNote {
   noteId: string;
   asyncNote: Promise<Note | undefined>;
 }
 
-function sortReactions(xs: Reaction[]): Reaction[] {
-  return [...xs].sort((a, b) => {
-    // order by desc
-    return b.createdAt.valueOf() - a.createdAt.valueOf();
-  });
+function zip<A, B>(xs: A[], ys: B[]): [A, B][] {
+  return xs.map((x, i) => [x, ys[i]]);
 }
 
-export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostrClient }) {
+export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
   const { matome, client } = params;
   const initNoteIds = matome?.noteIds()?.map(note1ToHex) ?? [];
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const notes = writable<MaybeNote[]>([]);
-  const notesById: Record<string, Note> = {};
-  let sortedReactions: Reaction[] = [];
   const searchedNotes = writable<Note[]>([]);
-  const searchedNotesById: Record<string, Note> = {};
 
   // Initialize Editor tab
   if (initNoteIds.length > 0) {
     const timeout = 500;
-    client.observableNotes({ ids: initNoteIds, timeout }).subscribe((envelope) => {
-      const note = Note.fromEvent(envelope.event);
-      notesById[envelope.event.id] = note;
 
-      notes.set(
-        initNoteIds.map((noteId) => {
-          const note = notesById[noteId];
+    notesStore({ client, ids: initNoteIds, delayTime: timeout }).subscribe((ns) => {
+      if (ns === undefined) {
+        return;
+      }
 
-          return {
-            noteId,
-            asyncNote: Promise.resolve(note)
-          };
-        })
-      );
+      const maybeNotes = zip(initNoteIds, ns).map(([noteId, note]) => {
+        return {
+          noteId,
+          asyncNote: Promise.resolve(note)
+        };
+      });
+
+      notes.set(maybeNotes);
     });
 
-    // TODO: Wait completion of client.observableNotes
-    setTimeout(() => {
-      editorInitialized.set(true);
-    }, timeout);
+    // TODO: Wait completion of notesStore
+    setTimeout(() => editorInitialized.set(true), timeout);
   } else {
     editorInitialized.set(true);
   }
 
   // Initialize Search tab
-  KeyManager.getPublicKey()
-    .then((pubkey) => {
-      const limit = 100;
-      client
-        .observableReactedNotes({ pubkey, limit })
-        .subscribe(([reactionEnvelope, noteEnvelope]) => {
-          // TODO: sort notes
-          const reaction = Reaction.fromEvent(reactionEnvelope.event);
-          const note = Note.fromEvent(noteEnvelope.event);
-          sortedReactions = sortReactions([...sortedReactions, reaction]);
-          searchedNotesById[reaction.eventId()] = note;
-          const sortedNotes = sortedReactions.map(
-            (reaction) => searchedNotesById[reaction.eventId()]
-          );
-          searchedNotes.set(sortedNotes.slice(0, limit));
-        });
-    })
-    .finally(() => {
-      // TODO: Wait completion of client.observableReactedNotes
+  KeyManager.getPublicKey().then((pubkey) => {
+    const limit = 100;
+    recentUserReactedNotesStore({
+      client,
+      pubkey,
+      limit
+    }).subscribe((notes) => {
       searchInitialized.set(true);
+
+      // TODO: change searchedNotes type to (Note | undefined)[] for displaying load error
+      searchedNotes.set(
+        notes?.filter((note): note is NonNullable<Note> => note !== undefined) ?? []
+      );
     });
+  });
 
   const appendNote = (noteId: string) => {
     const hex = noteId.startsWith('note1') ? note1ToHex(noteId) : noteId;
-    client.observableNote({ id: hex }).subscribe((envelope) => {
-      const note = Note.fromEvent(envelope.event);
+
+    noteStore({ client, id: hex }).subscribe((note) => {
       notes.update((prev) => [
         ...prev,
         {
