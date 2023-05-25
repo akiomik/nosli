@@ -12,7 +12,7 @@ import Note from '$lib/entities/Note';
 import Reaction from '$lib/entities/Reaction';
 
 const DEFAULT_TIMEOUT_WITHOUT_SORT = 1000;
-const DEFAULT_TIMEOUT_WITH_SORT = 500;
+const DEFAULT_TIMEOUT_WITH_SORT = 750;
 
 export function recentGlobalMatomesStore({
   client,
