@@ -11,10 +11,13 @@ import Profile from '$lib/entities/Profile';
 import Note from '$lib/entities/Note';
 import Reaction from '$lib/entities/Reaction';
 
+const DEFAULT_TIMEOUT_WITHOUT_SORT = 1000;
+const DEFAULT_TIMEOUT_WITH_SORT = 500;
+
 export function recentGlobalMatomesStore({
   client,
   limit,
-  timeout = 500
+  timeout = DEFAULT_TIMEOUT_WITH_SORT
 }: {
   client: RxNostr;
   limit: number;
@@ -44,7 +47,7 @@ export function recentGlobalMatomesStore({
 export function recentUserMatomesStore({
   client,
   pubkey,
-  timeout = 500
+  timeout = DEFAULT_TIMEOUT_WITH_SORT
 }: {
   client: RxNostr;
   pubkey: string;
@@ -75,7 +78,7 @@ export function matomeStore({
   client,
   pubkey,
   identifier,
-  timeout = 500
+  timeout = DEFAULT_TIMEOUT_WITHOUT_SORT
 }: {
   client: RxNostr;
   pubkey: string;
@@ -106,7 +109,7 @@ export function matomeStore({
 export function profileStore({
   client,
   pubkey,
-  timeout = 500
+  timeout = DEFAULT_TIMEOUT_WITHOUT_SORT
 }: {
   client: RxNostr;
   pubkey: string;
@@ -133,7 +136,7 @@ export function profileStore({
 export function notesStore({
   client,
   ids,
-  timeout = 500
+  timeout = DEFAULT_TIMEOUT_WITHOUT_SORT
 }: {
   client: RxNostr;
   ids: string[];
@@ -165,7 +168,7 @@ export function notesStore({
 export function noteStore({
   client,
   id,
-  timeout = 500
+  timeout = DEFAULT_TIMEOUT_WITHOUT_SORT
 }: {
   client: RxNostr;
   id: string;
@@ -193,7 +196,7 @@ export function recentUserReactionsStore({
   client,
   pubkey,
   limit,
-  timeout = 500
+  timeout = DEFAULT_TIMEOUT_WITH_SORT
 }: {
   client: RxNostr;
   pubkey: string;
@@ -225,7 +228,7 @@ export function recentUserReactedNotesStore({
   client,
   pubkey,
   limit,
-  timeout = 500
+  timeout = DEFAULT_TIMEOUT_WITH_SORT
 }: {
   client: RxNostr;
   pubkey: string;
