@@ -1,9 +1,10 @@
 import { writable, derived } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
-import { delay, map, take, toArray } from 'rxjs';
-import { RxBackwardReq, uniq, verify, latest, rxOneshotReq } from 'rx-nostr';
+import { map, take, toArray } from 'rxjs';
+import { uniq, verify, latest, rxOneshotReq } from 'rx-nostr';
 import type { RxNostr } from 'rx-nostr';
 import { Kind } from 'nostr-tools';
+
 import { sortedBy, takeTimeout, latestEachNaddr } from '$lib/stores/operators';
 import NostrClient from '$lib/services/NostrClient';
 import LongFormContent from '$lib/entities/LongFormContent';
