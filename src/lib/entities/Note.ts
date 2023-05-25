@@ -30,8 +30,7 @@ export default class Note {
     );
   }
 
-  public modifiedContent(): string {
-    let content = this.content;
+  private replaceNip08(content: string): string {
     this.tags.forEach((tag, i) => {
       if (!tag.isEvent() && !tag.isPubkey()) {
         return;
@@ -50,6 +49,14 @@ export default class Note {
     });
 
     return content;
+  }
+
+  private replaceNip27(content: string): string {
+    return content.replace(/nostr:((npub|nprofile|note|nevent|naddr)1[a-z0-9]{6,})/g, '@$1');
+  }
+
+  public modifiedContent(): string {
+    return this.replaceNip27(this.replaceNip08(this.content));
   }
 
   public nip19Id(): string | undefined {
