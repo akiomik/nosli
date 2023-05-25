@@ -41,11 +41,15 @@
   <div class="flex items-center justify-between space-x-2">
     <h1>{$matome.title}</h1>
 
-    {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
-      <div>
-        <a href="/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
-      </div>
-    {/if}
+    {#await KeyManager.isLoggedInAs($matome.pubkey)}
+      <!-- noop -->
+    {:then isMine}
+      {#if isMine && KeyManager.isWritableLoggedIn()}
+        <div>
+          <a href="/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
+        </div>
+      {/if}
+    {/await}
   </div>
 
   {#if $matome.summary}

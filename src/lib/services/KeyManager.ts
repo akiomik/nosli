@@ -73,6 +73,10 @@ export default class KeyManager {
     return get(seckey) !== '';
   }
 
+  static isWritableLoggedIn(): boolean {
+    return KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey();
+  }
+
   static logout() {
     pubkey.set('');
     seckey.set('');

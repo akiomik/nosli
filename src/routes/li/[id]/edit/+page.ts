@@ -16,7 +16,7 @@ export const load = (({ params }) => {
     throw error(404, 'Not Found &#128148;');
   }
 
-  if (!KeyManager.isLoggedIn() || KeyManager.isLoggedInWithPublicKey()) {
+  if (!KeyManager.isWritableLoggedIn()) {
     throw error(401, 'Unauthorized &#128581;');
   }
 
