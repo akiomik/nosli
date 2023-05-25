@@ -1,6 +1,5 @@
-import { writable, derived } from 'svelte/store';
-import type { Readable, Writable } from 'svelte/store';
-import { map, take, toArray } from 'rxjs';
+import { map, take, toArray, flatMap } from 'rxjs';
+import type { Observable } from 'rxjs';
 import { uniq, verify, latest, rxOneshotReq } from 'rx-nostr';
 import type { RxNostr } from 'rx-nostr';
 import { Kind } from 'nostr-tools';
@@ -12,7 +11,6 @@ import Profile from '$lib/entities/Profile';
 import Note from '$lib/entities/Note';
 import Reaction from '$lib/entities/Reaction';
 
-// TODO: Return Readable or Observable
 export function recentGlobalMatomesStore({
   client,
   limit,
@@ -21,9 +19,7 @@ export function recentGlobalMatomesStore({
   client: RxNostr;
   limit: number;
   timeout?: number;
-}): Writable<LongFormContent[] | undefined> {
-  const store = writable<LongFormContent[] | undefined>(undefined);
-
+}): Observable<LongFormContent[]> {
   const req = rxOneshotReq({
     filters: [
       {
@@ -34,23 +30,17 @@ export function recentGlobalMatomesStore({
     ]
   });
 
-  client
-    .use(req)
-    .pipe(
-      uniq(),
-      verify(),
-      takeTimeout(timeout),
-      sortedBy(({ event }) => -event.created_at),
-      latestEachNaddr(),
-      map(({ event }) => LongFormContent.fromEvent(event)),
-      toArray()
-    )
-    .subscribe(store.set);
-
-  return store;
+  return client.use(req).pipe(
+    uniq(),
+    verify(),
+    takeTimeout(timeout),
+    sortedBy(({ event }) => -event.created_at),
+    latestEachNaddr(),
+    map(({ event }) => LongFormContent.fromEvent(event)),
+    toArray()
+  );
 }
 
-// TODO: Return Readable or Observable
 export function recentUserMatomesStore({
   client,
   pubkey,
@@ -59,9 +49,7 @@ export function recentUserMatomesStore({
   client: RxNostr;
   pubkey: string;
   timeout?: number;
-}): Writable<LongFormContent[] | undefined> {
-  const store = writable<LongFormContent[] | undefined>(undefined);
-
+}): Observable<LongFormContent[]> {
   const req = rxOneshotReq({
     filters: [
       {
@@ -72,23 +60,17 @@ export function recentUserMatomesStore({
     ]
   });
 
-  client
-    .use(req)
-    .pipe(
-      uniq(),
-      verify(),
-      takeTimeout(timeout),
-      sortedBy(({ event }) => -event.created_at),
-      latestEachNaddr(),
-      map(({ event }) => LongFormContent.fromEvent(event)),
-      toArray()
-    )
-    .subscribe(store.set);
-
-  return store;
+  return client.use(req).pipe(
+    uniq(),
+    verify(),
+    takeTimeout(timeout),
+    sortedBy(({ event }) => -event.created_at),
+    latestEachNaddr(),
+    map(({ event }) => LongFormContent.fromEvent(event)),
+    toArray()
+  );
 }
 
-// TODO: Return Readable or Observable
 export function matomeStore({
   client,
   pubkey,
@@ -99,9 +81,7 @@ export function matomeStore({
   pubkey: string;
   identifier: string;
   timeout?: number;
-}): Writable<LongFormContent | undefined> {
-  const store = writable<LongFormContent | undefined>(undefined);
-
+}): Observable<LongFormContent> {
   const req = rxOneshotReq({
     filters: [
       {
@@ -114,17 +94,12 @@ export function matomeStore({
     ]
   });
 
-  client
-    .use(req)
-    .pipe(
-      verify(),
-      latest(),
-      takeTimeout(timeout),
-      map(({ event }) => LongFormContent.fromEvent(event))
-    )
-    .subscribe(store.set);
-
-  return store;
+  return client.use(req).pipe(
+    verify(),
+    latest(),
+    takeTimeout(timeout),
+    map(({ event }) => LongFormContent.fromEvent(event))
+  );
 }
 
 // TODO: Return Readable or Observable
@@ -136,9 +111,7 @@ export function profileStore({
   client: RxNostr;
   pubkey: string;
   timeout?: number;
-}): Writable<Profile | undefined> {
-  const store = writable<Profile | undefined>(undefined);
-
+}): Observable<Profile> {
   const req = rxOneshotReq({
     filters: [
       {
@@ -149,20 +122,14 @@ export function profileStore({
     ]
   });
 
-  client
-    .use(req)
-    .pipe(
-      verify(),
-      latest(),
-      takeTimeout(timeout),
-      map(({ event }) => Profile.fromEvent(event))
-    )
-    .subscribe(store.set);
-
-  return store;
+  return client.use(req).pipe(
+    verify(),
+    latest(),
+    takeTimeout(timeout),
+    map(({ event }) => Profile.fromEvent(event))
+  );
 }
 
-// TODO: Return Readable or Observable
 export function notesStore({
   client,
   ids,
@@ -171,8 +138,7 @@ export function notesStore({
   client: RxNostr;
   ids: string[];
   timeout?: number;
-}): Writable<(Note | undefined)[] | undefined> {
-  const store = writable<(Note | undefined)[] | undefined>(undefined);
+}): Observable<(Note | undefined)[]> {
   const noteById: Record<string, Note> = {};
 
   const req = rxOneshotReq({
@@ -184,24 +150,16 @@ export function notesStore({
     ]
   });
 
-  client
-    .use(req)
-    .pipe(
-      uniq(),
-      verify(),
-      takeTimeout(timeout),
-      map(({ event }) => Note.fromEvent(event))
-    )
-    .subscribe((note) => {
-      if (note.id === undefined) {
-        return;
-      }
-
-      noteById[note.id] = note;
-      store.set(ids.map((id) => noteById[id]));
-    });
-
-  return store;
+  return client.use(req).pipe(
+    uniq(),
+    verify(),
+    takeTimeout(timeout),
+    map(({ event }) => {
+      const note = Note.fromEvent(event);
+      noteById[event.id] = note;
+      return ids.map((id) => noteById[id]);
+    })
+  );
 }
 
 export function noteStore({
@@ -212,9 +170,7 @@ export function noteStore({
   client: RxNostr;
   id: string;
   timeout?: number;
-}): Writable<Note | undefined> {
-  const store = writable<Note | undefined>(undefined);
-
+}): Observable<Note> {
   const req = rxOneshotReq({
     filters: [
       {
@@ -225,20 +181,14 @@ export function noteStore({
     ]
   });
 
-  client
-    .use(req)
-    .pipe(
-      uniq(),
-      verify(),
-      takeTimeout(timeout),
-      map(({ event }) => Note.fromEvent(event))
-    )
-    .subscribe(store.set);
-
-  return store;
+  return client.use(req).pipe(
+    uniq(),
+    verify(),
+    takeTimeout(timeout),
+    map(({ event }) => Note.fromEvent(event))
+  );
 }
 
-// TODO: Return Readable or Observable
 export function recentUserReactionsStore({
   client,
   pubkey,
@@ -249,9 +199,7 @@ export function recentUserReactionsStore({
   pubkey: string;
   limit: number;
   timeout?: number;
-}): Writable<Reaction[] | undefined> {
-  const store = writable<Reaction[] | undefined>(undefined);
-
+}): Observable<Reaction[]> {
   const req = rxOneshotReq({
     filters: [
       {
@@ -262,23 +210,17 @@ export function recentUserReactionsStore({
     ]
   });
 
-  client
-    .use(req)
-    .pipe(
-      uniq(),
-      verify(),
-      takeTimeout(timeout),
-      sortedBy(({ event }) => -event.created_at),
-      take(limit),
-      map(({ event }) => Reaction.fromEvent(event)),
-      toArray()
-    )
-    .subscribe(store.set);
-
-  return store;
+  return client.use(req).pipe(
+    uniq(),
+    verify(),
+    takeTimeout(timeout),
+    sortedBy(({ event }) => -event.created_at),
+    take(limit),
+    map(({ event }) => Reaction.fromEvent(event)),
+    toArray()
+  );
 }
 
-// TODO: Return Readable or Observable
 export function recentUserReactedNotesStore({
   client,
   pubkey,
@@ -289,17 +231,11 @@ export function recentUserReactedNotesStore({
   pubkey: string;
   limit: number;
   timeout?: number;
-}): Readable<(Note | undefined)[] | undefined> {
-  return derived(
-    recentUserReactionsStore({ client, pubkey, limit, timeout }),
-    ($reactions, set) => {
-      if ($reactions === undefined) {
-        set(undefined);
-        return;
-      }
-
-      const ids = $reactions.map((reaction) => reaction.eventId());
-      notesStore({ client, ids, timeout }).subscribe(set);
-    }
+}): Observable<(Note | undefined)[]> {
+  return recentUserReactionsStore({ client, pubkey, limit, timeout }).pipe(
+    flatMap((reactions) => {
+      const ids = reactions.map((reaction) => reaction.eventId());
+      return notesStore({ client, ids, timeout });
+    })
   );
 }
