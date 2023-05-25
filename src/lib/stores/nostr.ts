@@ -10,6 +10,7 @@ import LongFormContent from '$lib/entities/LongFormContent';
 import Profile from '$lib/entities/Profile';
 import Note from '$lib/entities/Note';
 import Reaction from '$lib/entities/Reaction';
+import type { LoadingNote } from '$lib/entities/LoadingNote';
 
 const DEFAULT_TIMEOUT_WITHOUT_SORT = 1000;
 const DEFAULT_TIMEOUT_WITH_SORT = 750;
@@ -141,7 +142,7 @@ export function notesStore({
   client: RxNostr;
   ids: string[];
   timeout?: number;
-}): Observable<(Note | undefined)[]> {
+}): Observable<LoadingNote[]> {
   const noteById: Record<string, Note> = {};
 
   const req = rxOneshotReq({
@@ -160,7 +161,7 @@ export function notesStore({
     map(({ event }) => {
       const note = Note.fromEvent(event);
       noteById[event.id] = note;
-      return ids.map((id) => noteById[id]);
+      return ids.map((id) => ({ id, note: noteById[id] }));
     })
   );
 }
@@ -234,7 +235,7 @@ export function recentUserReactedNotesStore({
   pubkey: string;
   limit: number;
   timeout?: number;
-}): Observable<(Note | undefined)[]> {
+}): Observable<LoadingNote[]> {
   return recentUserReactionsStore({ client, pubkey, limit, timeout }).pipe(
     flatMap((reactions) => {
       const ids = reactions.map((reaction) => reaction.eventId());

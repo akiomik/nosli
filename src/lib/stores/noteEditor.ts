@@ -2,49 +2,26 @@ import { derived, writable } from 'svelte/store';
 import type { RxNostr } from 'rx-nostr';
 
 import type Note from '$lib/entities/Note';
+import type { LoadingNote } from '$lib/entities/LoadingNote';
 import type LongFormContent from '$lib/entities/LongFormContent';
 import { note1ToHex } from '$lib/services/NostrClient';
 import KeyManager from '$lib/services/KeyManager';
 import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/nostr';
-
-interface MaybeNote {
-  noteId: string;
-  asyncNote: Promise<Note | undefined>;
-}
-
-function zip<A, B>(xs: A[], ys: B[]): [A, B][] {
-  return xs.map((x, i) => [x, ys[i]]);
-}
 
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
   const { matome, client } = params;
   const initNoteIds = matome?.noteIds()?.map(note1ToHex) ?? [];
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
-  const notes = writable<MaybeNote[]>([]);
-  const searchedNotes = writable<Note[]>([]);
+  const notes = writable<LoadingNote[]>([]);
+  const searchedNotes = writable<LoadingNote[]>([]);
 
   // Initialize Editor tab
   if (initNoteIds.length > 0) {
-    const timeout = 500;
-
-    notesStore({ client, ids: initNoteIds, delayTime: timeout }).subscribe((ns) => {
-      if (ns === undefined) {
-        return;
-      }
-
-      const maybeNotes = zip(initNoteIds, ns).map(([noteId, note]) => {
-        return {
-          noteId,
-          asyncNote: Promise.resolve(note)
-        };
-      });
-
-      notes.set(maybeNotes);
+    notesStore({ client, ids: initNoteIds }).subscribe({
+      next: notes.set,
+      complete: () => editorInitialized.set(true)
     });
-
-    // TODO: Wait completion of notesStore
-    setTimeout(() => editorInitialized.set(true), timeout);
   } else {
     editorInitialized.set(true);
   }
@@ -56,13 +33,9 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       client,
       pubkey,
       limit
-    }).subscribe((notes) => {
-      searchInitialized.set(true);
-
-      // TODO: change searchedNotes type to (Note | undefined)[] for displaying load error
-      searchedNotes.set(
-        notes?.filter((note): note is NonNullable<Note> => note !== undefined) ?? []
-      );
+    }).subscribe({
+      next: searchedNotes.set,
+      complete: () => searchInitialized.set(true)
     });
   });
 
@@ -73,19 +46,21 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       notes.update((prev) => [
         ...prev,
         {
-          noteId: hex,
-          asyncNote: Promise.resolve(note)
+          id: hex,
+          note
         }
       ]);
     });
   };
+
   const removeNote = (noteId: string) => {
     const hex = noteId.startsWith('note1') ? note1ToHex(noteId) : noteId;
-    notes.update((prev) => prev.filter((e) => e.noteId !== hex));
+    notes.update((prev) => prev.filter((note) => note.id !== hex));
   };
+
   const moveUp = (noteId: string) => {
     notes.update((prev) => {
-      const idx = prev.findIndex((e) => e.noteId === noteId);
+      const idx = prev.findIndex((note) => note.id === noteId);
       if (idx < 1 || idx >= prev.length) {
         return prev;
       }
@@ -98,9 +73,10 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       return prev;
     });
   };
+
   const moveDown = (noteId: string) => {
     notes.update((prev) => {
-      const idx = prev.findIndex((e) => e.noteId === noteId);
+      const idx = prev.findIndex((note) => note.id === noteId);
       if (idx < 0 || idx + 1 >= prev.length) {
         return prev;
       }

@@ -39,8 +39,8 @@
 
     const lfcContent = $editor.notes.map((_, i) => `#[${i + 3}]`).join('\n');
     const tags = [
-      ...$editor.notes.map(({ noteId }) => {
-        return new Tag('e', noteId, '', 'mention');
+      ...$editor.notes.map(({ id }) => {
+        return new Tag('e', id, '', 'mention');
       }),
       new Tag('t', 'nosli')
     ];

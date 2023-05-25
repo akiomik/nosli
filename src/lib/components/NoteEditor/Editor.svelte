@@ -1,9 +1,9 @@
 <script lang="ts">
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import { nip19 } from 'nostr-tools';
+
   import NoteListItem from '$lib/components/NoteListItem.svelte';
   import NoteActions from '$lib/components/NoteEditor/NoteActions.svelte';
   import type { NoteEditorStore } from '$lib/stores/noteEditor';
-  import { nip19 } from 'nostr-tools';
 
   export let editor: NoteEditorStore;
 
@@ -24,36 +24,33 @@
 </script>
 
 <div class="flex flex-col space-y-8">
-  {#each $editor.notes as { asyncNote, noteId }, idx (noteId)}
-    {#await asyncNote}
-      <LoadingSpinner size="sm" />
-    {:then note}
-      {#if note}
-        <NoteListItem {note}>
-          <NoteActions
-            slot="footer"
-            {editor}
-            {noteId}
-            isFirst={idx === 0}
-            isLast={idx === $editor.notes.length - 1}
-          />
-        </NoteListItem>
-      {:else}
-        <div class="card">
-          <div class="p-4">
-            <p>Failed to get a note.</p>
-          </div>
-          <footer class="card-footer p-4">
-            <NoteActions
-              {editor}
-              {noteId}
-              isFirst={idx === 0}
-              isLast={idx === $editor.notes.length - 1}
-            />
-          </footer>
+  {#each $editor.notes as { id, note }, i (id)}
+    {#if note}
+      <NoteListItem {note}>
+        <NoteActions
+          slot="footer"
+          {editor}
+          noteId={id}
+          isFirst={i === 0}
+          isLast={i === $editor.notes.length - 1}
+        />
+      </NoteListItem>
+    {:else}
+      <div class="card">
+        <div class="p-4">
+          <p>Failed to get a note.</p>
+          <p>{nip19.noteEncode(id)}</p>
         </div>
-      {/if}
-    {/await}
+        <footer class="card-footer p-4">
+          <NoteActions
+            {editor}
+            noteId={id}
+            isFirst={i === 0}
+            isLast={i === $editor.notes.length - 1}
+          />
+        </footer>
+      </div>
+    {/if}
   {/each}
 </div>
 <div class="mt-4 input-group input-group-divider grid-cols-[1fr_auto]">
