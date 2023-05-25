@@ -46,12 +46,15 @@
     "@fortawesome/free-solid-svg-icons": "^6.3.0",
     "@fortawesome/svelte-fontawesome": "^0.2.0",
     "@macfja/svelte-persistent-store": "^2.2.1",
+    "@types/url-regex-safe": "^1.0.0",
     "linkify-html": "^4.1.0",
     "linkify-plugin-hashtag": "^4.1.0",
     "linkify-plugin-mention": "^4.1.0",
     "linkifyjs": "^4.1.0",
     "nostr-tools": "1.6.1",
+    "re2": "^1.18.0",
     "rx-nostr": "^0.6.1",
-    "sanitize-html": "^2.10.0"
+    "sanitize-html": "^2.10.0",
+    "url-regex-safe": "^3.0.0"
   }
 }
