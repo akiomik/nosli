@@ -5,7 +5,7 @@
 
   import type { PageData } from './$types';
   import { recentUserMatomesStore, profileStore } from '$lib/stores/nostr';
-  import { NoteContentFormatter } from '$lib/services/NoteContentFormatter';
+  import { linkify, linkifyOpts } from '$lib/actions/linkify';
   import KeyManager from '$lib/services/KeyManager';
   import MatomeList from '$lib/components/MatomeList.svelte';
   import Alert from '$lib/components/Alert.svelte';
@@ -47,7 +47,7 @@
 </div>
 
 {#if $profile}
-  <p>{@html NoteContentFormatter.format($profile.about)}</p>
+  <p use:linkify={linkifyOpts}>{$profile.about}</p>
 {/if}
 
 {#if $profile && KeyManager.isLoggedInWithPublicKey()}
