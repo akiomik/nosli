@@ -10,17 +10,21 @@
 </script>
 
 <div class="flex items-center">
-  <div class="btn-group variant-filled-surface ml-5">
-    <button on:click={() => editor.moveUp(noteId)} disabled={isFirst}
-      ><FontAwesomeIcon icon={faAngleUp} title="Move Up" /></button
-    >
-    <button on:click={() => editor.moveDown(noteId)} disabled={isLast}
-      ><FontAwesomeIcon icon={faAngleDown} title="Move Down" /></button
-    >
+  <div class="btn-group variant-soft-surface ml-5">
+    <button on:click|preventDefault={() => editor.moveUp(noteId)} disabled={isFirst}>
+      <FontAwesomeIcon icon={faAngleUp} title="Move Up" />
+    </button>
+
+    <button on:click|preventDefault={() => editor.moveDown(noteId)} disabled={isLast}>
+      <FontAwesomeIcon icon={faAngleDown} title="Move Down" />
+    </button>
   </div>
+
   <button
     type="button"
-    class="btn variant-filled-error ml-3"
-    on:click={() => editor.removeNote(noteId)}>Remove</button
+    class="btn variant-soft-error ml-3"
+    on:click|preventDefault={() => editor.removeNote(noteId)}
   >
+    Remove
+  </button>
 </div>
