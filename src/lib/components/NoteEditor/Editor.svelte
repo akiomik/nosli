@@ -53,6 +53,7 @@
     {/if}
   {/each}
 </div>
+
 <div class="mt-4 input-group input-group-divider grid-cols-[1fr_auto]">
   <input
     type="text"
@@ -68,4 +69,17 @@
       newNoteId = '';
     }}>Add Note</button
   >
+</div>
+
+<div class="mt-4">
+  Reorder notes:
+
+  <button
+    type="button"
+    class="btn bg-surface-300"
+    disabled={$editor.notes === undefined || $editor.notes.length === 0}
+    on:click|preventDefault={editor.sortByLeaastRecentlyCreated}
+  >
+    Least recently created
+  </button>
 </div>
