@@ -31,8 +31,8 @@
           <button
             type="button"
             class="btn ml-5"
-            class:variant-filled-surface={isUsed(id)}
-            class:variant-filled-primary={!isUsed(id)}
+            class:variant-soft-surface={isUsed(id)}
+            class:variant-soft-primary={!isUsed(id)}
             on:click={() => toggle(id)}>{isUsed(id) ? 'Remove' : 'Add'}</button
           >
         </div>

@@ -62,7 +62,7 @@
     placeholder="note1..."
   />
   <button
-    class="variant-filled-secondary"
+    class="variant-filled-surface"
     disabled={!isNewNoteIdValid}
     on:click|preventDefault={() => {
       editor.appendNote(newNoteId);
