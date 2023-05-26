@@ -1,7 +1,6 @@
 import { derived, writable } from 'svelte/store';
 import type { RxNostr } from 'rx-nostr';
 
-import type Note from '$lib/entities/Note';
 import type { LoadingNote } from '$lib/entities/LoadingNote';
 import type LongFormContent from '$lib/entities/LongFormContent';
 import { note1ToHex } from '$lib/services/NostrClient';
