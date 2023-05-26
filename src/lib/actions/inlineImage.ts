@@ -12,8 +12,13 @@ export type Opts = {
 
 const defaultOpts: Opts = {
   extPattern: /(jpe?g|png|gif|webp)$/,
-  validate: (value: string, extPattern: RegExp) =>
-    new URL(value.toLowerCase()).pathname.match(extPattern) !== null,
+  validate: (value: string, extPattern: RegExp) => {
+    try {
+      return new URL(value.toLowerCase()).pathname.match(extPattern) !== null;
+    } catch {
+      return false;
+    }
+  },
   attributes: {},
   tagName: 'img',
   className: '',
