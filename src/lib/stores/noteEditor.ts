@@ -90,6 +90,26 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
     });
   };
 
+  const sortByLeaastRecentlyCreated = () => {
+    notes.update((ns) => {
+      return [...ns].sort((a, b) => {
+        if (a.note && b.note) {
+          return a.note.createdAt.valueOf() - b.note.createdAt.valueOf();
+        }
+
+        if (a.note) {
+          return 1;
+        }
+
+        if (b.note) {
+          return -1;
+        }
+
+        return 0;
+      });
+    });
+  };
+
   const { subscribe } = derived(
     [editorInitialized, searchInitialized, notes, searchedNotes],
     ([editorInitialized, searchInitialized, notes, searchedNotes]) => ({
@@ -99,7 +119,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       searchedNotes
     })
   );
-  return { subscribe, appendNote, removeNote, moveUp, moveDown };
+  return { subscribe, appendNote, removeNote, moveUp, moveDown, sortByLeaastRecentlyCreated };
 }
 
 export type NoteEditorStore = ReturnType<typeof createNoteEditorStore>;
