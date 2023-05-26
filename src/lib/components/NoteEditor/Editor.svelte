@@ -64,7 +64,7 @@
   <button
     class="variant-filled-secondary"
     disabled={!isNewNoteIdValid}
-    on:click={() => {
+    on:click|preventDefault={() => {
       editor.appendNote(newNoteId);
       newNoteId = '';
     }}>Add Note</button
