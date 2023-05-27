@@ -1,4 +1,4 @@
-import { map, take, toArray, flatMap } from 'rxjs';
+import { map, take, toArray, flatMap, startWith } from 'rxjs';
 import type { Observable } from 'rxjs';
 import { uniq, verify, latest, createRxOneshotReq } from 'rx-nostr';
 import type { RxNostr, ConnectionStatePacket } from 'rx-nostr';
@@ -21,17 +21,11 @@ const DEFAULT_TIMEOUT_WITHOUT_SORT = 1000;
 const DEFAULT_TIMEOUT_WITH_SORT = 750;
 
 export function relayConnectionsStore(client: RxNostr): Observable<ConnectionStatePacket[]> {
-  return client.createConnectionStateObservable().pipe(
-    latestConnectionState(),
-    map((packets) => {
-      // fill relays
-      const packetByUrl = Object.fromEntries(packets.map((packet) => [packet.from, packet]));
+  const init: ConnectionStatePacket[] = client
+    .getRelays()
+    .map(({ url }) => ({ from: url, state: 'not-started' }));
 
-      return client.getRelays().map(({ url }) => {
-        return packetByUrl[url] ?? { from: url, state: 'not-started' };
-      });
-    })
-  );
+  return client.createConnectionStateObservable().pipe(startWith(...init), latestConnectionState());
 }
 
 export function recentGlobalMatomesStore({
