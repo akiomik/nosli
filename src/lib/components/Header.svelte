@@ -6,13 +6,13 @@
   import { _ } from 'svelte-i18n';
   import type { RxNostr } from 'rx-nostr';
 
+  import { relayConnectionsStore } from '$lib/stores/nostr';
   import KeyManager from '$lib/services/KeyManager';
   import MenuPopover from '$lib/components/MenuPopover.svelte';
   import RelayConnectionStatusListPopover from '$lib/components/RelayConnectionStatusListPopover.svelte';
-  import { latestConnectionState } from '$lib/stores/operators';
 
   const client: RxNostr = getContext('nostr-client');
-  const connections = client.createConnectionStateObservable()?.pipe(latestConnectionState());
+  const connections = relayConnectionsStore(client);
 
   let showRelayConnectionStatus = false;
   let showMenu = false;
@@ -41,11 +41,12 @@
         on:click|stopPropagation={handleRelayConnectionStatus}
       >
         <span><FontAwesomeIcon icon={faSignal} title="Relay connections" /></span>
-        <span>{activeConnections?.length ?? 0}/{client?.getRelays()?.length ?? 0}</span>
+        <span>{activeConnections?.length ?? 0}/{$connections?.length ?? 0}</span>
       </button>
 
       <RelayConnectionStatusListPopover
-        open={showRelayConnectionStatus}
+        open={showRelayConnectionStatus && $connections !== undefined}
+        connections={$connections ?? []}
         on:close={() => (showRelayConnectionStatus = false)}
       />
     </div>
