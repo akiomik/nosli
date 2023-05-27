@@ -5,21 +5,17 @@
   import { latestConnectionState } from '$lib/stores/operators';
   import RelayConnectionStatusIcon from '$lib/components/RelayConnectionStatusIcon.svelte';
 
-  export let show = false;
-
   const client: RxNostr = getContext('nostr-client');
   const connections = client.createConnectionStateObservable()?.pipe(latestConnectionState());
 
   $: statusByUrl = Object.fromEntries($connections?.map((conn) => [conn.from, conn.state]) ?? []);
 </script>
 
-<nav class="card absolute w-72 p-4 right-0" class:hidden={!show}>
-  <ul class="flex flex-col space-y-4">
-    {#each client.getRelays() as relay (relay.url)}
-      <li class="flex space-x-2 items-center">
-        <RelayConnectionStatusIcon status={statusByUrl[relay.url] || 'starting'} />
-        <p>{relay.url}</p>
-      </li>
-    {/each}
-  </ul>
-</nav>
+<ul class="flex flex-col space-y-4">
+  {#each client.getRelays() as relay (relay.url)}
+    <li class="flex space-x-2 items-center">
+      <RelayConnectionStatusIcon status={statusByUrl[relay.url] || 'not-started'} />
+      <p>{relay.url}</p>
+    </li>
+  {/each}
+</ul>

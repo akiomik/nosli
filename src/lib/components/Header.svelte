@@ -6,10 +6,9 @@
   import { _ } from 'svelte-i18n';
   import type { RxNostr } from 'rx-nostr';
 
-  import { clickOutside } from '$lib/actions/clickOutside';
   import KeyManager from '$lib/services/KeyManager';
-  import Menu from '$lib/components/Menu.svelte';
-  import RelayConnectionStatusList from '$lib/components/RelayConnectionStatusList.svelte';
+  import MenuPopover from '$lib/components/MenuPopover.svelte';
+  import RelayConnectionStatusListPopover from '$lib/components/RelayConnectionStatusListPopover.svelte';
   import { latestConnectionState } from '$lib/stores/operators';
 
   const client: RxNostr = getContext('nostr-client');
@@ -45,9 +44,10 @@
         <span>{activeConnections?.length ?? 0}/{client?.getRelays()?.length ?? 0}</span>
       </button>
 
-      <div use:clickOutside={() => (showRelayConnectionStatus = false)}>
-        <RelayConnectionStatusList show={showRelayConnectionStatus} />
-      </div>
+      <RelayConnectionStatusListPopover
+        open={showRelayConnectionStatus}
+        on:close={() => (showRelayConnectionStatus = false)}
+      />
     </div>
 
     {#if KeyManager.isLoggedIn()}
@@ -60,9 +60,11 @@
           <FontAwesomeIcon icon={faBars} title="Open menu" />
         </button>
 
-        <div use:clickOutside={() => (showMenu = false)}>
-          <Menu show={showMenu} on:select={() => (showMenu = false)} />
-        </div>
+        <MenuPopover
+          open={showMenu}
+          on:select={() => (showMenu = false)}
+          on:close={() => (showMenu = false)}
+        />
       </div>
     {:else}
       <a href="/login" class="btn bg-primary-500">{$_('login')}</a>

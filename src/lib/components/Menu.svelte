@@ -6,8 +6,6 @@
   import { goto } from '$app/navigation';
   import KeyManager from '$lib/services/KeyManager';
 
-  export let show = false;
-
   const dispatch = createEventDispatcher();
 
   const logout = () => {
@@ -17,21 +15,19 @@
   };
 </script>
 
-<nav class="card absolute w-48 p-4 right-0" class:hidden={!show}>
-  <ul class="flex flex-col space-y-4">
-    {#await KeyManager.getPublicKey()}
-      <!-- noop -->
-    {:then pubkey}
-      <li>
-        <a
-          href="/p/{nip19.npubEncode(pubkey)}"
-          class="inline-block w-full text-left"
-          on:click={() => dispatch('select', 'my-page')}>{$_('mypage')}</a
-        >
-      </li>
-    {/await}
+<ul class="flex flex-col space-y-4">
+  {#await KeyManager.getPublicKey()}
+    <!-- noop -->
+  {:then pubkey}
     <li>
-      <button on:click={logout} class="w-full text-left">{$_('logout')}</button>
+      <a
+        href="/p/{nip19.npubEncode(pubkey)}"
+        class="inline-block w-full text-left"
+        on:click={() => dispatch('select', 'my-page')}>{$_('mypage')}</a
+      >
     </li>
-  </ul>
-</nav>
+  {/await}
+  <li>
+    <button on:click={logout} class="w-full text-left">{$_('logout')}</button>
+  </li>
+</ul>
