@@ -1,11 +1,13 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
+
   import MatomeForm from '$lib/components/MatomeForm.svelte';
 </script>
 
 <svelte:head>
-  <title>Create a new list | Nosli</title>
+  <title>{$_('create-new-list')} | Nosli</title>
 </svelte:head>
 
-<h1>Create a new list</h1>
+<h1>{$_('create-new-list')}</h1>
 
 <MatomeForm />

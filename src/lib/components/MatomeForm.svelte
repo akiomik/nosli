@@ -3,6 +3,7 @@
   import { onDestroy, getContext } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
   import { TabGroup, Tab } from '@skeletonlabs/skeleton';
+  import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -63,14 +64,14 @@
   };
 
   const onCancel = () => {
-    if (confirm('Quit editing?')) {
+    if (confirm($_('dialog.quit-editing-confirmation'))) {
       const path = matome ? `/li/${matome.nip19Id()}` : '/';
       goto(path);
     }
   };
 
   const onDelete = async () => {
-    if (matome?.id && confirm('Are you sure you want to delete this list?')) {
+    if (matome?.id && confirm($_('dialog.delete-list-confirmation'))) {
       await client.deleteEvent(matome.id);
 
       goto(`/p/${nip19.npubEncode(matome.pubkey)}`);
@@ -84,7 +85,7 @@
 
 <form class="flex flex-col space-y-6" novalidate>
   <label class="label">
-    Identifier (required, cannot be changed after creation)
+    {$_('identifier-required')}
     <input
       type="text"
       bind:value={identifier}
@@ -97,7 +98,7 @@
   </label>
 
   <label class="label">
-    Title (required)
+    {$_('title-required')}
     <input
       type="text"
       bind:value={title}
@@ -105,12 +106,12 @@
       class="input"
       class:input-error={title !== undefined && !isTitleValid}
       maxlength="150"
-      placeholder="My awesome notes"
+      placeholder={$_('title-placeholder')}
     />
   </label>
 
   <label class="label">
-    Summary
+    {$_('summary')}
     <textarea
       bind:value={summary}
       class="textarea"
@@ -120,11 +121,13 @@
   </label>
 
   <section>
-    <h6>Notes (required)</h6>
+    <h6>{$_('notes-required')}</h6>
 
     <TabGroup>
-      <Tab bind:group={tabActive} name="edit" value={0}>Edit</Tab>
-      <Tab bind:group={tabActive} name="recent-your-reactions" value={1}>Recent your reactions</Tab>
+      <Tab bind:group={tabActive} name="edit" value={0}>{$_('edit')}</Tab>
+      <Tab bind:group={tabActive} name="recent-your-reactions" value={1}>
+        {$_('recent-your-reactions')}
+      </Tab>
       <svelte:fragment slot="panel">
         {#if tabActive === 0}
           {#if $editor.editorInitialized}
@@ -144,16 +147,18 @@
   <hr />
 
   <div>
-    <button on:click={onCancel} class="btn bg-surface-300">Cancel</button>
+    <button on:click={onCancel} class="btn bg-surface-300">
+      {$_('cancel')}
+    </button>
     <button
       on:click={onCreate}
       disabled={!isIdentifierValid || !isTitleValid || !isSummaryValid || $editor.notes.length <= 0}
       class="btn bg-primary-500"
     >
       {#if matome}
-        Update
+        {$_('update')}
       {:else}
-        Create
+        {$_('create')}
       {/if}
     </button>
   </div>
@@ -162,7 +167,9 @@
     <hr />
 
     <div>
-      <button on:click={onDelete} class="btn bg-error-400">Delete</button>
+      <button on:click={onDelete} class="btn bg-error-400">
+        {$_('delete-this-list')}
+      </button>
     </div>
   {/if}
 </form>

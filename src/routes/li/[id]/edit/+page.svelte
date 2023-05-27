@@ -2,6 +2,8 @@
   import { getContext } from 'svelte';
   import type { AddressPointer } from 'nostr-tools/nip19';
   import type { RxNostr } from 'rx-nostr';
+  import { _ } from 'svelte-i18n';
+
   import type { PageData } from './$types';
   import { matomeStore } from '$lib/stores/nostr';
   import KeyManager from '$lib/services/KeyManager';
@@ -24,7 +26,7 @@
 
 <svelte:head>
   {#if $matome}
-    <title>Edit {$matome.identifier} | Nosli</title>
+    <title>{$_('edit-identifier', { values: { identifier: $matome.identifier } })} | Nosli</title>
   {/if}
 </svelte:head>
 
@@ -33,7 +35,7 @@
     <LoadingSpinner />
   {:then loggedInAs}
     {#if loggedInAs}
-      <h1>Edit {$matome.identifier}</h1>
+      <h1>{$_('edit-identifier', { values: { identifier: $matome.identifier } })}</h1>
 
       <MatomeForm matome={$matome} />
     {:else}

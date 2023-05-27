@@ -2,6 +2,8 @@
   import { FontAwesomeIcon } from '@fortawesome/svelte-fontawesome';
   import { faBars } from '@fortawesome/free-solid-svg-icons';
   import { AppBar } from '@skeletonlabs/skeleton';
+  import { _ } from 'svelte-i18n';
+
   import { clickOutside } from '$lib/actions/clickOutside';
   import KeyManager from '$lib/services/KeyManager';
   import Menu from '$lib/components/Menu.svelte';
@@ -30,7 +32,7 @@
   <svelte:fragment slot="trail">
     {#if KeyManager.isLoggedIn()}
       {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
-        <a href="/li/new" class="btn bg-primary-500">Create</a>
+        <a href="/li/new" class="btn bg-primary-500">{$_('create')}</a>
       {/if}
 
       <div class="relative">
@@ -42,7 +44,7 @@
         </div>
       </div>
     {:else}
-      <a href="/login" class="btn bg-primary-500">Login</a>
+      <a href="/login" class="btn bg-primary-500">{$_('login')}</a>
     {/if}
   </svelte:fragment>
 </AppBar>

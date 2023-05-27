@@ -2,6 +2,7 @@
   import { getContext } from 'svelte';
   import type { AddressPointer } from 'nostr-tools/nip19';
   import type { RxNostr } from 'rx-nostr';
+  import { _ } from 'svelte-i18n';
 
   import type { PageData } from './$types';
   import { matomeStore, profileStore, notesStore } from '$lib/stores/nostr';
@@ -46,7 +47,7 @@
     {:then isMine}
       {#if isMine && KeyManager.isWritableLoggedIn()}
         <div>
-          <a href="/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">Edit</a>
+          <a href="/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">{$_('edit')}</a>
         </div>
       {/if}
     {/await}
@@ -59,7 +60,7 @@
   <div class="flex flex-col space-y-2">
     {#if $profile}
       <div class="flex flex-row items-center space-x-2">
-        <p>By</p>
+        <p>{$_('by-author')}</p>
         <ProfileLink profile={$profile} local={true}>
           <ProfileLine profile={$profile} />
         </ProfileLink>
@@ -67,7 +68,7 @@
     {/if}
 
     <p>
-      Last updated:
+      {$_('last-updated')}
       {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
         $matome.createdAt
       )}

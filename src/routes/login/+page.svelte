@@ -1,11 +1,13 @@
 <script lang="ts">
   import { FontAwesomeIcon } from '@fortawesome/svelte-fontawesome';
   import { faCircleInfo } from '@fortawesome/free-solid-svg-icons';
+  import { _ } from 'svelte-i18n';
+
   import LoginForm from '$lib/components/LoginForm.svelte';
   import Alert from '$lib/components/Alert.svelte';
 
-  const title = 'Login | Nosli';
-  const desc = 'Login to Nosli';
+  $: title = `${$_('login')} | Nosli`;
+  $: desc = $_('login-to-nosli');
 </script>
 
 <svelte:head>
@@ -17,17 +19,16 @@
   <meta property="og:description" content={desc} />
 </svelte:head>
 
-<h1>Login</h1>
+<h1>{$_('login')}</h1>
 
 <Alert>
   <div slot="icon">
     <h2 class="flex items-center space-x-2">
       <FontAwesomeIcon icon={faCircleInfo} />
-      <p>Note</p>
     </h2>
   </div>
 
-  <p>You can create or edit your lists by logging in with NIP-07 or nsec.</p>
+  <p>{$_('alert.nsec-and-nip07-info')}</p>
 </Alert>
 
 <LoginForm />

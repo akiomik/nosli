@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { nip19 } from 'nostr-tools';
+  import { _ } from 'svelte-i18n';
+
   import { goto } from '$app/navigation';
   import KeyManager from '$lib/services/KeyManager';
 
@@ -24,12 +26,12 @@
         <a
           href="/p/{nip19.npubEncode(pubkey)}"
           class="inline-block w-full text-left"
-          on:click={() => dispatch('select', 'my-page')}>My page</a
+          on:click={() => dispatch('select', 'my-page')}>{$_('mypage')}</a
         >
       </li>
     {/await}
     <li>
-      <button on:click={logout} class="w-full text-left">Logout</button>
+      <button on:click={logout} class="w-full text-left">{$_('logout')}</button>
     </li>
   </ul>
 </nav>

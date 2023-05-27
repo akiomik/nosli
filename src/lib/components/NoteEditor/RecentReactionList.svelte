@@ -1,5 +1,6 @@
 <script lang="ts">
   import { nip19 } from 'nostr-tools';
+  import { _ } from 'svelte-i18n';
 
   import NoteListItem from '$lib/components/NoteListItem.svelte';
   import type { NoteEditorStore } from '$lib/stores/noteEditor';
@@ -33,13 +34,13 @@
             class="btn ml-5"
             class:variant-soft-surface={isUsed(id)}
             class:variant-soft-primary={!isUsed(id)}
-            on:click={() => toggle(id)}>{isUsed(id) ? 'Remove' : 'Add'}</button
+            on:click={() => toggle(id)}>{isUsed(id) ? $_('remove') : $_('add')}</button
           >
         </div>
       </NoteListItem>
     {:else}
       <Alert variant="warning">
-        <p>Failed to get a note.</p>
+        <p>{$_('alert.failed-to-get-note')}</p>
         <p>{nip19.noteEncode(id)}</p>
       </Alert>
     {/if}
