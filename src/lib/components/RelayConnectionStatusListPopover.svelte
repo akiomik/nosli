@@ -8,6 +8,6 @@
   export let connections: ConnectionStatePacket[];
 </script>
 
-<Popover {open} on:close anchor="left">
+<Popover {open} on:close anchor="center">
   <RelayConnectionStatusList {connections} />
 </Popover>

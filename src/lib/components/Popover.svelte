@@ -4,7 +4,7 @@
   import { clickOutside } from '$lib/actions/clickOutside';
 
   export let open = false;
-  export let anchor: 'left' | 'right' = 'right';
+  export let anchor: 'left' | 'center' | 'right' = 'right';
 
   const dispatch = createEventDispatcher();
   const handleClickOutside = () => dispatch('close');
@@ -14,6 +14,14 @@
   <div
     use:clickOutside={handleClickOutside}
     class="card absolute w-auto whitespace-nowrap p-4"
+    class:hidden={!open}
+  >
+    <slot />
+  </div>
+{:else if anchor === 'center'}
+  <div
+    use:clickOutside={handleClickOutside}
+    class="card absolute w-auto whitespace-nowrap p-4 left-1/2 -translate-x-1/2"
     class:hidden={!open}
   >
     <slot />
