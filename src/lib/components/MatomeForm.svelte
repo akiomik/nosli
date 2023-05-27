@@ -147,11 +147,11 @@
   <hr />
 
   <div>
-    <button on:click={onCancel} class="btn bg-surface-300">
+    <button on:click|preventDefault={onCancel} class="btn bg-surface-300">
       {$_('cancel')}
     </button>
     <button
-      on:click={onCreate}
+      on:click|preventDefault={onCreate}
       disabled={!isIdentifierValid || !isTitleValid || !isSummaryValid || $editor.notes.length <= 0}
       class="btn bg-primary-500"
     >
@@ -167,7 +167,7 @@
     <hr />
 
     <div>
-      <button on:click={onDelete} class="btn bg-error-400">
+      <button on:click|preventDefault={onDelete} class="btn bg-error-400">
         {$_('delete-this-list')}
       </button>
     </div>

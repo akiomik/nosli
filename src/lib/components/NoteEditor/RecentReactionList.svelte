@@ -34,8 +34,10 @@
             class="btn ml-5"
             class:variant-soft-surface={isUsed(id)}
             class:variant-soft-primary={!isUsed(id)}
-            on:click={() => toggle(id)}>{isUsed(id) ? $_('remove') : $_('add')}</button
+            on:click|preventDefault={() => toggle(id)}
           >
+            {isUsed(id) ? $_('remove') : $_('add')}
+          </button>
         </div>
       </NoteListItem>
     {:else}
