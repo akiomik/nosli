@@ -11,7 +11,8 @@
 </script>
 
 <div class="flex flex-col space-y-8">
-  {#each notes as { id, note } (id)}
+  <!-- NOTE: Added index (i) to avoid duplication error -->
+  {#each notes as { id, note }, i (`${id}-${i}`)}
     {#if note}
       <ExternalLink href="https://snort.social/e/{note.nip19Id()}" class="unstyled">
         <NoteListItem {note} />
