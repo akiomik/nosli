@@ -2,6 +2,8 @@
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { nip19, getPublicKey } from 'nostr-tools';
+  import { _ } from 'svelte-i18n';
+
   import { pubkey, seckey, nip07 } from '$lib/stores/cookie.js';
   import Alert from '$lib/components/Alert.svelte';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
@@ -56,15 +58,17 @@
   };
 </script>
 
-<h2>with NIP-07 (recommended)</h2>
+<h2>{$_('login-with-nip07')}</h2>
 
 {#if browser && !isNip07Available}
   <Alert variant="warning">
     <p>
-      It seems that NIP-07 is not available. See
+      {$_('alert.nip07-unavailable')}
+      {$_('see-other')}
       <ExternalLink href="https://github.com/nostr-protocol/nips/blob/master/07.md#implementation">
-        NIP-07 implementations
-      </ExternalLink>.
+        {$_('nip07-implementations')}
+      </ExternalLink>
+      {$_('.')}
     </p>
   </Alert>
 {/if}
@@ -75,13 +79,13 @@
   disabled={!isNip07Available}
   class="btn bg-surface-300"
 >
-  Login
+  {$_('login')}
 </button>
 
-<h2>with npub/nsec</h2>
+<h2>{$_('login-with-key')}</h2>
 
 <label class="label">
-  key (npub | nsec)
+  {$_('key')} (npub | nsec)
   <input
     type="password"
     bind:value={key}
@@ -97,5 +101,5 @@
   disabled={!keyIsValid(key)}
   class="btn bg-surface-300"
 >
-  Login
+  {$_('login')}
 </button>

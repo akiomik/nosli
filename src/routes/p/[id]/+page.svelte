@@ -2,6 +2,7 @@
   import { getContext } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
   import { Avatar } from '@skeletonlabs/skeleton';
+  import { _ } from 'svelte-i18n';
 
   import type { PageData } from './$types';
   import { recentUserMatomesStore, profileStore } from '$lib/stores/nostr';
@@ -56,13 +57,13 @@
   {:then isLoggedIn}
     {#if isLoggedIn}
       <Alert>
-        <p>You are logged in with npub and unable to create or edit a list.</p>
+        <p>{$_('alert.npub-limitation')}</p>
       </Alert>
     {/if}
   {/await}
 {/if}
 
-<h2>Lists</h2>
+<h2>{$_('created-lists')}</h2>
 
 {#if $matomes}
   <MatomeList matomes={$matomes} />

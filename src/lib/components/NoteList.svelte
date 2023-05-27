@@ -1,5 +1,6 @@
 <script lang="ts">
   import { nip19 } from 'nostr-tools';
+  import { _ } from 'svelte-i18n';
 
   import type { LoadingNote } from '$lib/entities/LoadingNote';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
@@ -17,7 +18,7 @@
       </ExternalLink>
     {:else}
       <Alert variant="warning">
-        <p>Failed to get a note.</p>
+        <p>{$_('alert.failed-to-get-note')}</p>
         <p>{nip19.noteEncode(id)}</p>
       </Alert>
     {/if}

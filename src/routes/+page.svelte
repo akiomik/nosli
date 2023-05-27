@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
+
   import NostrClient from '$lib/services/NostrClient';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
   import GlobalMatomeList from '$lib/components/GlobalMatomeList.svelte';
@@ -19,11 +21,16 @@
 <h1>Nosli</h1>
 
 <p>
-  Nosli helps you create a curated list of posts on
-  <ExternalLink href="https://nostr.com">nostr</ExternalLink>.
+  {$_('nosli-description')}
+  (
+  <ExternalLink href="https://nostr.com">
+    {$_('about-nostr')}
+  </ExternalLink>
+  )
+  {$_('.')}
 </p>
 
-<h2>How it works</h2>
+<h2>{$_('how-it-works')}</h2>
 
 <div>
   <p>
@@ -37,6 +44,6 @@
   <p>It is stored in relays and can be viewed and edited by other NIP-23 supported clients.</p>
 </div>
 
-<h2>Global lists</h2>
+<h2>{$_('recent-lists')}</h2>
 
 <GlobalMatomeList />

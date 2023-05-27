@@ -1,6 +1,8 @@
 <script lang="ts">
   import { FontAwesomeIcon } from '@fortawesome/svelte-fontawesome';
   import { faAngleUp, faAngleDown } from '@fortawesome/free-solid-svg-icons';
+  import { _ } from 'svelte-i18n';
+
   import type { NoteEditorStore } from '$lib/stores/noteEditor';
 
   export let editor: NoteEditorStore;
@@ -25,6 +27,6 @@
     class="btn variant-soft-error ml-3"
     on:click|preventDefault={() => editor.removeNote(noteId)}
   >
-    Remove
+    {$_('remove')}
   </button>
 </div>

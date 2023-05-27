@@ -1,5 +1,6 @@
 <script lang="ts">
   import { nip19 } from 'nostr-tools';
+  import { _ } from 'svelte-i18n';
 
   import NoteListItem from '$lib/components/NoteListItem.svelte';
   import NoteActions from '$lib/components/NoteEditor/NoteActions.svelte';
@@ -38,7 +39,7 @@
     {:else}
       <div class="card">
         <div class="p-4">
-          <p>Failed to get a note.</p>
+          <p>{$_('alert.failed-to-get-note')}</p>
           <p>{nip19.noteEncode(id)}</p>
         </div>
         <footer class="card-footer p-4">
@@ -67,12 +68,14 @@
     on:click|preventDefault={() => {
       editor.appendNote(newNoteId);
       newNoteId = '';
-    }}>Add Note</button
+    }}
   >
+    {$_('add-note')}
+  </button>
 </div>
 
 <div class="mt-4">
-  Reorder notes:
+  {$_('reorder-notes')}
 
   <button
     type="button"
@@ -80,6 +83,6 @@
     disabled={$editor.notes === undefined || $editor.notes.length === 0}
     on:click|preventDefault={editor.sortByLeaastRecentlyCreated}
   >
-    Least recently created
+    {$_('reorder-by-least-recently-created')}
   </button>
 </div>
