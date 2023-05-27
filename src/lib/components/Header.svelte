@@ -1,23 +1,28 @@
 <script lang="ts">
+  import { getContext } from 'svelte';
   import { FontAwesomeIcon } from '@fortawesome/svelte-fontawesome';
-  import { faBars } from '@fortawesome/free-solid-svg-icons';
+  import { faBars, faSignal } from '@fortawesome/free-solid-svg-icons';
   import { AppBar } from '@skeletonlabs/skeleton';
   import { _ } from 'svelte-i18n';
+  import type { RxNostr } from 'rx-nostr';
 
   import { clickOutside } from '$lib/actions/clickOutside';
   import KeyManager from '$lib/services/KeyManager';
   import Menu from '$lib/components/Menu.svelte';
+  import RelayConnectionStatusList from '$lib/components/RelayConnectionStatusList.svelte';
+  import { latestConnectionState } from '$lib/stores/operators';
 
+  const client: RxNostr = getContext('nostr-client');
+  const connections = client.createConnectionStateObservable()?.pipe(latestConnectionState());
+
+  let showRelayConnectionStatus = false;
   let showMenu = false;
 
-  const handleMenu = (e: MouseEvent) => {
-    showMenu = !showMenu;
-    e.stopPropagation();
-  };
+  const handleRelayConnectionStatus = () =>
+    (showRelayConnectionStatus = !showRelayConnectionStatus);
+  const handleMenu = () => (showMenu = !showMenu);
 
-  const onMenuSelect = () => {
-    showMenu = false;
-  };
+  $: activeConnections = $connections?.filter(({ state }) => state === 'ongoing');
 </script>
 
 <AppBar>
@@ -30,17 +35,33 @@
     </a>
   </svelte:fragment>
   <svelte:fragment slot="trail">
+    <div class="relative">
+      <button
+        type="button"
+        class="btn variant-soft-surface"
+        on:click|stopPropagation={handleRelayConnectionStatus}
+      >
+        <span><FontAwesomeIcon icon={faSignal} title="Relay connections" /></span>
+        <span>{activeConnections?.length ?? 0}/{client?.getRelays()?.length ?? 0}</span>
+      </button>
+
+      <div use:clickOutside={() => (showRelayConnectionStatus = false)}>
+        <RelayConnectionStatusList show={showRelayConnectionStatus} />
+      </div>
+    </div>
+
     {#if KeyManager.isLoggedIn()}
       {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
         <a href="/li/new" class="btn bg-primary-500">{$_('create')}</a>
       {/if}
 
       <div class="relative">
-        <button class="btn-icon hover:variant-soft-surface" on:click={handleMenu}>
+        <button class="btn-icon hover:variant-soft-surface" on:click|stopPropagation={handleMenu}>
           <FontAwesomeIcon icon={faBars} title="Open menu" />
         </button>
+
         <div use:clickOutside={() => (showMenu = false)}>
-          <Menu show={showMenu} on:select={onMenuSelect} />
+          <Menu show={showMenu} on:select={() => (showMenu = false)} />
         </div>
       </div>
     {:else}

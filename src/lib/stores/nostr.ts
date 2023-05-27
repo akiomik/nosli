@@ -1,6 +1,6 @@
 import { map, take, toArray, flatMap } from 'rxjs';
 import type { Observable } from 'rxjs';
-import { uniq, verify, latest, rxOneshotReq } from 'rx-nostr';
+import { uniq, verify, latest, createRxOneshotReq } from 'rx-nostr';
 import type { RxNostr } from 'rx-nostr';
 import { Kind } from 'nostr-tools';
 
@@ -24,7 +24,7 @@ export function recentGlobalMatomesStore({
   limit: number;
   timeout?: number;
 }): Observable<LongFormContent[]> {
-  const req = rxOneshotReq({
+  const req = createRxOneshotReq({
     filters: [
       {
         kinds: [Kind.Article],
@@ -54,7 +54,7 @@ export function recentUserMatomesStore({
   pubkey: string;
   timeout?: number;
 }): Observable<LongFormContent[]> {
-  const req = rxOneshotReq({
+  const req = createRxOneshotReq({
     filters: [
       {
         kinds: [Kind.Article],
@@ -86,7 +86,7 @@ export function matomeStore({
   identifier: string;
   timeout?: number;
 }): Observable<LongFormContent> {
-  const req = rxOneshotReq({
+  const req = createRxOneshotReq({
     filters: [
       {
         kinds: [Kind.Article],
@@ -116,7 +116,7 @@ export function profileStore({
   pubkey: string;
   timeout?: number;
 }): Observable<Profile> {
-  const req = rxOneshotReq({
+  const req = createRxOneshotReq({
     filters: [
       {
         kinds: [Kind.Metadata],
@@ -145,7 +145,7 @@ export function notesStore({
 }): Observable<LoadingNote[]> {
   const noteById: Record<string, Note> = {};
 
-  const req = rxOneshotReq({
+  const req = createRxOneshotReq({
     filters: [
       {
         kinds: [Kind.Text],
@@ -175,7 +175,7 @@ export function noteStore({
   id: string;
   timeout?: number;
 }): Observable<Note> {
-  const req = rxOneshotReq({
+  const req = createRxOneshotReq({
     filters: [
       {
         kinds: [Kind.Text],
@@ -204,7 +204,7 @@ export function recentUserReactionsStore({
   limit: number;
   timeout?: number;
 }): Observable<Reaction[]> {
-  const req = rxOneshotReq({
+  const req = createRxOneshotReq({
     filters: [
       {
         kinds: [Kind.Reaction],
