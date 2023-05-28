@@ -1,6 +1,6 @@
 <script lang="ts">
   import { setContext } from 'svelte';
-  import { AppShell } from '@skeletonlabs/skeleton';
+  import { AppShell, Toast } from '@skeletonlabs/skeleton';
   import '@skeletonlabs/skeleton/themes/theme-skeleton.css';
   import '@skeletonlabs/skeleton/styles/all.css';
   import '@fortawesome/fontawesome-svg-core/styles.css';
@@ -34,6 +34,8 @@
     loading = false;
   });
 </script>
+
+<Toast />
 
 <AppShell>
   <svelte:fragment slot="header">

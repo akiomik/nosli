@@ -3,6 +3,7 @@
   import { onDestroy, getContext } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
   import { TabGroup, Tab } from '@skeletonlabs/skeleton';
+  import { toastStore } from '@skeletonlabs/skeleton';
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
@@ -60,6 +61,9 @@
 
     lfc = await client.postLongFormContent(lfc);
 
+    const message = matome ? $_('updated') : $_('created');
+    toastStore.trigger({ message, background: 'bg-surface-300' });
+
     goto(`/li/${lfc.nip19Id()}`);
   };
 
@@ -73,6 +77,8 @@
   const onDelete = async () => {
     if (matome?.id && confirm($_('dialog.delete-list-confirmation'))) {
       await client.deleteEvent(matome.id);
+
+      toastStore.trigger({ message: $_('deleted'), background: 'bg-surface-300' });
 
       goto(`/p/${nip19.npubEncode(matome.pubkey)}`);
     }
