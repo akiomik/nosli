@@ -11,9 +11,11 @@
   "by-author": "作者:",
   "cancel": "キャンセル",
   "create": "作成",
+  "created": "作成しました",
   "created-lists": "作成したまとめ",
   "create-new-list": "まとめを新規作成",
   "delete-this-list": "このまとめを削除",
+  "deleted": "削除しました",
   "dialog": {
     "delete-list-confirmation": "このまとめを削除してもよろしいですか？",
     "quit-editing-confirmation": "編集をキャンセルしますか？"
@@ -43,5 +45,6 @@
   "title-required": "タイトル (必須)",
   "title-placeholder": "いい感じの投稿まとめ",
   "update": "更新",
+  "updated": "更新しました",
   ".": "。"
 }

@@ -11,9 +11,11 @@
   "by-author": "By",
   "cancel": "Cancel",
   "create": "Create",
+  "created": "Created",
   "created-lists": "Created lists",
   "create-new-list": "Create a new list",
   "delete-this-list": "Delete this list",
+  "deleted": "Deleted",
   "dialog": {
     "delete-list-confirmation": "Are you sure you want to delete this list?",
     "quit-editing-confirmation": "Quit editing?"
@@ -43,5 +45,6 @@
   "title-required": "Title (required)",
   "title-placeholder": "My awesome notes",
   "update": "Update",
+  "updated": "Updated",
   ".": "."
 }
