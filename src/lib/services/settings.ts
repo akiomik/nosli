@@ -1,7 +1,6 @@
 export const defaultRelays = [
   'wss://nos.lol',
   'wss://nostr.bitcoiner.social',
-  'wss://nostr.h3z.jp',
   'wss://nostr.mom',
   'wss://nostr.oxtr.dev',
   'wss://nostr-pub.wellorder.net',
