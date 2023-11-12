@@ -3,13 +3,13 @@ import type { RxNostr } from 'rx-nostr';
 
 import type { LoadingNote } from '$lib/entities/LoadingNote';
 import type LongFormContent from '$lib/entities/LongFormContent';
-import { note1ToHex } from '$lib/services/NostrClient';
+import { nip19ToHex } from '$lib/services/NostrClient';
 import KeyManager from '$lib/services/KeyManager';
 import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/nostr';
 
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
   const { matome, client } = params;
-  const initNoteIds = matome?.noteIds()?.map(note1ToHex) ?? [];
+  const initNoteIds = matome?.noteIds()?.map(nip19ToHex) ?? [];
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const notes = writable<LoadingNote[]>([]);
@@ -39,7 +39,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   });
 
   const appendNote = (noteId: string) => {
-    const hex = noteId.startsWith('note1') ? note1ToHex(noteId) : noteId;
+    const hex = (noteId.startsWith('note1') || noteId.startsWith('nevent1')) ? nip19ToHex(noteId) : noteId;
 
     noteStore({ client, id: hex }).subscribe((note) => {
       notes.update((prev) => [
@@ -53,7 +53,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   };
 
   const removeNote = (noteId: string) => {
-    const hex = noteId.startsWith('note1') ? note1ToHex(noteId) : noteId;
+    const hex = (noteId.startsWith('note1') || noteId.startsWith('nevent1')) ? nip19ToHex(noteId) : noteId;
     notes.update((prev) => prev.filter((note) => note.id !== hex));
   };
 
