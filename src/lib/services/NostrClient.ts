@@ -1,7 +1,7 @@
 import * as secp256k1 from '@noble/secp256k1';
 import { bech32 } from '@scure/base';
 import type { Pub } from 'nostr-tools';
-import { Kind, SimplePool, validateEvent, verifySignature } from 'nostr-tools';
+import { Kind, SimplePool, nip19, validateEvent, verifySignature } from 'nostr-tools';
 import type { AddressPointer, EventPointer, ProfilePointer } from 'nostr-tools/nip19';
 
 import LongFormContent from '$lib/entities/LongFormContent';
@@ -9,6 +9,14 @@ import KeyManager from '$lib/services/KeyManager';
 
 export const note1ToHex = (note1: string) =>
   secp256k1.utils.bytesToHex(new Uint8Array(bech32.fromWords(bech32.decode(note1, 5000).words)));
+
+export const nip19ToHex = (b32: string)=>{
+  const data = nip19.decode(b32);
+  if(data.type === "note")
+    return data.data;
+  else if(data.type === "nevent")
+    return (data.data as nip19.EventPointer).id;
+}
 
 export default class NostrClient {
   static TAG = 'nosli';

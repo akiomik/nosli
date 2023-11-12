@@ -11,7 +11,7 @@
   let newNoteId = '';
 
   $: isNewNoteIdValid = (() => {
-    if (!newNoteId.startsWith('note')) {
+    if (!newNoteId.startsWith('note') && !newNoteId.startsWith('nevent')) {
       return false;
     }
 
@@ -60,7 +60,7 @@
     type="text"
     bind:value={newNoteId}
     class:input-error={newNoteId && !isNewNoteIdValid}
-    placeholder="note1..."
+    placeholder="note1.../nevent1..."
   />
   <button
     class="variant-filled-surface"
