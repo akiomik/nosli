@@ -39,7 +39,8 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   });
 
   const appendNote = (noteId: string) => {
-    const hex = (noteId.startsWith('note1') || noteId.startsWith('nevent1')) ? nip19ToHex(noteId) : noteId;
+    const hex =
+      noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
 
     noteStore({ client, id: hex }).subscribe((note) => {
       notes.update((prev) => [
@@ -53,7 +54,8 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   };
 
   const removeNote = (noteId: string) => {
-    const hex = (noteId.startsWith('note1') || noteId.startsWith('nevent1')) ? nip19ToHex(noteId) : noteId;
+    const hex =
+      noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
     notes.update((prev) => prev.filter((note) => note.id !== hex));
   };
 
