@@ -54,7 +54,7 @@
     "nostr-tools": "1.6.1",
     "re2": "^1.18.0",
     "rx-nostr": "^0.9.0",
-    "sanitize-html": "^2.10.0",
+    "sanitize-html": "^2.12.1",
     "svelte-i18n": "^3.6.0",
     "url-regex-safe": "^3.0.0"
   }
