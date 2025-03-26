@@ -39,7 +39,10 @@
 
     await client.connect();
 
-    const lfcContent = $editor.notes.map((_, i) => `#[${i + 3}]`).join('\n');
+    const lfcContent = $editor.notes
+      .map((loadingNote, i) => `nostr:${nip19.neventEncode({ id: loadingNote.id })}`)
+      .join('\n');
+
     const tags = [
       ...$editor.notes.map(({ id }) => {
         return new Tag('e', id, '', 'mention');
