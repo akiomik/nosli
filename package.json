@@ -50,7 +50,7 @@
     "linkify-html": "^4.1.0",
     "linkify-plugin-hashtag": "^4.1.0",
     "linkify-plugin-mention": "^4.1.0",
-    "linkifyjs": "^4.1.0",
+    "linkifyjs": "^4.3.2",
     "nostr-tools": "1.6.1",
     "re2": "^1.18.0",
     "rx-nostr": "^0.9.0",
