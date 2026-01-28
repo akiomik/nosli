@@ -52,7 +52,7 @@
     "linkify-plugin-mention": "^4.1.0",
     "linkifyjs": "^4.3.2",
     "nostr-tools": "1.6.1",
-    "re2": "^1.18.0",
+    "re2": "^1.23.2",
     "rx-nostr": "^0.9.0",
     "sanitize-html": "^2.12.1",
     "svelte-i18n": "^3.6.0",
