@@ -32,7 +32,9 @@ jobs:
       - name: Build
         env:
           BASE_PATH: '/nosli'
-        run: npm run build
+        run: |
+          npm run build
+          cp build/404.html build/index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
