@@ -13,13 +13,14 @@
   import LongFormContent from '$lib/entities/LongFormContent';
   import Tag from '$lib/entities/Tag';
   import NostrClient from '$lib/services/NostrClient';
-  import * as settings from '$lib/services/settings';
   import { createNoteEditorStore } from '$lib/stores/noteEditor';
+  import { currentRelays } from '$lib/stores/relays';
+  import { get } from 'svelte/store';
 
   export let matome: LongFormContent | undefined = undefined;
 
   const rxClient: RxNostr = getContext('nostr-client');
-  const client = new NostrClient(settings.defaultRelays);
+  const client = new NostrClient(get(currentRelays));
   const editor = createNoteEditorStore({ matome, client: rxClient });
 
   let title: string | undefined = matome?.title;
