@@ -17,23 +17,18 @@ export default class KeyManager {
   }
 
   static async getPublicKey(): Promise<string> {
-    if (get(nip07)) {
-      if (!window.nostr) {
-        return Promise.reject(new Error('Failed to resolve NIP-07'));
-      }
-
-      return window.nostr.getPublicKey();
-    } else {
-      return get(pubkey);
+    if (KeyManager.isLoggedInWithNip07()) {
+      return window.nostr!.getPublicKey();
     }
+    return get(pubkey);
   }
 
   static async signEvent(event: Event): Promise<Event> {
-    if (!get(nip07) || !window.nostr) {
+    if (!KeyManager.isLoggedInWithNip07()) {
       return Promise.reject(new Error('Signing requires NIP-07'));
     }
 
-    return window.nostr.signEvent(event);
+    return window.nostr!.signEvent(event);
   }
 
   static async isLoggedInAs(pubkey: string): Promise<boolean> {
@@ -50,7 +45,7 @@ export default class KeyManager {
   }
 
   static isLoggedInWithNip07(): boolean {
-    return get(nip07);
+    return get(nip07) && typeof window !== 'undefined' && !!window.nostr;
   }
 
   static isLoggedInWithPublicKey(): boolean {
