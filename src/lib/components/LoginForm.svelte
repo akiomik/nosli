@@ -1,19 +1,19 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
-  import { nip19, getPublicKey } from 'nostr-tools';
+  import { nip19 } from 'nostr-tools';
   import { _ } from 'svelte-i18n';
 
-  import { pubkey, seckey, nip07 } from '$lib/stores/cookie.js';
+  import { pubkey, nip07 } from '$lib/stores/cookie.js';
   import Alert from '$lib/components/Alert.svelte';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
 
-  let key: string | undefined = undefined; // TODO: support NIP-07
+  let key: string | undefined = undefined;
 
   $: isNip07Available = browser && !!window.nostr;
 
   const keyIsValid = (key: string | undefined) => {
-    if (key === undefined || (!key.startsWith('npub') && !key.startsWith('nsec'))) {
+    if (key === undefined || !key.startsWith('npub')) {
       return false;
     }
 
@@ -46,13 +46,7 @@
         throw new Error('Unexpected error: decoded key is not string');
       }
 
-      if (key.startsWith('npub')) {
-        $pubkey = decoded;
-      } else {
-        $seckey = decoded;
-        $pubkey = getPublicKey(decoded);
-      }
-
+      $pubkey = decoded;
       goto(`/p/${nip19.npubEncode($pubkey)}`);
     }
   };
@@ -85,7 +79,7 @@
 <h2>{$_('login-with-key')}</h2>
 
 <label class="label">
-  {$_('key')} (npub | nsec)
+  {$_('key')} (npub)
   <input
     type="password"
     bind:value={key}

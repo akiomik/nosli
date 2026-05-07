@@ -52,7 +52,7 @@
     </div>
 
     {#if KeyManager.isLoggedIn()}
-      {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
+      {#if KeyManager.isWritableLoggedIn()}
         <a href="/li/new" class="btn bg-primary-500">{$_('create')}</a>
       {/if}
 
