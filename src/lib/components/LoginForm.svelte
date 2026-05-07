@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
   import { nip19 } from 'nostr-tools';
   import { _ } from 'svelte-i18n';
 
@@ -33,7 +34,7 @@
     try {
       const npub = await window.nostr.getPublicKey();
       $nip07 = true;
-      goto(`/p/${nip19.npubEncode(npub)}`);
+      goto(`${base}/p/${nip19.npubEncode(npub)}`);
     } catch (e) {
       alert(e);
     }
@@ -47,7 +48,7 @@
       }
 
       $pubkey = decoded;
-      goto(`/p/${nip19.npubEncode($pubkey)}`);
+      goto(`${base}/p/${nip19.npubEncode($pubkey)}`);
     }
   };
 </script>

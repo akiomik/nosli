@@ -6,6 +6,7 @@
   import { _ } from 'svelte-i18n';
   import type { RxNostr } from 'rx-nostr';
 
+  import { base } from '$app/paths';
   import { relayConnectionsStore } from '$lib/stores/nostr';
   import KeyManager from '$lib/services/KeyManager';
   import MenuPopover from '$lib/components/MenuPopover.svelte';
@@ -26,9 +27,9 @@
 
 <AppBar>
   <svelte:fragment slot="lead">
-    <a href="/">
+    <a href="{base}/">
       <span class="flex items-center">
-        <img src="/favicon.svg" alt="Nosli icon" class="h-10 mr-1" width="40" height="40" />
+        <img src="{base}/favicon.svg" alt="Nosli icon" class="h-10 mr-1" width="40" height="40" />
         Nosli
       </span>
     </a>
@@ -53,7 +54,7 @@
 
     {#if KeyManager.isLoggedIn()}
       {#if KeyManager.isWritableLoggedIn()}
-        <a href="/li/new" class="btn bg-primary-500">{$_('create')}</a>
+        <a href="{base}/li/new" class="btn bg-primary-500">{$_('create')}</a>
       {/if}
 
       <div class="relative">
@@ -68,7 +69,7 @@
         />
       </div>
     {:else}
-      <a href="/login" class="btn bg-primary-500">{$_('login')}</a>
+      <a href="{base}/login" class="btn bg-primary-500">{$_('login')}</a>
     {/if}
   </svelte:fragment>
 </AppBar>

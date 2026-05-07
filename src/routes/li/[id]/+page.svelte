@@ -4,6 +4,7 @@
   import type { RxNostr } from 'rx-nostr';
   import { _ } from 'svelte-i18n';
 
+  import { base } from '$app/paths';
   import type { PageData } from './$types';
   import { matomeStore, profileStore, notesStore } from '$lib/stores/nostr';
   import { linkify, linkifyOpts } from '$lib/actions/linkify';
@@ -47,7 +48,7 @@
     {:then isMine}
       {#if isMine && KeyManager.isWritableLoggedIn()}
         <div>
-          <a href="/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">{$_('edit')}</a>
+          <a href="{base}/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">{$_('edit')}</a>
         </div>
       {/if}
     {/await}

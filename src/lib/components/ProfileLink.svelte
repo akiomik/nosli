@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from '$app/paths';
   import type Profile from '$lib/entities/Profile';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
 
@@ -10,7 +11,7 @@
 </script>
 
 {#if local}
-  <a href="/p/{profile.nip19Id()}" class={className}>
+  <a href="{base}/p/{profile.nip19Id()}" class={className}>
     <slot />
   </a>
 {:else}

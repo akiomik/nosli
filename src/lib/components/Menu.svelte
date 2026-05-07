@@ -4,6 +4,7 @@
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
   import KeyManager from '$lib/services/KeyManager';
   import { darkMode } from '$lib/stores/cookie';
 
@@ -12,7 +13,7 @@
   const logout = () => {
     dispatch('select', 'logout');
     KeyManager.logout();
-    goto('/');
+    goto(`${base}/`);
   };
 
   const toggleDarkMode = () => {
@@ -27,7 +28,7 @@
   {:then pubkey}
     <li>
       <a
-        href="/p/{nip19.npubEncode(pubkey)}"
+        href="{base}/p/{nip19.npubEncode(pubkey)}"
         class="inline-block w-full text-left"
         on:click={() => dispatch('select', 'my-page')}>{$_('mypage')}</a
       >

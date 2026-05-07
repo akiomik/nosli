@@ -7,6 +7,7 @@
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import Editor from '$lib/components/NoteEditor/Editor.svelte';
   import RecentReactionList from '$lib/components/NoteEditor/RecentReactionList.svelte';
@@ -68,12 +69,12 @@
     const message = matome ? $_('updated') : $_('created');
     toastStore.trigger({ message, background: 'bg-surface-300' });
 
-    goto(`/li/${lfc.nip19Id()}`);
+    goto(`${base}/li/${lfc.nip19Id()}`);
   };
 
   const onCancel = () => {
     if (confirm($_('dialog.quit-editing-confirmation'))) {
-      const path = matome ? `/li/${matome.nip19Id()}` : '/';
+      const path = matome ? `${base}/li/${matome.nip19Id()}` : `${base}/`;
       goto(path);
     }
   };
@@ -84,7 +85,7 @@
 
       toastStore.trigger({ message: $_('deleted'), background: 'bg-surface-300' });
 
-      goto(`/p/${nip19.npubEncode(matome.pubkey)}`);
+      goto(`${base}/p/${nip19.npubEncode(matome.pubkey)}`);
     }
   };
 
