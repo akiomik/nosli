@@ -2,7 +2,10 @@
 
 Nosli helps you create a curated list of posts on [nostr](https://nostr.com).
 
-- https://nosli.vercel.app
+nosli was forked from [nosli](https://koteitan.github.io/nosli/) by koteitan
+- forked  : https://koteitan.github.io/nosli/
+  - changelog: [English](changelog.md) / [Japanese](changelog-ja.md)
+- original: https://nosli.vercel.app/
 
 ## How it works
 
