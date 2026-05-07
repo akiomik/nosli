@@ -2,7 +2,7 @@
 Here is the list of changes since upstream to the forked latest:
 
 - (new)
-- v0.0.5: repoint footer GitHub link from akiomik/nosli to koteitan/nosli
+- a8edb3f: v0.0.5 repoint footer GitHub link from akiomik/nosli to koteitan/nosli
 - b66e179: bugfix: avoid 404 when the NIP-07 extension is unavailable
 - 1fe3f3d, db8546c: v0.0.4 GitHub Pages deploy
 - 638bd8c: v0.0.2 relay source selector with kind:10002, 3

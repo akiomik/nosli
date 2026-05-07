@@ -2,7 +2,7 @@
 upstream から fork して以降の変更点一覧:
 
 - (新)
-- v0.0.5: フッターの GitHub リンクを akiomik/nosli から koteitan/nosli に変更
+- a8edb3f: v0.0.5 フッターの GitHub リンクを akiomik/nosli から koteitan/nosli に変更
 - b66e179: バグ修正: 拡張機能無効時に 404 にならないように修正
 - 1fe3f3d, db8546c: v0.0.4 GitHub Pages デプロイ
 - 638bd8c: v0.0.2 リレー選択 (kind:10002, 3) の追加
