@@ -32,6 +32,8 @@
   "login-with-nip07": "with NIP-07",
   "logout": "Logout",
   "mypage": "My page",
+  "dark-mode": "Dark mode",
+  "light-mode": "Light mode",
   "nosli-description": "Nosli helps you create a curated list of posts on Nostr that is a open protocol for a decentralized global social network",
   "notes-required": "Notes (required)",
   "nip07-implementations": "NIP-07 implementations",

@@ -7,9 +7,12 @@
   import { config } from '@fortawesome/fontawesome-svg-core';
   import { createRxNostr } from 'rx-nostr';
 
+  import { browser } from '$app/environment';
   import { beforeNavigate, afterNavigate } from '$app/navigation';
   import '../app.postcss';
   import * as settings from '$lib/services/settings';
+  import { applyDarkMode, removeDarkMode } from '$lib/services/darkmode';
+  import { darkMode } from '$lib/stores/cookie';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -23,6 +26,16 @@
   client.setRelays(settings.defaultRelays);
   setContext('nostr-client', client);
 
+  $: if (browser) {
+    if ($darkMode) {
+      document.documentElement.setAttribute('data-darkmode', 'true');
+      applyDarkMode();
+    } else {
+      document.documentElement.removeAttribute('data-darkmode');
+      removeDarkMode();
+    }
+  }
+
   beforeNavigate(() => {
     timeout = setTimeout(() => {
       loading = true;
@@ -32,6 +45,7 @@
   afterNavigate(() => {
     clearTimeout(timeout);
     loading = false;
+    if (browser && $darkMode) applyDarkMode();
   });
 </script>
 

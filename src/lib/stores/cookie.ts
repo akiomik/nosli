@@ -3,3 +3,4 @@ import { writable } from 'svelte/store';
 
 export const pubkey = persist(writable(''), createCookieStorage(), 'pubkey');
 export const nip07 = persist(writable(false), createCookieStorage(), 'nip07');
+export const darkMode = persist(writable(false), createCookieStorage(), 'darkMode');

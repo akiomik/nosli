@@ -32,6 +32,8 @@
   "login-with-nip07": "NIP-07 を使用",
   "logout": "ログアウト",
   "mypage": "マイページ",
+  "dark-mode": "ダークモード",
+  "light-mode": "ライトモード",
   "nosli-description": "Nosli (ノスリ) は、分散SNSのためのオープンプロトコルである Nostr 上の投稿まとめ作成ツールです",
   "notes-required": "投稿 (必須)",
   "nip07-implementations": "NIP-07 の実装一覧 (英語)",
