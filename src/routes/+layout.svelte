@@ -39,7 +39,13 @@
     }
   }
 
-  const BOOTSTRAP_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol'];
+  const BOOTSTRAP_RELAYS = [
+    'wss://indexer.coracle.social',
+    'wss://relay.damus.io',
+    'wss://directory.yabu.me',
+    'wss://purplepag.es',
+    'wss://nos.lol'
+  ];
 
   async function applyRelaySource(source: typeof $relaySource) {
     if (!browser) return;
