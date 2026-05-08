@@ -34,6 +34,12 @@
   "mypage": "My page",
   "dark-mode": "Dark mode",
   "light-mode": "Light mode",
+  "settings": {
+    "title": "Settings",
+    "theme": "Theme",
+    "relay-source": "Relay source",
+    "link-target": "Link target"
+  },
   "nosli-description": "Nosli helps you create a curated list of posts on Nostr that is a open protocol for a decentralized global social network",
   "notes-required": "Notes (required)",
   "nip07-implementations": "NIP-07 implementations",

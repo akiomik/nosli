@@ -34,6 +34,12 @@
   "mypage": "マイページ",
   "dark-mode": "ダークモード",
   "light-mode": "ライトモード",
+  "settings": {
+    "title": "設定",
+    "theme": "テーマ",
+    "relay-source": "リレー設定",
+    "link-target": "リンク先"
+  },
   "nosli-description": "Nosli (ノスリ) は、分散SNSのためのオープンプロトコルである Nostr 上の投稿まとめ作成ツールです",
   "notes-required": "投稿 (必須)",
   "nip07-implementations": "NIP-07 の実装一覧 (英語)",
