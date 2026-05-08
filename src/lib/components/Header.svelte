@@ -39,7 +39,7 @@
     <a href="{base}/">
       <span class="flex items-center">
         <img src="{base}/favicon.svg" alt="Nosli icon" class="h-10 mr-1" width="40" height="40" />
-        Nosli
+        Nosli - 魔改造 edition
       </span>
     </a>
   </svelte:fragment>

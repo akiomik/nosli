@@ -27,10 +27,10 @@
 </script>
 
 <svelte:head>
-  <title>{name} | Nosli</title>
+  <title>{name} | Nosli - 魔改造 edition</title>
   <meta name="description" content="View {name}'s profile and lists" />
   <meta property="og:url" content="https://nosli.vercel.app/p/{data.pubkey}" />
-  <meta property="og:title" content="{name} | Nosli" />
+  <meta property="og:title" content="{name} | Nosli - 魔改造 edition" />
   <meta property="og:description" content="View {name}'s profile and lists" />
 </svelte:head>
 

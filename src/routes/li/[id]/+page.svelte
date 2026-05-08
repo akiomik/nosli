@@ -32,11 +32,11 @@
 
 <svelte:head>
   {#if $matome && $profile}
-    <title>{$matome.title} by {$profile.formattedName()} | Nosli</title>
+    <title>{$matome.title} by {$profile.formattedName()} | Nosli - 魔改造 edition</title>
     <meta name="description" content={$matome.summary} />
     <meta name="keywords" content="nostr,curated,list,damus,snort" />
     <meta property="og:url" content="https://nosli.vercel.app/li/{$matome.nip19Id()}" />
-    <meta property="og:title" content="{$matome.title} | Nosli" />
+    <meta property="og:title" content="{$matome.title} | Nosli - 魔改造 edition" />
     <meta property="og:description" content={$matome.summary} />
   {/if}
 </svelte:head>

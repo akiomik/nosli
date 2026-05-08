@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-  <title>{$_('create-new-list')} | Nosli</title>
+  <title>{$_('create-new-list')} | Nosli - 魔改造 edition</title>
 </svelte:head>
 
 <h1>{$_('create-new-list')}</h1>
