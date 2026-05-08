@@ -6,7 +6,6 @@
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
   import KeyManager from '$lib/services/KeyManager';
-  import { darkMode } from '$lib/stores/cookie';
 
   const dispatch = createEventDispatcher();
 
@@ -16,9 +15,8 @@
     goto(`${base}/`);
   };
 
-  const toggleDarkMode = () => {
-    dispatch('select', 'dark-mode');
-    $darkMode = !$darkMode;
+  const openSettings = () => {
+    dispatch('select', 'settings');
   };
 </script>
 
@@ -35,9 +33,7 @@
     </li>
   {/await}
   <li>
-    <button on:click={toggleDarkMode} class="w-full text-left">
-      {$darkMode ? $_('light-mode') : $_('dark-mode')}
-    </button>
+    <button on:click={openSettings} class="w-full text-left">{$_('settings.title')}</button>
   </li>
   <li>
     <button on:click={logout} class="w-full text-left">{$_('logout')}</button>

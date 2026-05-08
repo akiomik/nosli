@@ -11,16 +11,22 @@
   import KeyManager from '$lib/services/KeyManager';
   import MenuPopover from '$lib/components/MenuPopover.svelte';
   import RelayConnectionStatusListPopover from '$lib/components/RelayConnectionStatusListPopover.svelte';
+  import SettingsPopover from '$lib/components/SettingsPopover.svelte';
 
   const client: RxNostr = getContext('nostr-client');
   const connections = relayConnectionsStore(client);
 
   let showRelayConnectionStatus = false;
   let showMenu = false;
+  let showSettings = false;
 
   const handleRelayConnectionStatus = () =>
     (showRelayConnectionStatus = !showRelayConnectionStatus);
   const handleMenu = () => (showMenu = !showMenu);
+  const handleMenuSelect = (e: CustomEvent<string>) => {
+    showMenu = false;
+    if (e.detail === 'settings') showSettings = true;
+  };
 
   $: activeConnections = $connections?.filter(({ state }) => state === 'ongoing');
 </script>
@@ -64,9 +70,11 @@
 
         <MenuPopover
           open={showMenu}
-          on:select={() => (showMenu = false)}
+          on:select={handleMenuSelect}
           on:close={() => (showMenu = false)}
         />
+
+        <SettingsPopover open={showSettings} on:close={() => (showSettings = false)} />
       </div>
     {:else}
       <a href="{base}/login" class="btn bg-primary-500">{$_('login')}</a>
