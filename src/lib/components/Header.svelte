@@ -61,26 +61,26 @@
       />
     </div>
 
-    {#if loggedIn}
-      {#if writable}
-        <a href="{base}/li/new" class="btn bg-primary-500">{$_('create')}</a>
-      {/if}
+    {#if writable}
+      <a href="{base}/li/new" class="btn bg-primary-500">{$_('create')}</a>
+    {/if}
 
-      <div class="relative">
-        <button class="btn-icon hover:variant-soft-surface" on:click|stopPropagation={handleMenu}>
-          <FontAwesomeIcon icon={faBars} title="Open menu" />
-        </button>
-
-        <MenuPopover
-          open={showMenu}
-          on:select={handleMenuSelect}
-          on:close={() => (showMenu = false)}
-        />
-
-        <SettingsPopover open={showSettings} on:close={() => (showSettings = false)} />
-      </div>
-    {:else}
+    {#if !loggedIn}
       <a href="{base}/login" class="btn bg-primary-500">{$_('login')}</a>
     {/if}
+
+    <div class="relative">
+      <button class="btn-icon hover:variant-soft-surface" on:click|stopPropagation={handleMenu}>
+        <FontAwesomeIcon icon={faBars} title="Open menu" />
+      </button>
+
+      <MenuPopover
+        open={showMenu}
+        on:select={handleMenuSelect}
+        on:close={() => (showMenu = false)}
+      />
+
+      <SettingsPopover open={showSettings} on:close={() => (showSettings = false)} />
+    </div>
   </svelte:fragment>
 </AppBar>

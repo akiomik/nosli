@@ -1,7 +1,10 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
 
-  import { darkMode, relaySource, linkTarget } from '$lib/stores/cookie';
+  import KeyManager from '$lib/services/KeyManager';
+  import { darkMode, relaySource, linkTarget, pubkey, nip07 } from '$lib/stores/cookie';
+
+  $: loggedIn = $pubkey || $nip07 ? KeyManager.isLoggedIn() : false;
 </script>
 
 <div class="flex flex-col space-y-6 min-w-[16rem]">
@@ -17,21 +20,23 @@
     </label>
   </fieldset>
 
-  <fieldset class="flex flex-col space-y-2">
-    <legend class="font-bold mb-2">{$_('settings.relay-source')}</legend>
-    <label class="flex items-center space-x-2">
-      <input type="radio" bind:group={$relaySource} value="kind10002" />
-      <span>kind:10002</span>
-    </label>
-    <label class="flex items-center space-x-2">
-      <input type="radio" bind:group={$relaySource} value="kind3" />
-      <span>kind:3</span>
-    </label>
-    <label class="flex items-center space-x-2">
-      <input type="radio" bind:group={$relaySource} value="default" />
-      <span>default</span>
-    </label>
-  </fieldset>
+  {#if loggedIn}
+    <fieldset class="flex flex-col space-y-2">
+      <legend class="font-bold mb-2">{$_('settings.relay-source')}</legend>
+      <label class="flex items-center space-x-2">
+        <input type="radio" bind:group={$relaySource} value="kind10002" />
+        <span>kind:10002</span>
+      </label>
+      <label class="flex items-center space-x-2">
+        <input type="radio" bind:group={$relaySource} value="kind3" />
+        <span>kind:3</span>
+      </label>
+      <label class="flex items-center space-x-2">
+        <input type="radio" bind:group={$relaySource} value="default" />
+        <span>default</span>
+      </label>
+    </fieldset>
+  {/if}
 
   <fieldset class="flex flex-col space-y-2">
     <legend class="font-bold mb-2">{$_('settings.link-target')}</legend>
