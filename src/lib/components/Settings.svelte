@@ -41,11 +41,35 @@
     </label>
     <label class="flex items-center space-x-2">
       <input type="radio" bind:group={$linkTarget} value="lumilumi" />
-      <span>lumilumi</span>
+      <span>Lumilumi</span>
+    </label>
+    <label class="flex items-center space-x-2">
+      <input type="radio" bind:group={$linkTarget} value="nos-haiku" />
+      <span>Nos Haiku</span>
+    </label>
+    <label class="flex items-center space-x-2">
+      <input type="radio" bind:group={$linkTarget} value="nostrudel" />
+      <span>NoStrudel</span>
+    </label>
+    <label class="flex items-center space-x-2">
+      <input type="radio" bind:group={$linkTarget} value="astraea" />
+      <span>Astraea</span>
+    </label>
+    <label class="flex items-center space-x-2">
+      <input type="radio" bind:group={$linkTarget} value="primal" />
+      <span>Primal</span>
+    </label>
+    <label class="flex items-center space-x-2">
+      <input type="radio" bind:group={$linkTarget} value="iris" />
+      <span>iris</span>
     </label>
     <label class="flex items-center space-x-2">
       <input type="radio" bind:group={$linkTarget} value="snort" />
-      <span>snort</span>
+      <span>Snort</span>
+    </label>
+    <label class="flex items-center space-x-2">
+      <input type="radio" bind:group={$linkTarget} value="yakihonne" />
+      <span>Yakihonne</span>
     </label>
   </fieldset>
 </div>

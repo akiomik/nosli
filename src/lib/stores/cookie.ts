@@ -12,7 +12,16 @@ export const relaySource = persist(
   'relaySource'
 );
 
-export type LinkTarget = 'nostter' | 'lumilumi' | 'snort';
+export type LinkTarget =
+  | 'nostter'
+  | 'lumilumi'
+  | 'nos-haiku'
+  | 'nostrudel'
+  | 'astraea'
+  | 'primal'
+  | 'iris'
+  | 'snort'
+  | 'yakihonne';
 export const linkTarget = persist(
   writable<LinkTarget>('nostter'),
   createCookieStorage(),
