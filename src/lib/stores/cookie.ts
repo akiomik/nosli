@@ -17,7 +17,7 @@ export type LinkTarget =
   | 'lumilumi'
   | 'nos-haiku'
   | 'nostrudel'
-  | 'astraea'
+  | 'coracle'
   | 'primal'
   | 'iris'
   | 'snort'

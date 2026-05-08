@@ -52,8 +52,8 @@
       <span>NoStrudel</span>
     </label>
     <label class="flex items-center space-x-2">
-      <input type="radio" bind:group={$linkTarget} value="astraea" />
-      <span>Astraea</span>
+      <input type="radio" bind:group={$linkTarget} value="coracle" />
+      <span>Coracle</span>
     </label>
     <label class="flex items-center space-x-2">
       <input type="radio" bind:group={$linkTarget} value="primal" />

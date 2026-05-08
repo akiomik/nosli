@@ -10,8 +10,8 @@ export function externalEventUrl(target: LinkTarget, bech32: string): string {
       return `https://nos-haiku.pages.dev/entry/${bech32}`;
     case 'nostrudel':
       return `https://nostrudel.ninja/n/${bech32}`;
-    case 'astraea':
-      return `https://astraea.mousedev.page/${bech32}`;
+    case 'coracle':
+      return `https://coracle.social/notes/${bech32}`;
     case 'primal':
       return `https://primal.net/e/${bech32}`;
     case 'iris':
@@ -33,8 +33,8 @@ export function externalProfileUrl(target: LinkTarget, bech32: string): string {
       return `https://nos-haiku.pages.dev/${bech32}`;
     case 'nostrudel':
       return `https://nostrudel.ninja/u/${bech32}`;
-    case 'astraea':
-      return `https://astraea.mousedev.page/${bech32}`;
+    case 'coracle':
+      return `https://coracle.social/people/${bech32}`;
     case 'primal':
       return `https://primal.net/p/${bech32}`;
     case 'iris':
@@ -56,8 +56,8 @@ export function externalHashtagUrl(target: LinkTarget, tag: string): string {
       return `https://nos-haiku.pages.dev/hashtag/${tag}`;
     case 'nostrudel':
       return `https://nostrudel.ninja/t/${tag}`;
-    case 'astraea':
-      return `https://astraea.mousedev.page/hashtag/${tag}`;
+    case 'coracle':
+      return `https://coracle.social/topics/${tag}`;
     case 'primal':
       return `https://primal.net/search/%23${tag}`;
     case 'iris':
