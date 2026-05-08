@@ -2,7 +2,6 @@
   import type { ConnectionStatePacket } from 'rx-nostr';
 
   import RelayConnectionStatusList from '$lib/components/RelayConnectionStatusList.svelte';
-  import RelaySourceSelector from '$lib/components/RelaySourceSelector.svelte';
   import Popover from '$lib/components/Popover.svelte';
 
   export let open = false;
@@ -11,5 +10,4 @@
 
 <Popover {open} on:close anchor="center">
   <RelayConnectionStatusList {connections} />
-  <RelaySourceSelector />
 </Popover>
