@@ -6,7 +6,8 @@
 
   import type { PageData } from './$types';
   import { recentUserMatomesStore, profileStore } from '$lib/stores/nostr';
-  import { linkify, linkifyOpts } from '$lib/actions/linkify';
+  import { linkify, makeLinkifyOpts } from '$lib/actions/linkify';
+  import { linkTarget } from '$lib/stores/cookie';
   import KeyManager from '$lib/services/KeyManager';
   import MatomeList from '$lib/components/MatomeList.svelte';
   import Alert from '$lib/components/Alert.svelte';
@@ -22,6 +23,7 @@
   const profile = profileStore({ client, pubkey: data.pubkey });
 
   $: name = $profile?.formattedName() || 'nostrich';
+  $: opts = makeLinkifyOpts($linkTarget);
 </script>
 
 <svelte:head>
@@ -48,7 +50,7 @@
 </div>
 
 {#if $profile}
-  <p use:linkify={linkifyOpts}>{$profile.about}</p>
+  <p use:linkify={opts}>{$profile.about}</p>
 {/if}
 
 {#if $profile && KeyManager.isLoggedInWithPublicKey()}

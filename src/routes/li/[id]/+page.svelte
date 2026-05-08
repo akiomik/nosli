@@ -7,7 +7,8 @@
   import { base } from '$app/paths';
   import type { PageData } from './$types';
   import { matomeStore, profileStore, notesStore } from '$lib/stores/nostr';
-  import { linkify, linkifyOpts } from '$lib/actions/linkify';
+  import { linkify, makeLinkifyOpts } from '$lib/actions/linkify';
+  import { linkTarget } from '$lib/stores/cookie';
   import KeyManager from '$lib/services/KeyManager';
   import NoteList from '$lib/components/NoteList.svelte';
   import ProfileLink from '$lib/components/ProfileLink.svelte';
@@ -26,6 +27,7 @@
   });
   $: profile = profileStore({ client, pubkey: data.params.pubkey });
   $: notes = $matome ? notesStore({ client, ids: $matome.eventIds() }) : undefined;
+  $: opts = makeLinkifyOpts($linkTarget);
 </script>
 
 <svelte:head>
@@ -55,7 +57,7 @@
   </div>
 
   {#if $matome.summary}
-    <p use:linkify={linkifyOpts}>{$matome.summary}</p>
+    <p use:linkify={opts}>{$matome.summary}</p>
   {/if}
 
   <div class="flex flex-col space-y-2">

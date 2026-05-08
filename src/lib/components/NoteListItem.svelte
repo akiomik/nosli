@@ -6,12 +6,14 @@
   import NoteListItemProfile from '$lib/components/NoteListItemProfile.svelte';
   import ProfileLink from '$lib/components/ProfileLink.svelte';
   import { inlineImage } from '$lib/actions/inlineImage';
-  import { linkify, linkifyOpts } from '$lib/actions/linkify';
+  import { linkify, makeLinkifyOpts } from '$lib/actions/linkify';
+  import { linkTarget } from '$lib/stores/cookie';
 
   export let note: Note;
 
   const client: RxNostr = getContext('nostr-client');
   const profile = profileStore({ client, pubkey: note.pubkey });
+  $: opts = makeLinkifyOpts($linkTarget);
 </script>
 
 <div class="card">
@@ -29,7 +31,7 @@
         className: 'my-4 w-full max-w-lg',
         attributes: { alt: 'Embed image', decoding: 'async', loading: 'lazy' }
       }}
-      use:linkify={linkifyOpts}
+      use:linkify={opts}
       class="text-ellipsis overflow-hidden line-clamp-8 mt-4"
     >
       {note.modifiedContent()}
