@@ -9,6 +9,7 @@
   import { base } from '$app/paths';
   import { relayConnectionsStore } from '$lib/stores/nostr';
   import KeyManager from '$lib/services/KeyManager';
+  import { pubkey, nip07 } from '$lib/stores/cookie';
   import MenuPopover from '$lib/components/MenuPopover.svelte';
   import RelayConnectionStatusListPopover from '$lib/components/RelayConnectionStatusListPopover.svelte';
   import SettingsPopover from '$lib/components/SettingsPopover.svelte';
@@ -29,6 +30,8 @@
   };
 
   $: activeConnections = $connections?.filter(({ state }) => state === 'ongoing');
+  $: loggedIn = $pubkey || $nip07 ? KeyManager.isLoggedIn() : false;
+  $: writable = $nip07 ? KeyManager.isWritableLoggedIn() : false;
 </script>
 
 <AppBar>
@@ -58,8 +61,8 @@
       />
     </div>
 
-    {#if KeyManager.isLoggedIn()}
-      {#if KeyManager.isWritableLoggedIn()}
+    {#if loggedIn}
+      {#if writable}
         <a href="{base}/li/new" class="btn bg-primary-500">{$_('create')}</a>
       {/if}
 
