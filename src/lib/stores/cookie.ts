@@ -11,3 +11,10 @@ export const relaySource = persist(
   createCookieStorage(),
   'relaySource'
 );
+
+export type LinkTarget = 'nostter' | 'lumilumi' | 'snort';
+export const linkTarget = persist(
+  writable<LinkTarget>('nostter'),
+  createCookieStorage(),
+  'linkTarget'
+);
