@@ -6,5 +6,5 @@
 </script>
 
 <Popover {open} on:close>
-  <Menu />
+  <Menu on:select />
 </Popover>

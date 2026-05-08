@@ -33,7 +33,9 @@
     </li>
   {/await}
   <li>
-    <button on:click={openSettings} class="w-full text-left">{$_('settings.title')}</button>
+    <button on:click|stopPropagation={openSettings} class="w-full text-left">
+      {$_('settings.title')}
+    </button>
   </li>
   <li>
     <button on:click={logout} class="w-full text-left">{$_('logout')}</button>
