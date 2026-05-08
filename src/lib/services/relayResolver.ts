@@ -62,7 +62,8 @@ export async function resolveRelays(
   for (const s of fallback) {
     if (s === 'default') return defaults;
     if (!pubkey) continue;
-    const relays = s === 'kind10002' ? await fetchKind10002(client, pubkey) : await fetchKind3(client, pubkey);
+    const relays =
+      s === 'kind10002' ? await fetchKind10002(client, pubkey) : await fetchKind3(client, pubkey);
     if (relays) return relays;
   }
   return defaults;

@@ -46,7 +46,7 @@ export function convertRgb(r: number, g: number, b: number): [number, number, nu
 
 function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   const c = (1 - Math.abs(2 * l - 1)) * s;
-  const hp = ((h % 360) + 360) % 360 / 60;
+  const hp = (((h % 360) + 360) % 360) / 60;
   const x = c * (1 - Math.abs((hp % 2) - 1));
   let r = 0;
   let g = 0;
@@ -100,7 +100,11 @@ function parseColor(input: string): ParsedColor | null {
     /^hsla?\(\s*([0-9.]+)(?:deg)?\s*[,\s]\s*([0-9.]+)%\s*[,\s]\s*([0-9.]+)%\s*(?:[,/]\s*([0-9.]+%?))?\s*\)$/
   );
   if (hsl) {
-    const [r, g, b] = hslToRgb(parseFloat(hsl[1]), parseFloat(hsl[2]) / 100, parseFloat(hsl[3]) / 100);
+    const [r, g, b] = hslToRgb(
+      parseFloat(hsl[1]),
+      parseFloat(hsl[2]) / 100,
+      parseFloat(hsl[3]) / 100
+    );
     return { r, g, b, a: parseAlpha(hsl[4]) };
   }
   return null;
@@ -125,7 +129,8 @@ function darkifyColor(input: string): string {
 }
 
 const COLOR_RE = /#[0-9a-f]{3,8}\b|rgba?\([^)]+\)|hsla?\([^)]+\)/gi;
-const VAR_RGB_TRIPLET_RE = /(--[a-z0-9-]+\s*:\s*)(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})(\s*(?:[;}]|$))/gi;
+const VAR_RGB_TRIPLET_RE =
+  /(--[a-z0-9-]+\s*:\s*)(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})(\s*(?:[;}]|$))/gi;
 
 export function rewriteCss(css: string): string {
   let out = css.replace(COLOR_RE, (m) => darkifyColor(m));

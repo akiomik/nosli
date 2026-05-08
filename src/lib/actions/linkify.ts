@@ -23,7 +23,10 @@ export function makeLinkifyOpts(target: LinkTarget): Opts {
     formatHref: (href: string, type: string) => {
       if (type === 'hashtag') {
         return externalHashtagUrl(target, href.substring(1));
-      } else if (type === 'mention' && (href.startsWith('/npub1') || href.startsWith('/nprofile1'))) {
+      } else if (
+        type === 'mention' &&
+        (href.startsWith('/npub1') || href.startsWith('/nprofile1'))
+      ) {
         return externalProfileUrl(target, href.substring(1));
       } else if (type === 'mention' && (href.startsWith('/note1') || href.startsWith('/nevent1'))) {
         return externalEventUrl(target, href.substring(1));

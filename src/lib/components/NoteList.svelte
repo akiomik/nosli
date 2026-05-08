@@ -16,10 +16,7 @@
   <!-- NOTE: Added index (i) to avoid duplication error -->
   {#each notes as { id, note }, i (`${id}-${i}`)}
     {#if note}
-      <ExternalLink
-        href={externalEventUrl($linkTarget, note.nip19Id() ?? '')}
-        class="unstyled"
-      >
+      <ExternalLink href={externalEventUrl($linkTarget, note.nip19Id() ?? '')} class="unstyled">
         <NoteListItem {note} />
       </ExternalLink>
     {:else}

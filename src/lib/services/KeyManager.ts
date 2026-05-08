@@ -17,18 +17,18 @@ export default class KeyManager {
   }
 
   static async getPublicKey(): Promise<string> {
-    if (KeyManager.isLoggedInWithNip07()) {
-      return window.nostr!.getPublicKey();
+    if (KeyManager.isLoggedInWithNip07() && window.nostr) {
+      return window.nostr.getPublicKey();
     }
     return get(pubkey);
   }
 
   static async signEvent(event: Event): Promise<Event> {
-    if (!KeyManager.isLoggedInWithNip07()) {
+    if (!KeyManager.isLoggedInWithNip07() || !window.nostr) {
       return Promise.reject(new Error('Signing requires NIP-07'));
     }
 
-    return window.nostr!.signEvent(event);
+    return window.nostr.signEvent(event);
   }
 
   static async isLoggedInAs(pubkey: string): Promise<boolean> {
