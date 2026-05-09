@@ -4,9 +4,11 @@
   import type { RxNostr } from 'rx-nostr';
   import { _ } from 'svelte-i18n';
 
+  import { base } from '$app/paths';
   import type { PageData } from './$types';
   import { matomeStore, profileStore, notesStore } from '$lib/stores/nostr';
-  import { linkify, linkifyOpts } from '$lib/actions/linkify';
+  import { linkify, makeLinkifyOpts } from '$lib/actions/linkify';
+  import { linkTarget } from '$lib/stores/cookie';
   import KeyManager from '$lib/services/KeyManager';
   import NoteList from '$lib/components/NoteList.svelte';
   import ProfileLink from '$lib/components/ProfileLink.svelte';
@@ -25,15 +27,16 @@
   });
   $: profile = profileStore({ client, pubkey: data.params.pubkey });
   $: notes = $matome ? notesStore({ client, ids: $matome.eventIds() }) : undefined;
+  $: opts = makeLinkifyOpts($linkTarget);
 </script>
 
 <svelte:head>
   {#if $matome && $profile}
-    <title>{$matome.title} by {$profile.formattedName()} | Nosli</title>
+    <title>{$matome.title} by {$profile.formattedName()} | Nosli - 魔改造 edition</title>
     <meta name="description" content={$matome.summary} />
     <meta name="keywords" content="nostr,curated,list,damus,snort" />
     <meta property="og:url" content="https://nosli.vercel.app/li/{$matome.nip19Id()}" />
-    <meta property="og:title" content="{$matome.title} | Nosli" />
+    <meta property="og:title" content="{$matome.title} | Nosli - 魔改造 edition" />
     <meta property="og:description" content={$matome.summary} />
   {/if}
 </svelte:head>
@@ -47,14 +50,14 @@
     {:then isMine}
       {#if isMine && KeyManager.isWritableLoggedIn()}
         <div>
-          <a href="/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">{$_('edit')}</a>
+          <a href="{base}/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">{$_('edit')}</a>
         </div>
       {/if}
     {/await}
   </div>
 
   {#if $matome.summary}
-    <p use:linkify={linkifyOpts}>{$matome.summary}</p>
+    <p use:linkify={opts}>{$matome.summary}</p>
   {/if}
 
   <div class="flex flex-col space-y-2">

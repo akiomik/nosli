@@ -6,6 +6,8 @@
   import ExternalLink from '$lib/components/ExternalLink.svelte';
   import NoteListItem from '$lib/components/NoteListItem.svelte';
   import Alert from '$lib/components/Alert.svelte';
+  import { externalEventUrl } from '$lib/services/externalLink';
+  import { linkTarget } from '$lib/stores/cookie';
 
   export let notes: LoadingNote[];
 </script>
@@ -14,7 +16,7 @@
   <!-- NOTE: Added index (i) to avoid duplication error -->
   {#each notes as { id, note }, i (`${id}-${i}`)}
     {#if note}
-      <ExternalLink href="https://snort.social/e/{note.nip19Id()}" class="unstyled">
+      <ExternalLink href={externalEventUrl($linkTarget, note.nip19Id() ?? '')} class="unstyled">
         <NoteListItem {note} />
       </ExternalLink>
     {:else}

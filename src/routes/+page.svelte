@@ -5,7 +5,7 @@
   import ExternalLink from '$lib/components/ExternalLink.svelte';
   import GlobalMatomeList from '$lib/components/GlobalMatomeList.svelte';
 
-  const title = 'Nosli | Create curated lists of posts on nostr';
+  const title = 'Nosli - 魔改造 edition | Create curated lists of posts on nostr';
   const desc = 'Nosli helps you create a curated list of posts on nostr';
 </script>
 
@@ -18,7 +18,7 @@
   <meta property="og:description" content={desc} />
 </svelte:head>
 
-<h1>Nosli</h1>
+<h1>Nosli<span class="text-base text-surface-900/60 ml-2">- 魔改造 edition</span></h1>
 
 <p>
   {$_('nosli-description')}

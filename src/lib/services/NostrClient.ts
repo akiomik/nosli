@@ -5,10 +5,15 @@ import type { AddressPointer, EventPointer, ProfilePointer } from 'nostr-tools/n
 import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
 
-export const nip19ToHex = (b32: string) => {
+export const decodeNip19 = (b32: string): { id: string; relays?: string[] } => {
   const data = nip19.decode(b32);
-  if (data.type === 'note') return data.data;
-  else if (data.type === 'nevent') return (data.data as nip19.EventPointer).id;
+  if (data.type === 'note') {
+    return { id: data.data };
+  } else if (data.type === 'nevent') {
+    const eventPointer = data.data as nip19.EventPointer;
+    return { id: eventPointer.id, relays: eventPointer.relays };
+  }
+  throw new Error(`Unsupported nip19 type: ${data.type}`);
 };
 
 export default class NostrClient {

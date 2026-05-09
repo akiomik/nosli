@@ -3,13 +3,33 @@ import type { RxNostr } from 'rx-nostr';
 
 import type { LoadingNote } from '$lib/entities/LoadingNote';
 import type LongFormContent from '$lib/entities/LongFormContent';
-import { nip19ToHex } from '$lib/services/NostrClient';
+import { decodeNip19 } from '$lib/services/NostrClient';
 import KeyManager from '$lib/services/KeyManager';
 import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/nostr';
 
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
   const { matome, client } = params;
-  const initNoteIds = matome?.noteIds()?.map(nip19ToHex) ?? [];
+  const decodedNotes = matome?.noteIds()?.map((id) => decodeNip19(id)) ?? [];
+  const seenIds = new Set<string>();
+  const initNoteIds = decodedNotes
+    .map((d) => d.id)
+    .filter((id) => {
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+
+  // Add relay hints from existing matome to the client
+  for (const decoded of decodedNotes) {
+    if (decoded.relays && decoded.relays.length > 0) {
+      for (const relay of decoded.relays) {
+        if (!client.hasRelay(relay)) {
+          client.addRelay(relay);
+        }
+      }
+    }
+  }
+
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const notes = writable<LoadingNote[]>([]);
@@ -39,8 +59,25 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   });
 
   const appendNote = (noteId: string) => {
-    const hex =
-      noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
+    let hex: string;
+    let relays: string[] | undefined;
+
+    if (noteId.startsWith('note1') || noteId.startsWith('nevent1')) {
+      const decoded = decodeNip19(noteId);
+      hex = decoded.id;
+      relays = decoded.relays;
+    } else {
+      hex = noteId;
+    }
+
+    // Add relay hints from nevent to the client
+    if (relays && relays.length > 0) {
+      for (const relay of relays) {
+        if (!client.hasRelay(relay)) {
+          client.addRelay(relay);
+        }
+      }
+    }
 
     noteStore({ client, id: hex }).subscribe((note) => {
       notes.update((prev) => [
@@ -55,7 +92,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
 
   const removeNote = (noteId: string) => {
     const hex =
-      noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
+      noteId.startsWith('note1') || noteId.startsWith('nevent1') ? decodeNip19(noteId).id : noteId;
     notes.update((prev) => prev.filter((note) => note.id !== hex));
   };
 

@@ -1,7 +1,6 @@
 import { get } from 'svelte/store';
 import type { Event } from 'nostr-tools';
-import { signEvent, getEventHash } from 'nostr-tools';
-import { nip07, pubkey, seckey } from '$lib/stores/cookie';
+import { nip07, pubkey } from '$lib/stores/cookie';
 
 declare global {
   interface Window {
@@ -18,30 +17,18 @@ export default class KeyManager {
   }
 
   static async getPublicKey(): Promise<string> {
-    if (get(nip07)) {
-      if (!window.nostr) {
-        return Promise.reject(new Error('Failed to resolve NIP-07'));
-      }
-
+    if (KeyManager.isLoggedInWithNip07() && window.nostr) {
       return window.nostr.getPublicKey();
-    } else {
-      return get(pubkey);
     }
+    return get(pubkey);
   }
 
   static async signEvent(event: Event): Promise<Event> {
-    if (get(nip07)) {
-      if (!window.nostr) {
-        return Promise.reject(new Error('Failed to resolve NIP-07'));
-      }
-
-      return window.nostr.signEvent(event);
-    } else {
-      event.pubkey = get(pubkey);
-      event.id = getEventHash(event);
-      event.sig = signEvent(event, get(seckey));
-      return event;
+    if (!KeyManager.isLoggedInWithNip07() || !window.nostr) {
+      return Promise.reject(new Error('Signing requires NIP-07'));
     }
+
+    return window.nostr.signEvent(event);
   }
 
   static async isLoggedInAs(pubkey: string): Promise<boolean> {
@@ -54,32 +41,23 @@ export default class KeyManager {
   }
 
   static isLoggedIn(): boolean {
-    return KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithKey();
+    return KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithPublicKey();
   }
 
   static isLoggedInWithNip07(): boolean {
-    return get(nip07);
-  }
-
-  static isLoggedInWithKey(): boolean {
-    return get(pubkey) !== '';
+    return get(nip07) && typeof window !== 'undefined' && !!window.nostr;
   }
 
   static isLoggedInWithPublicKey(): boolean {
-    return get(pubkey) !== '' && get(seckey) === '';
-  }
-
-  static isLoggedInWithSecretKey(): boolean {
-    return get(seckey) !== '';
+    return !get(nip07) && get(pubkey) !== '';
   }
 
   static isWritableLoggedIn(): boolean {
-    return KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey();
+    return KeyManager.isLoggedInWithNip07();
   }
 
   static logout() {
     pubkey.set('');
-    seckey.set('');
     nip07.set(false);
   }
 }

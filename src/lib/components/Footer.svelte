@@ -10,7 +10,7 @@
   <ul class="list-none">
     <FooterItem>&copy; 2023 Nosli</FooterItem>
     <FooterItem>
-      <ExternalLink href="https://github.com/akiomik/nosli" class="unstyled">
+      <ExternalLink href="https://github.com/koteitan/nosli" class="unstyled">
         <FontAwesomeIcon icon={faGithub} title="Open our Github repository" />
       </ExternalLink>
     </FooterItem>

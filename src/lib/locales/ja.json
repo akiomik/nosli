@@ -6,7 +6,7 @@
     "failed-to-get-note": "投稿の取得に失敗しました。",
     "nip07-unavailable": "NIP-07 が利用できないようです。",
     "npub-limitation": "npub でログインしているため、まとめの作成や編集はできません。",
-    "nsec-and-nip07-info": "NIP-07 (ブラウザ拡張) または nsec でログインすることで、まとめの作成や編集を行うことができます。"
+    "nsec-and-nip07-info": "NIP-07 (ブラウザ拡張) でログインすることで、まとめの作成や編集を行うことができます。"
   },
   "by-author": "作者:",
   "cancel": "キャンセル",
@@ -28,10 +28,18 @@
   "last-updated": "最新更新:",
   "login": "ログイン",
   "login-to-nosli": "Nosli にログイン",
-  "login-with-key": "npub/nsec を利用",
-  "login-with-nip07": "NIP-07 を使用 (推奨)",
+  "login-with-key": "npub を利用",
+  "login-with-nip07": "NIP-07 を使用",
   "logout": "ログアウト",
   "mypage": "マイページ",
+  "dark-mode": "ダークモード",
+  "light-mode": "ライトモード",
+  "settings": {
+    "title": "設定",
+    "theme": "テーマ",
+    "relay-source": "リレー設定",
+    "link-target": "リンク先"
+  },
   "nosli-description": "Nosli (ノスリ) は、分散SNSのためのオープンプロトコルである Nostr 上の投稿まとめ作成ツールです",
   "notes-required": "投稿 (必須)",
   "nip07-implementations": "NIP-07 の実装一覧 (英語)",

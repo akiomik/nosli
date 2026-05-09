@@ -1,10 +1,10 @@
 <script lang="ts">
-  import Menu from '$lib/components/Menu.svelte';
+  import Settings from '$lib/components/Settings.svelte';
   import Popover from '$lib/components/Popover.svelte';
 
   export let open = false;
 </script>
 
-<Popover {open} on:close>
-  <Menu on:select />
+<Popover {open} on:close anchor="center">
+  <Settings />
 </Popover>

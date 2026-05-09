@@ -7,19 +7,21 @@
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import Editor from '$lib/components/NoteEditor/Editor.svelte';
   import RecentReactionList from '$lib/components/NoteEditor/RecentReactionList.svelte';
   import LongFormContent from '$lib/entities/LongFormContent';
   import Tag from '$lib/entities/Tag';
   import NostrClient from '$lib/services/NostrClient';
-  import * as settings from '$lib/services/settings';
   import { createNoteEditorStore } from '$lib/stores/noteEditor';
+  import { currentRelays } from '$lib/stores/relays';
+  import { get } from 'svelte/store';
 
   export let matome: LongFormContent | undefined = undefined;
 
   const rxClient: RxNostr = getContext('nostr-client');
-  const client = new NostrClient(settings.defaultRelays);
+  const client = new NostrClient(get(currentRelays));
   const editor = createNoteEditorStore({ matome, client: rxClient });
 
   let title: string | undefined = matome?.title;
@@ -40,7 +42,7 @@
     await client.connect();
 
     const lfcContent = $editor.notes
-      .map((loadingNote, i) => `nostr:${nip19.neventEncode({ id: loadingNote.id })}`)
+      .map((loadingNote) => `nostr:${nip19.neventEncode({ id: loadingNote.id })}`)
       .join('\n');
 
     const tags = [
@@ -67,12 +69,12 @@
     const message = matome ? $_('updated') : $_('created');
     toastStore.trigger({ message, background: 'bg-surface-300' });
 
-    goto(`/li/${lfc.nip19Id()}`);
+    goto(`${base}/li/${lfc.nip19Id()}`);
   };
 
   const onCancel = () => {
     if (confirm($_('dialog.quit-editing-confirmation'))) {
-      const path = matome ? `/li/${matome.nip19Id()}` : '/';
+      const path = matome ? `${base}/li/${matome.nip19Id()}` : `${base}/`;
       goto(path);
     }
   };
@@ -83,7 +85,7 @@
 
       toastStore.trigger({ message: $_('deleted'), background: 'bg-surface-300' });
 
-      goto(`/p/${nip19.npubEncode(matome.pubkey)}`);
+      goto(`${base}/p/${nip19.npubEncode(matome.pubkey)}`);
     }
   };
 

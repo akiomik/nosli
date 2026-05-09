@@ -6,7 +6,7 @@
   import LoginForm from '$lib/components/LoginForm.svelte';
   import Alert from '$lib/components/Alert.svelte';
 
-  $: title = `${$_('login')} | Nosli`;
+  $: title = `${$_('login')} | Nosli - 魔改造 edition`;
   $: desc = $_('login-to-nosli');
 </script>
 

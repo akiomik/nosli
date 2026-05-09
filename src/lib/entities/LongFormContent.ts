@@ -41,6 +41,9 @@ export default class LongFormContent {
       ['title', this.title],
       ['summary', this.summary],
       ...this.tags.map((tag: Tag) => {
+        if (tag.relay) {
+          return [tag.typ, tag.value, tag.relay];
+        }
         return [tag.typ, tag.value];
       })
     ];
@@ -77,7 +80,14 @@ export default class LongFormContent {
   }
 
   noteIds(): string[] {
-    return this.eventIds().map((id) => nip19.noteEncode(id));
+    return this.tags
+      .filter((tag: Tag) => tag.typ === 'e')
+      .map((tag) => {
+        if (tag.relay) {
+          return nip19.neventEncode({ id: tag.value, relays: [tag.relay] });
+        }
+        return nip19.noteEncode(tag.value);
+      });
   }
 
   includesTag(tag: Tag): boolean {

@@ -6,7 +6,7 @@
     "failed-to-get-note": "Failed to get a note.",
     "nip07-unavailable": "It seems that NIP-07 is not available.",
     "npub-limitation": "You are logged in with npub and unable to create or edit a list.",
-    "nsec-and-nip07-info": "You can create or edit your lists by logging in with NIP-07 (browser extension) or nsec."
+    "nsec-and-nip07-info": "You can create or edit your lists by logging in with NIP-07 (browser extension)."
   },
   "by-author": "By",
   "cancel": "Cancel",
@@ -28,10 +28,18 @@
   "last-updated": "Last updated:",
   "login": "Login",
   "login-to-nosli": "Login to Nosli",
-  "login-with-key": "with npub/nsec",
-  "login-with-nip07": "with NIP-07 (recommended)",
+  "login-with-key": "with npub",
+  "login-with-nip07": "with NIP-07",
   "logout": "Logout",
   "mypage": "My page",
+  "dark-mode": "Dark mode",
+  "light-mode": "Light mode",
+  "settings": {
+    "title": "Settings",
+    "theme": "Theme",
+    "relay-source": "Relay source",
+    "link-target": "Link target"
+  },
   "nosli-description": "Nosli helps you create a curated list of posts on Nostr that is a open protocol for a decentralized global social network",
   "notes-required": "Notes (required)",
   "nip07-implementations": "NIP-07 implementations",

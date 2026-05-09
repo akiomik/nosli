@@ -25,7 +25,20 @@ export function relayConnectionsStore(client: RxNostr): Observable<ConnectionSta
     .getRelays()
     .map(({ url }) => ({ from: url, state: 'not-started' }));
 
-  return client.createConnectionStateObservable().pipe(startWith(...init), latestConnectionState());
+  return client.createConnectionStateObservable().pipe(
+    startWith(...init),
+    latestConnectionState(),
+    map((packets) => {
+      const currentUrls = new Set(client.getRelays().map((r) => r.url));
+      const filtered = packets.filter((p) => currentUrls.has(p.from));
+      const seen = new Set(filtered.map((p) => p.from));
+      const synthetic: ConnectionStatePacket[] = [];
+      for (const url of currentUrls) {
+        if (!seen.has(url)) synthetic.push({ from: url, state: 'not-started' });
+      }
+      return [...filtered, ...synthetic];
+    })
+  );
 }
 
 export function recentGlobalMatomesStore({

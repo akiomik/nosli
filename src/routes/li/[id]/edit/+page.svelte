@@ -26,7 +26,9 @@
 
 <svelte:head>
   {#if $matome}
-    <title>{$_('edit-identifier', { values: { identifier: $matome.identifier } })} | Nosli</title>
+    <title
+      >{$_('edit-identifier', { values: { identifier: $matome.identifier } })} | Nosli - 魔改造 edition</title
+    >
   {/if}
 </svelte:head>
 
