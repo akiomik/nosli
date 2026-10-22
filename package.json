@@ -20,7 +20,7 @@
     "touchicongen": "qlmanage -t -s 180 -o static static/favicon.svg && mv static/favicon.svg.png static/apple-touch-icon.png"
   },
   "devDependencies": {
-    "@skeletonlabs/skeleton": "^0.132.5",
+    "@skeletonlabs/skeleton": "^1.12.0",
     "@sveltejs/adapter-vercel": "2.4.3",
     "@sveltejs/kit": "^1.30.4",
     "@tailwindcss/forms": "^0.5.3",
