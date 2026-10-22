@@ -54,7 +54,7 @@
     });
   };
 
-  const submit = async <T>(
+  const submit = async <T,>(
     kind: 'saving' | 'deleting',
     publish: () => Promise<T>,
     onPublished: (result: T) => void
@@ -182,8 +182,7 @@
       class="textarea"
       class:input-error={summary !== undefined && !isSummaryValid}
       maxlength="300"
-      disabled={submitting}
-    />
+      disabled={submitting}></textarea>
   </label>
 
   <section inert={submitting}>
