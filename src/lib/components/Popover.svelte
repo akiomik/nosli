@@ -13,7 +13,7 @@
 {#if anchor === 'left'}
   <div
     use:clickOutside={handleClickOutside}
-    class="card absolute w-auto whitespace-nowrap p-4"
+    class="card absolute z-50 w-auto whitespace-nowrap p-4 shadow-xl"
     class:hidden={!open}
   >
     <slot />
@@ -21,7 +21,7 @@
 {:else if anchor === 'center'}
   <div
     use:clickOutside={handleClickOutside}
-    class="card absolute w-auto whitespace-nowrap p-4 left-1/2 -translate-x-1/2"
+    class="card absolute z-50 w-auto whitespace-nowrap p-4 shadow-xl left-1/2 -translate-x-1/2"
     class:hidden={!open}
   >
     <slot />
@@ -29,7 +29,7 @@
 {:else}
   <div
     use:clickOutside={handleClickOutside}
-    class="card absolute w-auto whitespace-nowrap p-4 right-0"
+    class="card absolute z-50 w-auto whitespace-nowrap p-4 shadow-xl right-0"
     class:hidden={!open}
   >
     <slot />

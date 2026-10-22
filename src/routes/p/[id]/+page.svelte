@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getContext } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
-  import { Avatar } from '@skeletonlabs/skeleton';
+  import { Avatar } from '@skeletonlabs/skeleton-svelte';
   import { _ } from 'svelte-i18n';
 
   import type { PageData } from './$types';
@@ -35,10 +35,9 @@
 <div class="flex space-x-4 items-center">
   <Avatar
     src={$profile?.safePicture()}
-    initials="NO"
-    alt="Profile picture of {$profile?.formattedName() || 'nostrich'}"
-    class="w-12 h-12"
-  />
+    name={$profile?.formattedName() || 'nostrich'}
+    size="size-12">NO</Avatar
+  >
   <div class="flex flex-col">
     <h1 class="text-5xl font-heading-token">{$profile?.formattedName() || 'nostrich'}</h1>
     {#if $profile}

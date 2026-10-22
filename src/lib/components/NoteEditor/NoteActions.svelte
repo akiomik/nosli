@@ -12,7 +12,7 @@
 </script>
 
 <div class="flex items-center">
-  <div class="btn-group variant-soft-surface ml-5">
+  <div class="btn-group preset-tonal-surface ml-5">
     <button on:click|preventDefault={() => editor.moveUp(noteId)} disabled={isFirst}>
       <FontAwesomeIcon icon={faAngleUp} title="Move Up" />
     </button>
@@ -24,7 +24,7 @@
 
   <button
     type="button"
-    class="btn variant-soft-error ml-3"
+    class="btn preset-tonal-error ml-3"
     on:click|preventDefault={() => editor.removeNote(noteId)}
   >
     {$_('remove')}
