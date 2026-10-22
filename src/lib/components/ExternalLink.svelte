@@ -4,6 +4,6 @@
   export { className as class };
 </script>
 
-<a {href} rel="external noreferrer" target="_blank" class={className}>
+<a {href} rel="external noreferrer" target="_blank" class="anchor {className}">
   <slot />
 </a>

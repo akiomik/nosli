@@ -2,8 +2,7 @@
   import { nip19 } from 'nostr-tools';
   import { onDestroy, getContext } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
-  import { TabGroup, Tab } from '@skeletonlabs/skeleton';
-  import { toastStore } from '@skeletonlabs/skeleton';
+  import { TabGroup, Tab, getToastStore } from '@skeletonlabs/skeleton';
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
@@ -21,6 +20,7 @@
   const rxClient: RxNostr = getContext('nostr-client');
   const client = new NostrClient(settings.defaultRelays);
   const editor = createNoteEditorStore({ matome, client: rxClient });
+  const toastStore = getToastStore();
 
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
@@ -130,7 +130,7 @@
   </label>
 
   <section>
-    <h6>{$_('notes-required')}</h6>
+    <h6 class="text-base font-heading-token">{$_('notes-required')}</h6>
 
     <TabGroup>
       <Tab bind:group={tabActive} name="edit" value={0}>{$_('edit')}</Tab>
