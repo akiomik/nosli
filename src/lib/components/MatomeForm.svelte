@@ -2,7 +2,7 @@
   import { nip19 } from 'nostr-tools';
   import { onDestroy, getContext } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
-  import { TabGroup, Tab, getToastStore } from '@skeletonlabs/skeleton';
+  import { Tabs } from '@skeletonlabs/skeleton-svelte';
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
@@ -21,6 +21,7 @@
   import type { PublicationResult } from '$lib/services/publishToRelays';
   import * as settings from '$lib/services/settings';
   import { createNoteEditorStore } from '$lib/stores/noteEditor';
+  import { toaster } from '$lib/stores/toaster';
 
   const PARTIAL_SUCCESS_TOAST_TIMEOUT_MS = 8000;
 
@@ -29,12 +30,11 @@
   const rxClient: RxNostr = getContext('nostr-client');
   const client = new NostrClient(settings.defaultRelays);
   const editor = createNoteEditorStore({ matome, client: rxClient });
-  const toastStore = getToastStore();
 
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
   let identifier: string | undefined = matome?.identifier || `nosli-${new Date().getTime()}`;
-  let tabActive = 0;
+  let tabActive = 'edit';
   let inactive = false;
   let submission: 'saving' | 'deleting' | undefined = undefined;
   let failureKey: string | undefined = undefined;
@@ -47,10 +47,9 @@
 
   const notifySuccess = (action: PublicationAction, publication: PublicationResult) => {
     const { key, values } = publicationSuccessMessage(action, publication);
-    toastStore.trigger({
-      message: $_(key, { values }),
-      background: 'bg-surface-300',
-      ...(values && { timeout: PARTIAL_SUCCESS_TOAST_TIMEOUT_MS })
+    toaster.success({
+      title: $_(key, { values }),
+      ...(values && { duration: PARTIAL_SUCCESS_TOAST_TIMEOUT_MS })
     });
   };
 
@@ -188,25 +187,28 @@
   <section inert={submitting}>
     <h6 class="text-sm md:text-base font-heading-token">{$_('notes-required')}</h6>
 
-    <TabGroup>
-      <Tab bind:group={tabActive} name="edit" value={0}>{$_('edit')}</Tab>
-      <Tab bind:group={tabActive} name="recent-your-reactions" value={1}>
-        {$_('recent-your-reactions')}
-      </Tab>
-      <svelte:fragment slot="panel">
-        {#if tabActive === 0}
+    <Tabs value={tabActive} onValueChange={(details) => (tabActive = details.value)}>
+      {#snippet list()}
+        <Tabs.Control value="edit">{$_('edit')}</Tabs.Control>
+        <Tabs.Control value="recent-your-reactions">{$_('recent-your-reactions')}</Tabs.Control>
+      {/snippet}
+      {#snippet content()}
+        <Tabs.Panel value="edit">
           {#if $editor.editorInitialized}
             <Editor {editor} />
           {:else}
             <LoadingSpinner />
           {/if}
-        {:else if $editor.searchInitialized}
-          <RecentReactionList {editor} />
-        {:else}
-          <LoadingSpinner />
-        {/if}
-      </svelte:fragment>
-    </TabGroup>
+        </Tabs.Panel>
+        <Tabs.Panel value="recent-your-reactions">
+          {#if $editor.searchInitialized}
+            <RecentReactionList {editor} />
+          {:else}
+            <LoadingSpinner />
+          {/if}
+        </Tabs.Panel>
+      {/snippet}
+    </Tabs>
   </section>
 
   <hr />

@@ -38,7 +38,7 @@
 
   <hr />
 
-  <footer class="card-footer flex items-center justify-end p-4">
+  <footer class="flex items-center justify-end border-t border-surface-300 p-4">
     <p>
       {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
         note.createdAt

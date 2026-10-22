@@ -2,7 +2,7 @@
   import { getContext } from 'svelte';
   import { FontAwesomeIcon } from '@fortawesome/svelte-fontawesome';
   import { faBars, faSignal } from '@fortawesome/free-solid-svg-icons';
-  import { AppBar } from '@skeletonlabs/skeleton';
+  import { AppBar } from '@skeletonlabs/skeleton-svelte';
   import { _ } from 'svelte-i18n';
   import type { RxNostr } from 'rx-nostr';
 
@@ -24,20 +24,20 @@
   $: activeConnections = $connections?.filter(({ state }) => state === 'ongoing');
 </script>
 
-<AppBar>
-  <svelte:fragment slot="lead">
+<AppBar background="bg-surface-50">
+  {#snippet lead()}
     <a href="/">
       <span class="flex items-center">
         <img src="/favicon.svg" alt="Nosli icon" class="h-10 mr-1" width="40" height="40" />
         Nosli
       </span>
     </a>
-  </svelte:fragment>
-  <svelte:fragment slot="trail">
+  {/snippet}
+  {#snippet trail()}
     <div class="relative">
       <button
         type="button"
-        class="btn variant-soft-surface"
+        class="btn preset-tonal-surface bg-surface-100"
         on:click|stopPropagation={handleRelayConnectionStatus}
       >
         <span><FontAwesomeIcon icon={faSignal} title="Relay connections" /></span>
@@ -57,7 +57,7 @@
       {/if}
 
       <div class="relative">
-        <button class="btn-icon hover:variant-soft-surface" on:click|stopPropagation={handleMenu}>
+        <button class="btn-icon hover:preset-tonal-surface" on:click|stopPropagation={handleMenu}>
           <FontAwesomeIcon icon={faBars} title="Open menu" />
         </button>
 
@@ -70,5 +70,5 @@
     {:else}
       <a href="/login" class="btn bg-primary-500">{$_('login')}</a>
     {/if}
-  </svelte:fragment>
+  {/snippet}
 </AppBar>
