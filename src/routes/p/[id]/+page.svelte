@@ -33,11 +33,10 @@
 </svelte:head>
 
 <div class="flex space-x-4 items-center">
-  <Avatar
-    src={$profile?.safePicture()}
-    name={$profile?.formattedName() || 'nostrich'}
-    size="size-12">NO</Avatar
-  >
+  <Avatar class="size-12">
+    <Avatar.Image src={$profile?.safePicture()} alt={$profile?.formattedName() || 'nostrich'} />
+    <Avatar.Fallback>NO</Avatar.Fallback>
+  </Avatar>
   <div class="flex flex-col">
     <h1 class="text-3xl md:text-5xl font-heading-token">
       {$profile?.formattedName() || 'nostrich'}

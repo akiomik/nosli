@@ -22,8 +22,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
-    "@skeletonlabs/skeleton": "^3.2.2",
-    "@skeletonlabs/skeleton-svelte": "^1.5.3",
+    "@skeletonlabs/skeleton": "^4.15.2",
+    "@skeletonlabs/skeleton-svelte": "^4.15.2",
     "@tailwindcss/vite": "^4.3.3",
     "@sveltejs/adapter-vercel": "^5.10.3",
     "@sveltejs/kit": "^2.70.3",

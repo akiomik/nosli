@@ -1,12 +1,11 @@
 @import 'tailwindcss';
 @import '@skeletonlabs/skeleton';
-@import '@skeletonlabs/skeleton/optional/presets';
 @import '@skeletonlabs/skeleton/themes/legacy';
+@import '@skeletonlabs/skeleton-svelte';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @plugin '@tailwindcss/forms';
-@source '../node_modules/@skeletonlabs/skeleton-svelte/dist';
 
 [data-theme='legacy'] {
   --body-background-color: #e4e8f3;
