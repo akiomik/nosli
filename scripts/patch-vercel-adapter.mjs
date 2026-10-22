@@ -2,7 +2,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 
 // SvelteKit 1 requires adapter-vercel 2, whose runtime list predates Node 22.
 // Remove this compatibility patch when migrating to a supported adapter major.
-const packageUrl = new URL('../node_modules/@sveltejs/adapter-vercel/package.json', import.meta.url);
+const packageUrl = new URL(
+  '../node_modules/@sveltejs/adapter-vercel/package.json',
+  import.meta.url
+);
 const { version } = JSON.parse(readFileSync(packageUrl, 'utf8'));
 if (version !== '2.4.3') {
   throw new Error(`Unexpected @sveltejs/adapter-vercel version: ${version}`);
