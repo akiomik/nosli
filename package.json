@@ -2,7 +2,11 @@
   "name": "nosli",
   "version": "0.0.1",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
+    "postinstall": "node scripts/patch-vercel-adapter.mjs",
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
@@ -17,7 +21,7 @@
   },
   "devDependencies": {
     "@skeletonlabs/skeleton": "^0.132.5",
-    "@sveltejs/adapter-auto": "^2.0.0",
+    "@sveltejs/adapter-vercel": "2.4.3",
     "@sveltejs/kit": "^1.30.4",
     "@tailwindcss/forms": "^0.5.3",
     "@types/sanitize-html": "^2.8.0",
@@ -52,7 +56,7 @@
     "linkify-plugin-mention": "^4.1.0",
     "linkifyjs": "^4.3.2",
     "nostr-tools": "1.6.1",
-    "re2": "^1.18.0",
+    "re2": "^1.27.0",
     "rx-nostr": "^0.9.0",
     "sanitize-html": "^2.12.1",
     "svelte-i18n": "^3.6.0",
