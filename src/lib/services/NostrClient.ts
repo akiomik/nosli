@@ -19,7 +19,10 @@ export default class NostrClient {
   private connectionStatus: Promise<void>;
 
   // Increase connection timeout to avoid Blink issue (incl. Chrome, Edge)
-  constructor(public urls: string[], connectionTimeoutInMillis = 3000) {
+  constructor(
+    public urls: string[],
+    connectionTimeoutInMillis = 3000
+  ) {
     const promises = this.urls.map((url) => {
       return this.ensureRelay(url, connectionTimeoutInMillis).catch(() => {
         // ignore connection and timeout errors
