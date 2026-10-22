@@ -132,26 +132,25 @@
     <h6 class="text-base font-heading-token">{$_('notes-required')}</h6>
 
     <Tabs value={tabActive} onValueChange={(details) => (tabActive = details.value)}>
-      {#snippet list()}
-        <Tabs.Control value="edit">{$_('edit')}</Tabs.Control>
-        <Tabs.Control value="recent-your-reactions">{$_('recent-your-reactions')}</Tabs.Control>
-      {/snippet}
-      {#snippet content()}
-        <Tabs.Panel value="edit">
-          {#if $editor.editorInitialized}
-            <Editor {editor} />
-          {:else}
-            <LoadingSpinner />
-          {/if}
-        </Tabs.Panel>
-        <Tabs.Panel value="recent-your-reactions">
-          {#if $editor.searchInitialized}
-            <RecentReactionList {editor} />
-          {:else}
-            <LoadingSpinner />
-          {/if}
-        </Tabs.Panel>
-      {/snippet}
+      <Tabs.List>
+        <Tabs.Trigger value="edit">{$_('edit')}</Tabs.Trigger>
+        <Tabs.Trigger value="recent-your-reactions">{$_('recent-your-reactions')}</Tabs.Trigger>
+        <Tabs.Indicator />
+      </Tabs.List>
+      <Tabs.Content value="edit">
+        {#if $editor.editorInitialized}
+          <Editor {editor} />
+        {:else}
+          <LoadingSpinner />
+        {/if}
+      </Tabs.Content>
+      <Tabs.Content value="recent-your-reactions">
+        {#if $editor.searchInitialized}
+          <RecentReactionList {editor} />
+        {:else}
+          <LoadingSpinner />
+        {/if}
+      </Tabs.Content>
     </Tabs>
   </section>
 

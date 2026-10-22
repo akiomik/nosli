@@ -1,6 +1,6 @@
 <script lang="ts">
   import { setContext } from 'svelte';
-  import { Toaster } from '@skeletonlabs/skeleton-svelte';
+  import { Toast } from '@skeletonlabs/skeleton-svelte';
   import '@fortawesome/fontawesome-svg-core/styles.css';
   import { config } from '@fortawesome/fontawesome-svg-core';
   import { createRxNostr } from 'rx-nostr';
@@ -34,7 +34,17 @@
   });
 </script>
 
-<Toaster {toaster} />
+<Toast.Group {toaster}>
+  {#snippet children(toast)}
+    <Toast {toast}>
+      <Toast.Message>
+        <Toast.Title>{toast.title}</Toast.Title>
+        <Toast.Description>{toast.description}</Toast.Description>
+      </Toast.Message>
+      <Toast.CloseTrigger />
+    </Toast>
+  {/snippet}
+</Toast.Group>
 
 <div class="min-h-screen flex flex-col">
   <Header />
