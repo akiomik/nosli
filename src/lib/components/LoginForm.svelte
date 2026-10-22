@@ -58,7 +58,7 @@
   };
 </script>
 
-<h2>{$_('login-with-nip07')}</h2>
+<h2 class="text-3xl font-heading-token">{$_('login-with-nip07')}</h2>
 
 {#if browser && !isNip07Available}
   <Alert variant="warning">
@@ -82,7 +82,7 @@
   {$_('login')}
 </button>
 
-<h2>{$_('login-with-key')}</h2>
+<h2 class="text-3xl font-heading-token">{$_('login-with-key')}</h2>
 
 <label class="label">
   {$_('key')} (npub | nsec)

@@ -40,7 +40,7 @@
 
 {#if $matome}
   <div class="flex items-center justify-between space-x-2">
-    <h1>{$matome.title}</h1>
+    <h1 class="text-5xl font-heading-token">{$matome.title}</h1>
 
     {#await KeyManager.isLoggedInAs($matome.pubkey)}
       <!-- noop -->

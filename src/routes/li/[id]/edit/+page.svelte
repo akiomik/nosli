@@ -35,7 +35,9 @@
     <LoadingSpinner />
   {:then loggedInAs}
     {#if loggedInAs}
-      <h1>{$_('edit-identifier', { values: { identifier: $matome.identifier } })}</h1>
+      <h1 class="text-5xl font-heading-token">
+        {$_('edit-identifier', { values: { identifier: $matome.identifier } })}
+      </h1>
 
       <MatomeForm matome={$matome} />
     {:else}

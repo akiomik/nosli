@@ -18,7 +18,7 @@
   <meta property="og:description" content={desc} />
 </svelte:head>
 
-<h1>Nosli</h1>
+<h1 class="text-5xl font-heading-token">Nosli</h1>
 
 <p>
   {$_('nosli-description')}
@@ -30,7 +30,7 @@
   {$_('.')}
 </p>
 
-<h2>{$_('how-it-works')}</h2>
+<h2 class="text-3xl font-heading-token">{$_('how-it-works')}</h2>
 
 <div>
   <p>
@@ -39,11 +39,11 @@
       NIP-23 Long Form Content
     </ExternalLink>
     tagged with
-    <code>"{NostrClient.TAG}"</code>.
+    <code class="code">"{NostrClient.TAG}"</code>.
   </p>
   <p>It is stored in relays and can be viewed and edited by other NIP-23 supported clients.</p>
 </div>
 
-<h2>{$_('recent-lists')}</h2>
+<h2 class="text-3xl font-heading-token">{$_('recent-lists')}</h2>
 
 <GlobalMatomeList />

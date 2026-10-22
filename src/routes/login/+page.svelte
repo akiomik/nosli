@@ -19,7 +19,7 @@
   <meta property="og:description" content={desc} />
 </svelte:head>
 
-<h1>{$_('login')}</h1>
+<h1 class="text-5xl font-heading-token">{$_('login')}</h1>
 
 <Alert>
   <div slot="icon">
