@@ -42,7 +42,7 @@
           <p>{$_('alert.failed-to-get-note')}</p>
           <p>{nip19.noteEncode(id)}</p>
         </div>
-        <footer class="card-footer p-4">
+        <footer class="border-t border-surface-300 p-4">
           <NoteActions
             {editor}
             noteId={id}
@@ -55,7 +55,7 @@
   {/each}
 </div>
 
-<div class="mt-4 input-group input-group-divider grid-cols-[1fr_auto]">
+<div class="mt-4 input-group grid-cols-[1fr_auto]">
   <input
     type="text"
     bind:value={newNoteId}
@@ -63,7 +63,7 @@
     placeholder="note1.../nevent1..."
   />
   <button
-    class="variant-filled-surface"
+    class="preset-filled-surface-300-700"
     disabled={!isNewNoteIdValid}
     on:click|preventDefault={() => {
       editor.appendNote(newNoteId);

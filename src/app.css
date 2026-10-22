@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+@import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton/optional/presets';
+@import '@skeletonlabs/skeleton/themes/legacy';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@plugin '@tailwindcss/forms';
+@source '../node_modules/@skeletonlabs/skeleton-svelte/dist';
+
+[data-theme='legacy'] {
+  --body-background-color: #e4e8f3;
+}
+
+.btn,
+.btn-icon,
+.input {
+  border-radius: 9999px;
+}
+
+.input-error {
+  border-color: var(--color-error-500);
+}
+
+.card {
+  background-color: var(--color-surface-50);
+  border: 1px solid var(--color-surface-200);
+}
+
+.font-heading-token {
+  font-family: var(--heading-font-family);
+  font-weight: var(--heading-font-weight);
+}

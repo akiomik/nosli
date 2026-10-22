@@ -2,7 +2,7 @@
   import { nip19 } from 'nostr-tools';
   import { onDestroy, getContext } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
-  import { TabGroup, Tab, getToastStore } from '@skeletonlabs/skeleton';
+  import { Tabs } from '@skeletonlabs/skeleton-svelte';
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
@@ -14,18 +14,18 @@
   import NostrClient from '$lib/services/NostrClient';
   import * as settings from '$lib/services/settings';
   import { createNoteEditorStore } from '$lib/stores/noteEditor';
+  import { toaster } from '$lib/stores/toaster';
 
   export let matome: LongFormContent | undefined = undefined;
 
   const rxClient: RxNostr = getContext('nostr-client');
   const client = new NostrClient(settings.defaultRelays);
   const editor = createNoteEditorStore({ matome, client: rxClient });
-  const toastStore = getToastStore();
 
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
   let identifier: string | undefined = matome?.identifier || `nosli-${new Date().getTime()}`;
-  let tabActive = 0;
+  let tabActive = 'edit';
 
   $: isIdentifierValid =
     identifier !== undefined && identifier.length > 0 && identifier.length <= 40;
@@ -40,7 +40,7 @@
     await client.connect();
 
     const lfcContent = $editor.notes
-      .map((loadingNote, i) => `nostr:${nip19.neventEncode({ id: loadingNote.id })}`)
+      .map((loadingNote) => `nostr:${nip19.neventEncode({ id: loadingNote.id })}`)
       .join('\n');
 
     const tags = [
@@ -65,7 +65,7 @@
     lfc = await client.postLongFormContent(lfc);
 
     const message = matome ? $_('updated') : $_('created');
-    toastStore.trigger({ message, background: 'bg-surface-300' });
+    toaster.success({ title: message });
 
     goto(`/li/${lfc.nip19Id()}`);
   };
@@ -81,7 +81,7 @@
     if (matome?.id && confirm($_('dialog.delete-list-confirmation'))) {
       await client.deleteEvent(matome.id);
 
-      toastStore.trigger({ message: $_('deleted'), background: 'bg-surface-300' });
+      toaster.success({ title: $_('deleted') });
 
       goto(`/p/${nip19.npubEncode(matome.pubkey)}`);
     }
@@ -131,25 +131,28 @@
   <section>
     <h6 class="text-base font-heading-token">{$_('notes-required')}</h6>
 
-    <TabGroup>
-      <Tab bind:group={tabActive} name="edit" value={0}>{$_('edit')}</Tab>
-      <Tab bind:group={tabActive} name="recent-your-reactions" value={1}>
-        {$_('recent-your-reactions')}
-      </Tab>
-      <svelte:fragment slot="panel">
-        {#if tabActive === 0}
+    <Tabs value={tabActive} onValueChange={(details) => (tabActive = details.value)}>
+      {#snippet list()}
+        <Tabs.Control value="edit">{$_('edit')}</Tabs.Control>
+        <Tabs.Control value="recent-your-reactions">{$_('recent-your-reactions')}</Tabs.Control>
+      {/snippet}
+      {#snippet content()}
+        <Tabs.Panel value="edit">
           {#if $editor.editorInitialized}
             <Editor {editor} />
           {:else}
             <LoadingSpinner />
           {/if}
-        {:else if $editor.searchInitialized}
-          <RecentReactionList {editor} />
-        {:else}
-          <LoadingSpinner />
-        {/if}
-      </svelte:fragment>
-    </TabGroup>
+        </Tabs.Panel>
+        <Tabs.Panel value="recent-your-reactions">
+          {#if $editor.searchInitialized}
+            <RecentReactionList {editor} />
+          {:else}
+            <LoadingSpinner />
+          {/if}
+        </Tabs.Panel>
+      {/snippet}
+    </Tabs>
   </section>
 
   <hr />
