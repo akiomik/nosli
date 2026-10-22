@@ -125,8 +125,7 @@
       bind:value={summary}
       class="textarea"
       class:input-error={summary !== undefined && !isSummaryValid}
-      maxlength="300"
-    />
+      maxlength="300"></textarea>
   </label>
 
   <section>
