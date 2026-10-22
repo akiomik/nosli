@@ -1,13 +1,12 @@
 @import 'tailwindcss';
 @import '@skeletonlabs/skeleton';
-@import '@skeletonlabs/skeleton/optional/presets';
 @import '@skeletonlabs/skeleton/themes/legacy';
+@import '@skeletonlabs/skeleton-svelte';
 
 /* Keep Tailwind 3's class-based dark mode so the OS setting does not switch the theme. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @plugin '@tailwindcss/forms';
-@source '../node_modules/@skeletonlabs/skeleton-svelte/dist';
 
 /* The rules below keep the Skeleton v2 look and the v2 classes that the markup still uses. */
 [data-theme='legacy'] {
