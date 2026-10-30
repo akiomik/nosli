@@ -4,12 +4,13 @@ import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
 import { publishToRelays } from '$lib/services/publishToRelays';
 
-export const nip19ToHex = (b32: string): string | undefined => {
+export const nip19ToHex = (b32: string): string => {
   const data = nip19.decode(b32);
   if (data.type === 'note' && typeof data.data === 'string') return data.data;
   if (data.type === 'nevent' && typeof data.data !== 'string' && 'id' in data.data) {
     return data.data.id;
   }
+  throw new Error('Expected a note or nevent identifier.');
 };
 
 export default class NostrClient {
