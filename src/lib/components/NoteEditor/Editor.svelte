@@ -63,7 +63,7 @@
     placeholder="note1.../nevent1..."
   />
   <button
-    class="variant-filled-surface"
+    class="variant-filled-surface disabled:opacity-50 disabled:cursor-not-allowed"
     disabled={!isNewNoteIdValid}
     on:click|preventDefault={() => {
       editor.appendNote(newNoteId);

@@ -1,8 +1,6 @@
 <script lang="ts">
   import { setContext } from 'svelte';
-  import { AppShell, Toast } from '@skeletonlabs/skeleton';
-  import '@skeletonlabs/skeleton/themes/theme-skeleton.css';
-  import '@skeletonlabs/skeleton/styles/all.css';
+  import { AppShell, Toast, initializeStores } from '@skeletonlabs/skeleton';
   import '@fortawesome/fontawesome-svg-core/styles.css';
   import { config } from '@fortawesome/fontawesome-svg-core';
   import { createRxNostr } from 'rx-nostr';
@@ -15,6 +13,7 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
 
   config.autoAddCss = false;
+  initializeStores();
 
   let loading = false;
   let timeout: ReturnType<typeof setTimeout>;

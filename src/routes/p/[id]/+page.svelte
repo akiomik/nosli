@@ -40,7 +40,9 @@
     width="w-12"
   />
   <div class="flex flex-col">
-    <h1>{$profile?.formattedName() || 'nostrich'}</h1>
+    <h1 class="text-3xl md:text-5xl font-heading-token">
+      {$profile?.formattedName() || 'nostrich'}
+    </h1>
     {#if $profile}
       <ProfileNip05 profile={$profile} />
     {/if}
@@ -63,7 +65,7 @@
   {/await}
 {/if}
 
-<h2>{$_('created-lists')}</h2>
+<h2 class="text-2xl md:text-3xl font-heading-token">{$_('created-lists')}</h2>
 
 {#if $matomes}
   <MatomeList matomes={$matomes} />

@@ -13,7 +13,7 @@
 
 <div class="card">
   <div class="p-4">
-    <h3>{matome.title}</h3>
+    <h3 class="text-xl md:text-2xl font-heading-token">{matome.title}</h3>
     <p class="text-ellipsis overflow-hidden line-clamp-8 mt-4">
       {matome.summary}
     </p>

@@ -5,6 +5,7 @@ import type { Opts } from 'linkifyjs';
 export const linkifyOpts = {
   target: '_blank',
   rel: 'external noreferrer',
+  className: 'anchor',
   format: (value: string, type: string) => {
     if (type === 'mention') {
       return `${value.substring(0, 9)}:${value.substring(value.length - 8, value.length)}`;
