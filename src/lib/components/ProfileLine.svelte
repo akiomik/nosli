@@ -10,7 +10,7 @@
     src={profile?.safePicture()}
     initials="NO"
     alt="Profile picture of {profile?.formattedName() || 'nostrich'}"
-    class="w-8 h-8"
+    width="w-8"
   />
   <p>{profile?.formattedName() || 'nostrich'}</p>
 </div>
