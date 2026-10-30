@@ -3,7 +3,7 @@ import { nip19 } from 'nostr-tools';
 import type { PageLoad } from './$types';
 
 export const load = (async ({ params }) => {
-  let pubkey: string;
+  let pubkey: ReturnType<typeof nip19.decode>['data'];
   try {
     pubkey = nip19.decode(params.id).data;
   } catch {

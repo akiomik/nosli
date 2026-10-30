@@ -9,7 +9,11 @@ import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/
 
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
   const { matome, client } = params;
-  const initNoteIds = matome?.noteIds()?.map(nip19ToHex) ?? [];
+  const initNoteIds =
+    matome
+      ?.noteIds()
+      ?.map(nip19ToHex)
+      .filter((id): id is string => id !== undefined) ?? [];
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const notes = writable<LoadingNote[]>([]);
@@ -41,6 +45,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   const appendNote = (noteId: string) => {
     const hex =
       noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
+    if (hex === undefined) return;
 
     noteStore({ client, id: hex }).subscribe((note) => {
       notes.update((prev) => [
