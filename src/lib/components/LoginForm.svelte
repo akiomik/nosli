@@ -58,14 +58,17 @@
   };
 </script>
 
-<h2 class="text-3xl font-heading-token">{$_('login-with-nip07')}</h2>
+<h2 class="text-2xl md:text-3xl font-heading-token">{$_('login-with-nip07')}</h2>
 
 {#if browser && !isNip07Available}
   <Alert variant="warning">
     <p>
       {$_('alert.nip07-unavailable')}
       {$_('see-other')}
-      <ExternalLink href="https://github.com/nostr-protocol/nips/blob/master/07.md#implementation">
+      <ExternalLink
+        href="https://github.com/nostr-protocol/nips/blob/master/07.md#implementation"
+        class="anchor"
+      >
         {$_('nip07-implementations')}
       </ExternalLink>
       {$_('.')}
@@ -82,7 +85,7 @@
   {$_('login')}
 </button>
 
-<h2 class="text-3xl font-heading-token">{$_('login-with-key')}</h2>
+<h2 class="text-2xl md:text-3xl font-heading-token">{$_('login-with-key')}</h2>
 
 <label class="label">
   {$_('key')} (npub | nsec)

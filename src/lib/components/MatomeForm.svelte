@@ -130,7 +130,7 @@
   </label>
 
   <section>
-    <h6 class="text-base font-heading-token">{$_('notes-required')}</h6>
+    <h6 class="text-sm md:text-base font-heading-token">{$_('notes-required')}</h6>
 
     <TabGroup>
       <Tab bind:group={tabActive} name="edit" value={0}>{$_('edit')}</Tab>

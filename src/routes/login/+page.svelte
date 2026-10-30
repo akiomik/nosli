@@ -19,11 +19,11 @@
   <meta property="og:description" content={desc} />
 </svelte:head>
 
-<h1 class="text-5xl font-heading-token">{$_('login')}</h1>
+<h1 class="text-3xl md:text-5xl font-heading-token">{$_('login')}</h1>
 
 <Alert>
   <div slot="icon">
-    <h2 class="flex items-center space-x-2">
+    <h2 class="flex items-center space-x-2 text-2xl md:text-3xl font-heading-token">
       <FontAwesomeIcon icon={faCircleInfo} />
     </h2>
   </div>

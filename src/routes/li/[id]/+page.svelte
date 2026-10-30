@@ -40,7 +40,7 @@
 
 {#if $matome}
   <div class="flex items-center justify-between space-x-2">
-    <h1 class="text-5xl font-heading-token">{$matome.title}</h1>
+    <h1 class="text-3xl md:text-5xl font-heading-token">{$matome.title}</h1>
 
     {#await KeyManager.isLoggedInAs($matome.pubkey)}
       <!-- noop -->
@@ -61,7 +61,7 @@
     {#if $profile}
       <div class="flex flex-row items-center space-x-2">
         <p>{$_('by-author')}</p>
-        <ProfileLink profile={$profile} local={true}>
+        <ProfileLink profile={$profile} local={true} class="anchor">
           <ProfileLine profile={$profile} />
         </ProfileLink>
       </div>

@@ -18,24 +18,24 @@
   <meta property="og:description" content={desc} />
 </svelte:head>
 
-<h1 class="text-5xl font-heading-token">Nosli</h1>
+<h1 class="text-3xl md:text-5xl font-heading-token">Nosli</h1>
 
 <p>
   {$_('nosli-description')}
   (
-  <ExternalLink href="https://nostr.com">
+  <ExternalLink href="https://nostr.com" class="anchor">
     {$_('about-nostr')}
   </ExternalLink>
   )
   {$_('.')}
 </p>
 
-<h2 class="text-3xl font-heading-token">{$_('how-it-works')}</h2>
+<h2 class="text-2xl md:text-3xl font-heading-token">{$_('how-it-works')}</h2>
 
 <div>
   <p>
     A curated list is simply
-    <ExternalLink href="https://github.com/nostr-protocol/nips/blob/master/23.md">
+    <ExternalLink href="https://github.com/nostr-protocol/nips/blob/master/23.md" class="anchor">
       NIP-23 Long Form Content
     </ExternalLink>
     tagged with
@@ -44,6 +44,6 @@
   <p>It is stored in relays and can be viewed and edited by other NIP-23 supported clients.</p>
 </div>
 
-<h2 class="text-3xl font-heading-token">{$_('recent-lists')}</h2>
+<h2 class="text-2xl md:text-3xl font-heading-token">{$_('recent-lists')}</h2>
 
 <GlobalMatomeList />
