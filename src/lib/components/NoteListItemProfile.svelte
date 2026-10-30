@@ -9,7 +9,12 @@
 
 <div class="flex items-center">
   <div class="mr-2">
-    <Avatar src={profile?.safePicture()} initials="NO" alt="Profile picture of {name}" />
+    <Avatar
+      src={profile?.safePicture()}
+      initials="NO"
+      alt="Profile picture of {name}"
+      width="w-12"
+    />
   </div>
 
   <div class="text-ellipsis overflow-hidden">

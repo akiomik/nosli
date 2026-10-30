@@ -37,7 +37,7 @@
     src={$profile?.safePicture()}
     initials="NO"
     alt="Profile picture of {$profile?.formattedName() || 'nostrich'}"
-    class="w-12 h-12"
+    width="w-12"
   />
   <div class="flex flex-col">
     <h1>{$profile?.formattedName() || 'nostrich'}</h1>
