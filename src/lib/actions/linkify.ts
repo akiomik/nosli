@@ -1,5 +1,5 @@
 import linkifyHtml from 'linkify-html';
-import type { Action } from 'svelte/types/runtime/action';
+import type { Action } from 'svelte/action';
 import type { Opts } from 'linkifyjs';
 
 export const linkifyOpts = {
@@ -35,6 +35,6 @@ export const linkifyOpts = {
   nl2br: true
 };
 
-export const linkify: Action = (element: HTMLElement, opts: Opts) => {
+export const linkify: Action<HTMLElement, Opts> = (element, opts) => {
   element.innerHTML = linkifyHtml(element.innerHTML, opts);
 };

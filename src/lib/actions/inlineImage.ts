@@ -1,5 +1,5 @@
 import urlRegexSafe from 'url-regex-safe';
-import type { Action } from 'svelte/types/runtime/action';
+import type { Action } from 'svelte/action';
 
 export type Opts = {
   extPattern: RegExp;
@@ -30,7 +30,7 @@ const defaultOpts: Opts = {
   }
 };
 
-export const inlineImage: Action = (node: HTMLElement, opts: Partial<Opts>) => {
+export const inlineImage: Action<HTMLElement, Partial<Opts>> = (node: HTMLElement, opts) => {
   const mergedOpts = { ...defaultOpts, ...opts };
 
   const matches = node.innerHTML.matchAll(urlRegexSafe());
