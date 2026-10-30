@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getContext } from 'svelte';
-  import type { AddressPointer } from 'nostr-tools/nip19';
+  import type { nip19 } from 'nostr-tools';
   import type { RxNostr } from 'rx-nostr';
   import { _ } from 'svelte-i18n';
 
@@ -12,7 +12,7 @@
   import Alert from '$lib/components/Alert.svelte';
 
   export let data: PageData & {
-    params: AddressPointer;
+    params: nip19.AddressPointer;
   };
 
   // TODO: Display "not found" on timeout

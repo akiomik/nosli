@@ -1,9 +1,8 @@
-import type { Pub } from 'nostr-tools';
 import { Kind, SimplePool, nip19, validateEvent, verifySignature } from 'nostr-tools';
-import type { AddressPointer, EventPointer, ProfilePointer } from 'nostr-tools/nip19';
 
 import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
+import { publishToRelays } from '$lib/services/publishToRelays';
 
 export const nip19ToHex = (b32: string) => {
   const data = nip19.decode(b32);
@@ -61,28 +60,15 @@ export default class NostrClient {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    const pubs = this.pool.publish(this.availableUrls, event);
-    const promises = pubs.map((pub: Pub) => {
-      return new Promise((resolve, reject) => {
-        pub.on('ok', () => {
-          resolve(null);
-        });
-
-        pub.on('failed', () => {
-          reject();
-        });
-      });
-    });
-
-    return Promise.all(promises).then(() => {
+    return publishToRelays(this.pool, this.availableUrls, event).then(() => {
       console.log('new LFC is published.', event);
       return LongFormContent.fromEvent(event);
     });
   }
 
   public static checkNAddr(
-    data: string | AddressPointer | ProfilePointer | EventPointer
-  ): data is AddressPointer {
+    data: ReturnType<typeof nip19.decode>['data']
+  ): data is nip19.AddressPointer {
     if (typeof data === 'string') {
       return false;
     }
@@ -106,22 +92,7 @@ export default class NostrClient {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    const pubs = this.pool.publish(this.availableUrls, event);
-    const promises = pubs.map((pub: Pub) => {
-      return new Promise((resolve, reject) => {
-        pub.on('ok', () => {
-          resolve(null);
-        });
-
-        pub.on('failed', () => {
-          reject();
-        });
-      });
-    });
-
-    return Promise.all(promises).then(() => {
-      return;
-    });
+    return publishToRelays(this.pool, this.availableUrls, event);
   }
 
   public async close(): Promise<void> {
