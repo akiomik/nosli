@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getPublicKey } from 'nostr-tools';
+import { getPublicKey, type Event } from 'nostr-tools';
 
 import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from './KeyManager';
@@ -18,6 +18,7 @@ vi.mock('$lib/stores/cookie', async () => {
 
 type Behavior = 'ack' | 'refuse' | 'hang';
 const behavior = new Map<string, Behavior>();
+const openDelay = new Map<string, number>();
 
 class FakeWebSocket {
   static instances: FakeWebSocket[] = [];
@@ -32,7 +33,7 @@ class FakeWebSocket {
     FakeWebSocket.instances.push(this);
     const mode = behavior.get(url) ?? 'ack';
     if (mode === 'refuse') setTimeout(() => this.fail(), 1);
-    if (mode === 'ack') setTimeout(() => this.open(), 1);
+    if (mode === 'ack') setTimeout(() => this.open(), openDelay.get(url) ?? 1);
   }
 
   open() {
@@ -81,6 +82,7 @@ function article() {
 
 beforeEach(() => {
   behavior.clear();
+  openDelay.clear();
   FakeWebSocket.instances = [];
   vi.stubGlobal('WebSocket', FakeWebSocket);
   vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -122,6 +124,103 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
           unavailableRelays: ['wss://silent.example']
         }
       });
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('publishes to a relay that reconnects shortly after immediate signing', async () => {
+    const client = new NostrClient(['wss://one.example', 'wss://two.example']);
+    try {
+      await client.connect();
+      openDelay.set('wss://two.example/', 40);
+      FakeWebSocket.instances[1].close();
+
+      const result = await client.postLongFormContent(article());
+      expect(result.publication.acceptedRelays).toEqual(['wss://one.example', 'wss://two.example']);
+      expect(result.publication.unavailableRelays).toEqual([]);
+      expect(FakeWebSocket.instances[2].sent.some((message) => message.includes('"EVENT"'))).toBe(
+        true
+      );
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('retries a relay that disconnects during a delayed signer prompt', async () => {
+    const originalSignEvent = KeyManager.signEvent.bind(KeyManager);
+    let resumeSigning = () => {};
+    const signing = new Promise<void>((resolve) => {
+      resumeSigning = resolve;
+    });
+    const signEvent = vi.spyOn(KeyManager, 'signEvent').mockImplementation(async (event: Event) => {
+      await signing;
+      return originalSignEvent(event);
+    });
+    const client = new NostrClient(['wss://one.example', 'wss://two.example']);
+    try {
+      await client.connect();
+      const publication = client.postLongFormContent(article());
+      await vi.waitFor(() => expect(signEvent).toHaveBeenCalledOnce());
+      openDelay.set('wss://two.example/', 40);
+      FakeWebSocket.instances[1].close();
+      resumeSigning();
+
+      await expect(publication).resolves.toMatchObject({
+        publication: {
+          acceptedRelays: ['wss://one.example', 'wss://two.example'],
+          unavailableRelays: []
+        }
+      });
+      expect(FakeWebSocket.instances[2].sent.some((message) => message.includes('"EVENT"'))).toBe(
+        true
+      );
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('includes slower initial connections opened after the first relay', async () => {
+    openDelay.set('wss://one.example/', 5);
+    openDelay.set('wss://two.example/', 40);
+    openDelay.set('wss://three.example/', 80);
+    const client = new NostrClient([
+      'wss://one.example',
+      'wss://two.example',
+      'wss://three.example'
+    ]);
+    try {
+      const result = await client.postLongFormContent(article());
+      expect(result.publication.acceptedRelays).toEqual([
+        'wss://one.example',
+        'wss://two.example',
+        'wss://three.example'
+      ]);
+      expect(FakeWebSocket.instances).toHaveLength(3);
+      expect(
+        FakeWebSocket.instances.every((socket) =>
+          socket.sent.some((message) => message.includes('"EVENT"'))
+        )
+      ).toBe(true);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('publishes after the first relay recovers while another stays silent', async () => {
+    const client = new NostrClient(['wss://one.example', 'wss://two.example'], 2500);
+    try {
+      await client.connect();
+      openDelay.set('wss://one.example/', 20);
+      behavior.set('wss://two.example/', 'hang');
+      FakeWebSocket.instances[0].close();
+      FakeWebSocket.instances[1].close();
+
+      const startedAt = Date.now();
+      const result = await client.postLongFormContent(article());
+      expect(Date.now() - startedAt).toBeLessThan(2000);
+      expect(result.publication.acceptedRelays).toEqual(['wss://one.example']);
+      expect(result.publication.unavailableRelays).toEqual(['wss://two.example']);
     } finally {
       await client.close();
     }

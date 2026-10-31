@@ -115,19 +115,9 @@ describe('NostrClient relay readiness', () => {
     expect(publish).toHaveBeenCalledWith(['wss://one'], expect.any(Object));
   });
 
-  it('retries a dropped relay without delaying publication to a connected relay', async () => {
+  it('includes a promptly reconnected relay in a deletion', async () => {
     const first = fakeRelay('wss://one');
     const second = fakeRelay('wss://two');
-    let finishReconnect = () => {};
-    second.connect.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          finishReconnect = () => {
-            second.finishConnecting();
-            resolve();
-          };
-        })
-    );
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockImplementation(async (url) =>
       url === 'wss://one' ? first.relay : second.relay
     );
@@ -139,12 +129,11 @@ describe('NostrClient relay readiness', () => {
 
     second.disconnect();
     await expect(client.deleteEvent('event-id')).resolves.toMatchObject({
-      acceptedRelays: ['wss://one'],
-      unavailableRelays: ['wss://two']
+      acceptedRelays: ['wss://one', 'wss://two'],
+      unavailableRelays: []
     });
     expect(second.connect).toHaveBeenCalledOnce();
-    expect(publish).toHaveBeenCalledTimes(1);
-    finishReconnect();
+    expect(publish).toHaveBeenCalledTimes(2);
   });
 
   it('retries a relay cached after the initial connection fails', async () => {
@@ -186,7 +175,7 @@ describe('NostrClient relay readiness', () => {
     expect(target.connect).not.toHaveBeenCalled();
   });
 
-  it('checks the relay list again after signing a new article', async () => {
+  it('reconnects a relay that drops during signing a new article', async () => {
     const first = fakeRelay('wss://one');
     const second = fakeRelay('wss://two');
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockImplementation(async (url) =>
@@ -225,10 +214,12 @@ describe('NostrClient relay readiness', () => {
     resumeSigning();
 
     await expect(publication).resolves.toMatchObject({
-      publication: { acceptedRelays: ['wss://one'] }
+      publication: { acceptedRelays: ['wss://one', 'wss://two'] }
     });
-    expect(publish).toHaveBeenCalledTimes(1);
+    expect(second.connect).toHaveBeenCalledOnce();
+    expect(publish).toHaveBeenCalledTimes(2);
     expect(publish).toHaveBeenCalledWith(['wss://one'], expect.any(Object));
+    expect(publish).toHaveBeenCalledWith(['wss://two'], expect.any(Object));
   });
 
   it('does not publish after the client closes during signing', async () => {

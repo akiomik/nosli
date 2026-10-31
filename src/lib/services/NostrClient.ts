@@ -17,6 +17,8 @@ import {
   type PublicationResult
 } from '$lib/services/publishToRelays';
 
+const PUBLICATION_CONNECTION_GRACE_MS = 1000;
+
 export const nip19ToHex = (b32: string): string => {
   const data = nip19.decode(b32);
   if (data.type === 'note' && typeof data.data === 'string') return data.data;
@@ -125,26 +127,41 @@ export default class NostrClient {
     return this.urls.filter((url) => this.relays.get(utils.normalizeURL(url))?.status === 1);
   }
 
-  private async retryUnavailableRelays(): Promise<void> {
-    await Promise.allSettled(
-      this.urls
-        .filter((url) => this.relays.get(utils.normalizeURL(url))?.status !== 1)
-        .map((url) => this.ensureRelay(url, this.connectionTimeoutInMillis))
-    );
+  private startMissingConnections(): Promise<void>[] {
+    return this.urls
+      .filter((url) => this.relays.get(utils.normalizeURL(url))?.status !== 1)
+      .map((url) => this.ensureRelay(url, this.connectionTimeoutInMillis));
   }
 
-  private async requireAvailableRelays(
-    retryUnavailable = true
-  ): Promise<{ available: string[]; unavailable: string[] }> {
-    if (retryUnavailable) {
-      await Promise.race([this.firstConnection, this.connectionStatus]);
+  private async waitForRelayBeforeSigning(): Promise<void> {
+    await this.firstConnection;
+    if (this.closed) throw new Error('The relay client is closed.');
+    if (this.availableUrls().length === 0) {
+      await Promise.any(this.startMissingConnections()).catch(() => {});
     }
     if (this.closed) throw new Error('The relay client is closed.');
     if (this.availableUrls().length === 0) {
-      await this.retryUnavailableRelays();
-    } else if (retryUnavailable) {
-      // Keep a usable relay responsive while retrying the others during signing.
-      void this.retryUnavailableRelays();
+      throw new PublicationFailedError({
+        ...emptyPublicationResult(),
+        unavailableRelays: [...this.urls]
+      });
+    }
+  }
+
+  private async relaysAfterSigning(): Promise<{ available: string[]; unavailable: string[] }> {
+    if (this.closed) throw new Error('The relay client is closed.');
+    const attempts = this.startMissingConnections();
+    if (this.availableUrls().length === 0) {
+      // One recovered relay is enough to publish; do not wait for silent peers.
+      await Promise.any(attempts).catch(() => {});
+    } else if (attempts.length > 0) {
+      // Allow shortly delayed initial connections and reconnects to join this publication.
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const gracePeriod = new Promise<void>((resolve) => {
+        timeoutId = setTimeout(resolve, PUBLICATION_CONNECTION_GRACE_MS);
+      });
+      await Promise.race([Promise.allSettled(attempts), gracePeriod]);
+      clearTimeout(timeoutId);
     }
     if (this.closed) throw new Error('The relay client is closed.');
     const available = this.availableUrls();
@@ -163,20 +180,20 @@ export default class NostrClient {
   public async postLongFormContent(
     lfc: LongFormContent
   ): Promise<{ content: LongFormContent; publication: PublicationResult }> {
-    await this.requireAvailableRelays();
+    await this.waitForRelayBeforeSigning();
     const event = await KeyManager.signEvent(lfc.toEvent());
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    const { available, unavailable } = await this.requireAvailableRelays(false);
+    const { available, unavailable } = await this.relaysAfterSigning();
     const publication = await publishToRelays(this.pool, available, event, undefined, unavailable);
     console.log('new LFC is published.', event);
     return { content: LongFormContent.fromEvent(event), publication };
   }
 
   public async deleteEvent(id: string): Promise<PublicationResult> {
-    await this.requireAvailableRelays();
+    await this.waitForRelayBeforeSigning();
     let event = {
       id: '',
       sig: '',
@@ -192,7 +209,7 @@ export default class NostrClient {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    const { available, unavailable } = await this.requireAvailableRelays(false);
+    const { available, unavailable } = await this.relaysAfterSigning();
     return publishToRelays(this.pool, available, event, undefined, unavailable);
   }
 
