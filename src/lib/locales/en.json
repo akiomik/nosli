@@ -35,6 +35,18 @@
   "nosli-description": "Nosli helps you create a curated list of posts on Nostr that is a open protocol for a decentralized global social network",
   "notes-required": "Notes (required)",
   "nip07-implementations": "NIP-07 implementations",
+  "publication": {
+    "created-partially": "Created (accepted by {accepted} of {total} relays)",
+    "deleted-partially": "Deletion accepted by {accepted} of {total} relays. The list may remain visible on the others.",
+    "deleting": "Deleting…",
+    "failed": "This request could not be signed or sent.",
+    "failed-no-relay": "Could not connect to any relay, so nothing was sent. Please try again.",
+    "failed-rejected": "The relays rejected this request. Please try again.",
+    "failed-unconfirmed": "No relay confirmed this request. It may still have been applied. Please try again.",
+    "saving": "Publishing…",
+    "updated-partially": "Updated (accepted by {accepted} of {total} relays)",
+    "waiting": "This can take a little while."
+  },
   "recent-lists": "Recent lists",
   "recent-your-reactions": "Recent your reactions",
   "remove": "Remove",
