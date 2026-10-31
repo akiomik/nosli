@@ -1,8 +1,8 @@
-import type { AddressPointer, EventPointer, ProfilePointer } from 'nostr-tools/nip19';
+import type { nip19 } from 'nostr-tools';
 
 export function ensureAddressPointer(
-  data: string | AddressPointer | ProfilePointer | EventPointer
-): data is AddressPointer {
+  data: ReturnType<typeof nip19.decode>['data']
+): data is nip19.AddressPointer {
   if (typeof data === 'string') {
     return false;
   }
