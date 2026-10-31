@@ -9,7 +9,10 @@
 
 <div class="flex items-center">
   <div class="mr-2">
-    <Avatar src={profile?.safePicture()} {name} size="size-12">NO</Avatar>
+    <Avatar class="size-12">
+      <Avatar.Image src={profile?.safePicture()} alt={name} />
+      <Avatar.Fallback>NO</Avatar.Fallback>
+    </Avatar>
   </div>
 
   <div class="text-ellipsis overflow-hidden">
