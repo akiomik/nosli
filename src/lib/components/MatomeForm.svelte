@@ -62,7 +62,8 @@
       tags
     );
 
-    lfc = await client.postLongFormContent(lfc);
+    const published = await client.postLongFormContent(lfc);
+    lfc = published.content;
 
     const message = matome ? $_('updated') : $_('created');
     toastStore.trigger({ message, background: 'bg-surface-300' });

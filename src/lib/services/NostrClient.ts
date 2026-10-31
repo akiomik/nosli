@@ -2,7 +2,11 @@ import { Kind, SimplePool, nip19, validateEvent, verifySignature } from 'nostr-t
 
 import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
-import { publishToRelays } from '$lib/services/publishToRelays';
+import {
+  PublicationFailedError,
+  publishToRelays,
+  type PublicationResult
+} from '$lib/services/publishToRelays';
 
 export const nip19ToHex = (b32: string): string => {
   const data = nip19.decode(b32);
@@ -39,9 +43,14 @@ export default class NostrClient {
   }
 
   public async ensureRelay(url: string, timeoutInMillis: number): Promise<void> {
-    const promise = this.pool.ensureRelay(url).then(({ url }: { url: string }) => {
-      console.log(`connected to ${url}`);
-      this.availableUrls.push(url);
+    const promise = this.pool.ensureRelay(url).then((relay) => {
+      console.log(`connected to ${relay.url}`);
+      this.availableUrls.push(relay.url);
+      relay.on('disconnect', () => {
+        this.availableUrls = this.availableUrls.filter(
+          (availableUrl) => availableUrl !== relay.url
+        );
+      });
     });
 
     // support both node and browser types (https://stackoverflow.com/a/56239226/1918609)
@@ -57,19 +66,34 @@ export default class NostrClient {
     });
   }
 
-  public async postLongFormContent(lfc: LongFormContent): Promise<LongFormContent> {
+  private async publishRelays(): Promise<string[]> {
+    await this.connect();
+    if (this.availableUrls.length === 0) {
+      throw new PublicationFailedError({
+        acceptedRelays: [],
+        rejectedRelays: [],
+        timedOutRelays: []
+      });
+    }
+    return [...this.availableUrls];
+  }
+
+  public async postLongFormContent(
+    lfc: LongFormContent
+  ): Promise<{ content: LongFormContent; publication: PublicationResult }> {
+    const relays = await this.publishRelays();
     const event = await KeyManager.signEvent(lfc.toEvent());
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    return publishToRelays(this.pool, this.availableUrls, event).then(() => {
-      console.log('new LFC is published.', event);
-      return LongFormContent.fromEvent(event);
-    });
+    const publication = await publishToRelays(this.pool, relays, event);
+    console.log('new LFC is published.', event);
+    return { content: LongFormContent.fromEvent(event), publication };
   }
 
-  public async deleteEvent(id: string): Promise<void> {
+  public async deleteEvent(id: string): Promise<PublicationResult> {
+    const relays = await this.publishRelays();
     let event = {
       id: '',
       sig: '',
@@ -85,7 +109,7 @@ export default class NostrClient {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    return publishToRelays(this.pool, this.availableUrls, event);
+    return publishToRelays(this.pool, relays, event);
   }
 
   public async close(): Promise<void> {

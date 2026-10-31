@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Event, Pub, SimplePool } from 'nostr-tools';
+import { SimplePool, type Event, type Pub } from 'nostr-tools';
 
-import { publishToRelays } from './publishToRelays';
+import { PublicationFailedError, publishToRelays } from './publishToRelays';
 
 function fakePool() {
   const callbacks = new Map<string, Partial<Record<'ok' | 'failed', () => void>>>();
@@ -23,10 +23,18 @@ function fakePool() {
 describe('publishToRelays', () => {
   const event = {} as Event;
 
+  it('rejects without publishing when no relays are available', async () => {
+    const { pool, publish } = fakePool();
+
+    await expect(publishToRelays(pool, [], event)).rejects.toBeInstanceOf(PublicationFailedError);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
   it('waits for every relay acknowledgment', async () => {
     const { pool, publish, callbacks } = fakePool();
     let settled = false;
-    const result = publishToRelays(pool, ['wss://one', 'wss://two'], event).then(() => {
+    const result = publishToRelays(pool, ['wss://one', 'wss://two'], event);
+    void result.then(() => {
       settled = true;
     });
 
@@ -37,16 +45,83 @@ describe('publishToRelays', () => {
     expect(settled).toBe(false);
 
     callbacks.get('wss://two')?.ok?.();
-    await result;
+    await expect(result).resolves.toEqual({
+      acceptedRelays: ['wss://one', 'wss://two'],
+      rejectedRelays: [],
+      timedOutRelays: []
+    });
     expect(settled).toBe(true);
   });
 
-  it('rejects when any relay fails', async () => {
+  it('reports partial success when another relay rejects the event', async () => {
     const { pool, callbacks } = fakePool();
     const result = publishToRelays(pool, ['wss://one', 'wss://two'], event);
 
     callbacks.get('wss://one')?.ok?.();
     callbacks.get('wss://two')?.failed?.();
-    await expect(result).rejects.toBeUndefined();
+    await expect(result).resolves.toEqual({
+      acceptedRelays: ['wss://one'],
+      rejectedRelays: ['wss://two'],
+      timedOutRelays: []
+    });
+  });
+
+  it('rejects if every relay rejects the event', async () => {
+    const { pool, callbacks } = fakePool();
+    const result = publishToRelays(pool, ['wss://one', 'wss://two'], event);
+
+    callbacks.get('wss://one')?.failed?.();
+    callbacks.get('wss://two')?.failed?.();
+    await expect(result).rejects.toMatchObject({
+      result: { acceptedRelays: [], rejectedRelays: ['wss://one', 'wss://two'], timedOutRelays: [] }
+    });
+  });
+
+  it('bounds a silent relay and returns the accepted relay', async () => {
+    vi.useFakeTimers();
+    try {
+      const { pool, callbacks } = fakePool();
+      const result = publishToRelays(pool, ['wss://one', 'wss://two'], event, 50);
+
+      callbacks.get('wss://one')?.ok?.();
+      await vi.advanceTimersByTimeAsync(50);
+      await expect(result).resolves.toEqual({
+        acceptedRelays: ['wss://one'],
+        rejectedRelays: [],
+        timedOutRelays: ['wss://two']
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('rejects if no relay acknowledges before the timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const { pool } = fakePool();
+      const result = publishToRelays(pool, ['wss://one'], event, 50);
+      const assertion = expect(result).rejects.toMatchObject({
+        result: { acceptedRelays: [], rejectedRelays: [], timedOutRelays: ['wss://one'] }
+      });
+
+      await vi.advanceTimersByTimeAsync(50);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('handles the real SimplePool response for a disconnected relay', async () => {
+    const pool = new SimplePool();
+
+    await expect(
+      publishToRelays(pool, ['wss://disconnected.example'], event)
+    ).rejects.toMatchObject({
+      result: {
+        acceptedRelays: [],
+        rejectedRelays: ['wss://disconnected.example'],
+        timedOutRelays: []
+      }
+    });
   });
 });
