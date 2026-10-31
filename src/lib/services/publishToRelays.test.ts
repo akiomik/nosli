@@ -33,7 +33,7 @@ describe('publishToRelays', () => {
     expect(publish).toHaveBeenCalledWith(['wss://one'], event);
     expect(publish).toHaveBeenCalledWith(['wss://two'], event);
     callbacks.get('wss://one')?.ok?.();
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve));
     expect(settled).toBe(false);
 
     callbacks.get('wss://two')?.ok?.();
