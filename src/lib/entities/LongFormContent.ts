@@ -76,10 +76,6 @@ export default class LongFormContent {
     return this.tags.filter((tag: Tag) => tag.typ === 'e').map((tag) => tag.value);
   }
 
-  noteIds(): string[] {
-    return this.eventIds().map((id) => nip19.noteEncode(id));
-  }
-
   includesTag(tag: Tag): boolean {
     return this.tags.some((t) => {
       return t.equals(tag);
