@@ -39,7 +39,10 @@ export default class NostrClient {
   private closed = false;
 
   // Increase connection timeout to avoid Blink issue (incl. Chrome, Edge)
-  constructor(public urls: string[], private connectionTimeoutInMillis = 3000) {
+  constructor(
+    public urls: string[],
+    private connectionTimeoutInMillis = 3000
+  ) {
     const attempts = this.urls.map((url) => this.ensureRelay(url, this.connectionTimeoutInMillis));
     this.connectionStatus = Promise.allSettled(attempts).then(() => {});
     this.firstConnection = Promise.any(attempts).then(
