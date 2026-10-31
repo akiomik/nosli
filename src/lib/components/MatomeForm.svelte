@@ -26,6 +26,7 @@
   let summary: string | undefined = matome?.summary;
   let identifier: string | undefined = matome?.identifier || `nosli-${new Date().getTime()}`;
   let tabActive = 0;
+  let inactive = false;
 
   $: isIdentifierValid =
     identifier !== undefined && identifier.length > 0 && identifier.length <= 40;
@@ -37,10 +38,8 @@
       throw new Error('Unexpected error: identifier or title is undefined');
     }
 
-    await client.connect();
-
     const lfcContent = $editor.notes
-      .map((loadingNote, i) => `nostr:${nip19.neventEncode({ id: loadingNote.id })}`)
+      .map((loadingNote) => `nostr:${nip19.neventEncode({ id: loadingNote.id })}`)
       .join('\n');
 
     const tags = [
@@ -62,7 +61,9 @@
       tags
     );
 
-    lfc = await client.postLongFormContent(lfc);
+    const published = await client.postLongFormContent(lfc);
+    if (inactive) return;
+    lfc = published.content;
 
     const message = matome ? $_('updated') : $_('created');
     toastStore.trigger({ message, background: 'bg-surface-300' });
@@ -72,6 +73,7 @@
 
   const onCancel = () => {
     if (confirm($_('dialog.quit-editing-confirmation'))) {
+      inactive = true;
       const path = matome ? `/li/${matome.nip19Id()}` : '/';
       goto(path);
     }
@@ -80,6 +82,7 @@
   const onDelete = async () => {
     if (matome?.id && confirm($_('dialog.delete-list-confirmation'))) {
       await client.deleteEvent(matome.id);
+      if (inactive) return;
 
       toastStore.trigger({ message: $_('deleted'), background: 'bg-surface-300' });
 
@@ -88,6 +91,7 @@
   };
 
   onDestroy(async () => {
+    inactive = true;
     await client.close();
   });
 </script>
