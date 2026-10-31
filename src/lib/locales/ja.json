@@ -35,6 +35,18 @@
   "nosli-description": "Nosli (ノスリ) は、分散SNSのためのオープンプロトコルである Nostr 上の投稿まとめ作成ツールです",
   "notes-required": "投稿 (必須)",
   "nip07-implementations": "NIP-07 の実装一覧 (英語)",
+  "publication": {
+    "created-partially": "作成しました ({total} 件中 {accepted} 件のリレーが受理)",
+    "deleted-partially": "{total} 件中 {accepted} 件のリレーが削除を受理しました。他のリレーには残っている場合があります。",
+    "deleting": "削除中…",
+    "failed": "署名または送信ができませんでした。",
+    "failed-no-relay": "どのリレーにも接続できなかったため、送信していません。もう一度お試しください。",
+    "failed-rejected": "リレーに拒否されました。もう一度お試しください。",
+    "failed-unconfirmed": "リレーからの受理を確認できませんでした。反映されている可能性があります。もう一度お試しください。",
+    "saving": "送信中…",
+    "updated-partially": "更新しました ({total} 件中 {accepted} 件のリレーが受理)",
+    "waiting": "しばらくかかる場合があります。"
+  },
   "recent-lists": "新着まとめ",
   "recent-your-reactions": "最近リアクションした投稿",
   "remove": "削除",
