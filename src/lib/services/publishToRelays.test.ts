@@ -111,7 +111,7 @@ describe('publishToRelays', () => {
     }
   });
 
-  it('handles the real SimplePool response for a disconnected relay', async () => {
+  it('handles the real SimplePool response for a relay that was never connected', async () => {
     const pool = new SimplePool();
 
     await expect(
@@ -123,5 +123,15 @@ describe('publishToRelays', () => {
         timedOutRelays: []
       }
     });
+  });
+
+  it('propagates a local publish error instead of recording relay rejection', async () => {
+    const { pool, publish } = fakePool();
+    const error = new Error('invalid event');
+    publish.mockImplementation(() => {
+      throw error;
+    });
+
+    await expect(publishToRelays(pool, ['wss://one'], event)).rejects.toBe(error);
   });
 });

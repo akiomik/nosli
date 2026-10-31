@@ -1,4 +1,4 @@
-import { Kind, SimplePool, nip19, validateEvent, verifySignature } from 'nostr-tools';
+import { Kind, SimplePool, nip19, validateEvent, verifySignature, type Relay } from 'nostr-tools';
 
 import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
@@ -23,11 +23,13 @@ export default class NostrClient {
   private pool = new SimplePool();
   private availableUrls: string[] = [];
   private connectionStatus: Promise<void>;
+  private trackedRelays = new Set<string>();
+  private closed = false;
 
   // Increase connection timeout to avoid Blink issue (incl. Chrome, Edge)
-  constructor(public urls: string[], connectionTimeoutInMillis = 3000) {
+  constructor(public urls: string[], private connectionTimeoutInMillis = 3000) {
     const promises = this.urls.map((url) => {
-      return this.ensureRelay(url, connectionTimeoutInMillis).catch(() => {
+      return this.ensureRelay(url, this.connectionTimeoutInMillis).catch(() => {
         // ignore connection and timeout errors
       });
     });
@@ -42,32 +44,87 @@ export default class NostrClient {
     return this.connectionStatus;
   }
 
+  private waitForConnectingRelay(relay: Relay, timeoutInMillis: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        clearTimeout(timeoutId);
+        relay.off('connect', onConnect);
+        relay.off('error', onError);
+      };
+      const onConnect = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        cleanup();
+        reject(new Error(`Failed to connect to ${relay.url}.`));
+      };
+      const timeoutId = setTimeout(onError, timeoutInMillis);
+      relay.on('error', onError);
+      relay.on('connect', onConnect);
+    });
+  }
+
   public async ensureRelay(url: string, timeoutInMillis: number): Promise<void> {
-    const promise = this.pool.ensureRelay(url).then((relay) => {
-      console.log(`connected to ${relay.url}`);
-      this.availableUrls.push(relay.url);
-      relay.on('disconnect', () => {
-        this.availableUrls = this.availableUrls.filter(
-          (availableUrl) => availableUrl !== relay.url
-        );
-      });
+    if (this.closed) return;
+    const promise = this.pool.ensureRelay(url).then(async (relay) => {
+      if (this.closed) {
+        await relay.close();
+        return;
+      }
+
+      if (!this.trackedRelays.has(relay.url)) {
+        this.trackedRelays.add(relay.url);
+        relay.on('connect', () => {
+          if (this.closed) {
+            void Promise.resolve(relay.close()).catch(() => {});
+          } else if (!this.availableUrls.includes(relay.url)) {
+            this.availableUrls.push(relay.url);
+          }
+        });
+        relay.on('disconnect', () => {
+          this.availableUrls = this.availableUrls.filter(
+            (availableUrl) => availableUrl !== relay.url
+          );
+        });
+      }
+
+      // SimplePool caches failed and disconnected Relay objects without reconnecting them.
+      if (relay.status === 0) await this.waitForConnectingRelay(relay, timeoutInMillis);
+      if (relay.status > 1) await relay.connect();
+      if (this.closed) {
+        await relay.close();
+      } else if (relay.status === 1 && !this.availableUrls.includes(relay.url)) {
+        console.log(`connected to ${relay.url}`);
+        this.availableUrls.push(relay.url);
+      }
     });
 
     // support both node and browser types (https://stackoverflow.com/a/56239226/1918609)
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise((_resolve, reject) => {
       timeoutId = setTimeout(() => reject(), timeoutInMillis);
-    }).finally(() => {
-      clearTimeout(timeoutId);
     });
 
-    return Promise.race([promise, timeout]).then(() => {
-      return;
-    });
+    return Promise.race([promise, timeout])
+      .then(() => {
+        return;
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
+      });
   }
 
-  private async publishRelays(): Promise<string[]> {
+  private async requireAvailableRelays(retryUnavailable = true): Promise<string[]> {
     await this.connect();
+    if (this.closed) throw new Error('The relay client is closed.');
+    if (retryUnavailable || this.availableUrls.length === 0) {
+      await Promise.allSettled(
+        this.urls
+          .filter((url) => !this.availableUrls.includes(url))
+          .map((url) => this.ensureRelay(url, this.connectionTimeoutInMillis))
+      );
+    }
     if (this.availableUrls.length === 0) {
       throw new PublicationFailedError({
         acceptedRelays: [],
@@ -81,19 +138,23 @@ export default class NostrClient {
   public async postLongFormContent(
     lfc: LongFormContent
   ): Promise<{ content: LongFormContent; publication: PublicationResult }> {
-    const relays = await this.publishRelays();
+    await this.requireAvailableRelays();
     const event = await KeyManager.signEvent(lfc.toEvent());
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    const publication = await publishToRelays(this.pool, relays, event);
+    const publication = await publishToRelays(
+      this.pool,
+      await this.requireAvailableRelays(false),
+      event
+    );
     console.log('new LFC is published.', event);
     return { content: LongFormContent.fromEvent(event), publication };
   }
 
   public async deleteEvent(id: string): Promise<PublicationResult> {
-    const relays = await this.publishRelays();
+    await this.requireAvailableRelays();
     let event = {
       id: '',
       sig: '',
@@ -109,13 +170,14 @@ export default class NostrClient {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    return publishToRelays(this.pool, relays, event);
+    return publishToRelays(this.pool, await this.requireAvailableRelays(false), event);
   }
 
   public async close(): Promise<void> {
+    this.closed = true;
+    this.availableUrls = [];
     try {
-      await this.pool.close(this.availableUrls);
-      this.availableUrls = [];
+      await this.pool.close(this.urls);
     } catch {
       // ignore errors
     }

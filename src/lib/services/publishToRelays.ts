@@ -12,7 +12,7 @@ export class PublicationFailedError extends Error {
       result.acceptedRelays.length + result.rejectedRelays.length + result.timedOutRelays.length ===
         0
         ? 'No relays are available for publication.'
-        : 'No relay accepted the event.'
+        : 'No relay confirmed acceptance of the event.'
     );
   }
 }
@@ -38,7 +38,7 @@ export async function publishToRelays(
   const outcomes = await Promise.all(
     relays.map(
       (relay) =>
-        new Promise<'accepted' | 'rejected' | 'timedOut'>((resolve) => {
+        new Promise<'accepted' | 'rejected' | 'timedOut'>((resolve, reject) => {
           let settled = false;
           const finish = (outcome: 'accepted' | 'rejected' | 'timedOut') => {
             if (settled) return;
@@ -52,8 +52,9 @@ export async function publishToRelays(
             const publication = pool.publish([relay], event);
             publication.on('ok', () => finish('accepted'));
             publication.on('failed', () => finish('rejected'));
-          } catch {
-            finish('rejected');
+          } catch (error) {
+            clearTimeout(timeout);
+            reject(error);
           }
         })
     )
