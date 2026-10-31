@@ -32,8 +32,8 @@
           <button
             type="button"
             class="btn ml-5"
-            class:variant-soft-surface={isUsed(id)}
-            class:variant-soft-primary={!isUsed(id)}
+            class:preset-tonal-surface={isUsed(id)}
+            class:preset-tonal-primary={!isUsed(id)}
             on:click|preventDefault={() => toggle(id)}
           >
             {isUsed(id) ? $_('remove') : $_('add')}

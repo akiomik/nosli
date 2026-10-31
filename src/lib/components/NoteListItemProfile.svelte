@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Avatar } from '@skeletonlabs/skeleton';
+  import { Avatar } from '@skeletonlabs/skeleton-svelte';
   import type Profile from '$lib/entities/Profile';
   import ProfileNip05 from '$lib/components/ProfileNip05.svelte';
 
@@ -9,12 +9,7 @@
 
 <div class="flex items-center">
   <div class="mr-2">
-    <Avatar
-      src={profile?.safePicture()}
-      initials="NO"
-      alt="Profile picture of {name}"
-      width="w-12"
-    />
+    <Avatar src={profile?.safePicture()} {name} size="size-12">NO</Avatar>
   </div>
 
   <div class="text-ellipsis overflow-hidden">

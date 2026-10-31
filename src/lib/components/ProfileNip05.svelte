@@ -16,7 +16,7 @@
       <span class="text-ellipsis overflow-hidden whitespace-nowrap">
         {profile.formattedNip05()}
       </span>
-      <span class="badge-icon variant-ghost-primary flex-none">
+      <span class="badge-icon preset-tonal-primary flex-none">
         <FontAwesomeIcon icon={faCheck} title="Valid NIP-05 identifier" />
       </span>
     </p>
