@@ -1,9 +1,18 @@
-import { Kind, SimplePool, nip19, validateEvent, verifySignature, type Relay } from 'nostr-tools';
+import {
+  Kind,
+  SimplePool,
+  nip19,
+  utils,
+  validateEvent,
+  verifySignature,
+  type Relay
+} from 'nostr-tools';
 
 import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
 import {
   PublicationFailedError,
+  emptyPublicationResult,
   publishToRelays,
   type PublicationResult
 } from '$lib/services/publishToRelays';
@@ -21,22 +30,20 @@ export default class NostrClient {
   static TAG = 'nosli';
 
   private pool = new SimplePool();
-  private availableUrls: string[] = [];
+  private relays = new Map<string, Relay>();
+  private connectionAttempts = new Map<string, Promise<void>>();
   private connectionStatus: Promise<void>;
-  private trackedRelays = new Set<string>();
+  private firstConnection: Promise<void>;
   private closed = false;
 
   // Increase connection timeout to avoid Blink issue (incl. Chrome, Edge)
   constructor(public urls: string[], private connectionTimeoutInMillis = 3000) {
-    const promises = this.urls.map((url) => {
-      return this.ensureRelay(url, this.connectionTimeoutInMillis).catch(() => {
-        // ignore connection and timeout errors
-      });
-    });
-
-    this.connectionStatus = Promise.all(promises).then(() => {
-      return;
-    });
+    const attempts = this.urls.map((url) => this.ensureRelay(url, this.connectionTimeoutInMillis));
+    this.connectionStatus = Promise.allSettled(attempts).then(() => {});
+    this.firstConnection = Promise.any(attempts).then(
+      () => {},
+      () => {}
+    );
   }
 
   // NOTE: Temporarily increasing the timeout to avoid a bug in Blink :cry:
@@ -44,95 +51,113 @@ export default class NostrClient {
     return this.connectionStatus;
   }
 
-  private waitForConnectingRelay(relay: Relay, timeoutInMillis: number): Promise<void> {
+  private waitForRelay(
+    relay: Relay,
+    event: 'connect' | 'disconnect',
+    timeoutInMillis: number
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
+      let settled = false;
       const cleanup = () => {
         clearTimeout(timeoutId);
-        relay.off('connect', onConnect);
-        relay.off('error', onError);
+        // nostr-tools iterates listener arrays; removing during a callback skips the next listener.
+        queueMicrotask(() => relay.off(event, onReady));
+        queueMicrotask(() => relay.off('error', onError));
       };
-      const onConnect = () => {
+      const onReady = () => {
+        if (settled) return;
+        settled = true;
         cleanup();
         resolve();
       };
       const onError = () => {
+        if (settled) return;
+        settled = true;
         cleanup();
         reject(new Error(`Failed to connect to ${relay.url}.`));
       };
       const timeoutId = setTimeout(onError, timeoutInMillis);
       relay.on('error', onError);
-      relay.on('connect', onConnect);
+      relay.on(event, onReady);
     });
   }
 
-  public async ensureRelay(url: string, timeoutInMillis: number): Promise<void> {
-    if (this.closed) return;
-    const promise = this.pool.ensureRelay(url).then(async (relay) => {
-      if (this.closed) {
-        await relay.close();
-        return;
-      }
+  private async openRelay(url: string, timeoutInMillis: number): Promise<void> {
+    const relay = await this.pool.ensureRelay(url);
+    if (this.closed) {
+      relay.close();
+      throw new Error('The relay client is closed.');
+    }
 
-      if (!this.trackedRelays.has(relay.url)) {
-        this.trackedRelays.add(relay.url);
-        relay.on('connect', () => {
-          if (this.closed) {
-            void Promise.resolve(relay.close()).catch(() => {});
-          } else if (!this.availableUrls.includes(relay.url)) {
-            this.availableUrls.push(relay.url);
-          }
-        });
-        relay.on('disconnect', () => {
-          this.availableUrls = this.availableUrls.filter(
-            (availableUrl) => availableUrl !== relay.url
-          );
-        });
-      }
+    this.relays.set(utils.normalizeURL(url), relay);
+    if (relay.status === 0) await this.waitForRelay(relay, 'connect', timeoutInMillis);
+    if (relay.status === 2) await this.waitForRelay(relay, 'disconnect', timeoutInMillis);
+    if (relay.status === 3) await relay.connect();
+    if (this.closed) {
+      relay.close();
+      throw new Error('The relay client is closed.');
+    }
+    if (relay.status !== 1) throw new Error(`Failed to connect to ${url}.`);
+  }
 
-      // SimplePool caches failed and disconnected Relay objects without reconnecting them.
-      if (relay.status === 0) await this.waitForConnectingRelay(relay, timeoutInMillis);
-      if (relay.status > 1) await relay.connect();
-      if (this.closed) {
-        await relay.close();
-      } else if (relay.status === 1 && !this.availableUrls.includes(relay.url)) {
-        console.log(`connected to ${relay.url}`);
-        this.availableUrls.push(relay.url);
-      }
-    });
+  public ensureRelay(url: string, timeoutInMillis: number): Promise<void> {
+    if (this.closed) return Promise.reject(new Error('The relay client is closed.'));
+    const key = utils.normalizeURL(url);
+    const existing = this.connectionAttempts.get(key);
+    if (existing) return existing;
 
-    // support both node and browser types (https://stackoverflow.com/a/56239226/1918609)
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise((_resolve, reject) => {
-      timeoutId = setTimeout(() => reject(), timeoutInMillis);
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error(`Timed out connecting to ${url}.`)),
+        timeoutInMillis
+      );
     });
-
-    return Promise.race([promise, timeout])
-      .then(() => {
-        return;
-      })
-      .finally(() => {
-        clearTimeout(timeoutId);
-      });
+    const attempt = Promise.race([this.openRelay(url, timeoutInMillis), timeout]).finally(() => {
+      clearTimeout(timeoutId);
+      if (this.connectionAttempts.get(key) === attempt) this.connectionAttempts.delete(key);
+    });
+    this.connectionAttempts.set(key, attempt);
+    return attempt;
   }
 
-  private async requireAvailableRelays(retryUnavailable = true): Promise<string[]> {
-    await this.connect();
-    if (this.closed) throw new Error('The relay client is closed.');
-    if (retryUnavailable || this.availableUrls.length === 0) {
-      await Promise.allSettled(
-        this.urls
-          .filter((url) => !this.availableUrls.includes(url))
-          .map((url) => this.ensureRelay(url, this.connectionTimeoutInMillis))
-      );
+  private availableUrls(): string[] {
+    return this.urls.filter((url) => this.relays.get(utils.normalizeURL(url))?.status === 1);
+  }
+
+  private async retryUnavailableRelays(): Promise<void> {
+    await Promise.allSettled(
+      this.urls
+        .filter((url) => this.relays.get(utils.normalizeURL(url))?.status !== 1)
+        .map((url) => this.ensureRelay(url, this.connectionTimeoutInMillis))
+    );
+  }
+
+  private async requireAvailableRelays(
+    retryUnavailable = true
+  ): Promise<{ available: string[]; unavailable: string[] }> {
+    if (retryUnavailable) {
+      await Promise.race([this.firstConnection, this.connectionStatus]);
     }
-    if (this.availableUrls.length === 0) {
+    if (this.closed) throw new Error('The relay client is closed.');
+    if (this.availableUrls().length === 0) {
+      await this.retryUnavailableRelays();
+    } else if (retryUnavailable) {
+      // Keep a usable relay responsive while retrying the others during signing.
+      void this.retryUnavailableRelays();
+    }
+    if (this.closed) throw new Error('The relay client is closed.');
+    const available = this.availableUrls();
+    if (available.length === 0) {
       throw new PublicationFailedError({
-        acceptedRelays: [],
-        rejectedRelays: [],
-        timedOutRelays: []
+        ...emptyPublicationResult(),
+        unavailableRelays: [...this.urls]
       });
     }
-    return [...this.availableUrls];
+    return {
+      available,
+      unavailable: this.urls.filter((url) => !available.includes(url))
+    };
   }
 
   public async postLongFormContent(
@@ -144,11 +169,8 @@ export default class NostrClient {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    const publication = await publishToRelays(
-      this.pool,
-      await this.requireAvailableRelays(false),
-      event
-    );
+    const { available, unavailable } = await this.requireAvailableRelays(false);
+    const publication = await publishToRelays(this.pool, available, event, undefined, unavailable);
     console.log('new LFC is published.', event);
     return { content: LongFormContent.fromEvent(event), publication };
   }
@@ -170,12 +192,12 @@ export default class NostrClient {
       throw new Error('Unexpected error: event is invalid.');
     }
 
-    return publishToRelays(this.pool, await this.requireAvailableRelays(false), event);
+    const { available, unavailable } = await this.requireAvailableRelays(false);
+    return publishToRelays(this.pool, available, event, undefined, unavailable);
   }
 
   public async close(): Promise<void> {
     this.closed = true;
-    this.availableUrls = [];
     try {
       await this.pool.close(this.urls);
     } catch {

@@ -115,9 +115,19 @@ describe('NostrClient relay readiness', () => {
     expect(publish).toHaveBeenCalledWith(['wss://one'], expect.any(Object));
   });
 
-  it('reconnects a dropped relay even while another remains connected', async () => {
+  it('retries a dropped relay without delaying publication to a connected relay', async () => {
     const first = fakeRelay('wss://one');
     const second = fakeRelay('wss://two');
+    let finishReconnect = () => {};
+    second.connect.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishReconnect = () => {
+            second.finishConnecting();
+            resolve();
+          };
+        })
+    );
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockImplementation(async (url) =>
       url === 'wss://one' ? first.relay : second.relay
     );
@@ -129,10 +139,12 @@ describe('NostrClient relay readiness', () => {
 
     second.disconnect();
     await expect(client.deleteEvent('event-id')).resolves.toMatchObject({
-      acceptedRelays: ['wss://one', 'wss://two']
+      acceptedRelays: ['wss://one'],
+      unavailableRelays: ['wss://two']
     });
     expect(second.connect).toHaveBeenCalledOnce();
-    expect(publish).toHaveBeenCalledTimes(2);
+    expect(publish).toHaveBeenCalledTimes(1);
+    finishReconnect();
   });
 
   it('retries a relay cached after the initial connection fails', async () => {

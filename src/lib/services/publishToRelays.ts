@@ -4,13 +4,20 @@ export type PublicationResult = {
   acceptedRelays: string[];
   rejectedRelays: string[];
   timedOutRelays: string[];
+  unavailableRelays: string[];
 };
+
+export const emptyPublicationResult = (): PublicationResult => ({
+  acceptedRelays: [],
+  rejectedRelays: [],
+  timedOutRelays: [],
+  unavailableRelays: []
+});
 
 export class PublicationFailedError extends Error {
   constructor(public readonly result: PublicationResult) {
     super(
-      result.acceptedRelays.length + result.rejectedRelays.length + result.timedOutRelays.length ===
-        0
+      result.rejectedRelays.length + result.timedOutRelays.length === 0
         ? 'No relays are available for publication.'
         : 'No relay confirmed acceptance of the event.'
     );
@@ -23,14 +30,11 @@ export async function publishToRelays(
   pool: Pick<SimplePool, 'publish'>,
   relays: string[],
   event: Event,
-  acknowledgmentTimeoutInMillis = ACK_TIMEOUT_MS
+  acknowledgmentTimeoutInMillis = ACK_TIMEOUT_MS,
+  unavailableRelays: string[] = []
 ): Promise<PublicationResult> {
   if (relays.length === 0) {
-    throw new PublicationFailedError({
-      acceptedRelays: [],
-      rejectedRelays: [],
-      timedOutRelays: []
-    });
+    throw new PublicationFailedError({ ...emptyPublicationResult(), unavailableRelays });
   }
 
   // A single-relay call preserves the per-relay acknowledgment contract of
@@ -60,7 +64,7 @@ export async function publishToRelays(
     )
   );
 
-  const result: PublicationResult = { acceptedRelays: [], rejectedRelays: [], timedOutRelays: [] };
+  const result: PublicationResult = { ...emptyPublicationResult(), unavailableRelays };
   outcomes.forEach((outcome, i) => {
     if (outcome === 'accepted') result.acceptedRelays.push(relays[i]);
     if (outcome === 'rejected') result.rejectedRelays.push(relays[i]);

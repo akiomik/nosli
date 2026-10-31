@@ -48,7 +48,8 @@ describe('publishToRelays', () => {
     await expect(result).resolves.toEqual({
       acceptedRelays: ['wss://one', 'wss://two'],
       rejectedRelays: [],
-      timedOutRelays: []
+      timedOutRelays: [],
+      unavailableRelays: []
     });
     expect(settled).toBe(true);
   });
@@ -62,7 +63,20 @@ describe('publishToRelays', () => {
     await expect(result).resolves.toEqual({
       acceptedRelays: ['wss://one'],
       rejectedRelays: ['wss://two'],
-      timedOutRelays: []
+      timedOutRelays: [],
+      unavailableRelays: []
+    });
+  });
+
+  it('keeps configured but unavailable relays in a partial result', async () => {
+    const { pool, callbacks } = fakePool();
+    const result = publishToRelays(pool, ['wss://one'], event, 50, ['wss://two']);
+    callbacks.get('wss://one')?.ok?.();
+    await expect(result).resolves.toEqual({
+      acceptedRelays: ['wss://one'],
+      rejectedRelays: [],
+      timedOutRelays: [],
+      unavailableRelays: ['wss://two']
     });
   });
 
@@ -88,7 +102,8 @@ describe('publishToRelays', () => {
       await expect(result).resolves.toEqual({
         acceptedRelays: ['wss://one'],
         rejectedRelays: [],
-        timedOutRelays: ['wss://two']
+        timedOutRelays: ['wss://two'],
+        unavailableRelays: []
       });
     } finally {
       vi.useRealTimers();
