@@ -4,7 +4,10 @@
 
   import NoteListItem from '#lib/components/NoteListItem.svelte';
   import type { NoteEditorStore } from '#lib/stores/noteEditor.js';
+  import { loginMethod } from '#lib/stores/login.js';
   import Alert from '#lib/components/Alert.svelte';
+  import Nip07Waiting from '#lib/components/Nip07Waiting.svelte';
+  import { focusWhen } from '#lib/actions/focusWhen.js';
 
   export let editor: NoteEditorStore;
 
@@ -23,23 +26,47 @@
   const isUsed = (noteId: string | undefined): boolean =>
     !!$editor.notes.find((note) => note.id === noteId) ||
     (noteId !== undefined && $editor.adding.includes(noteId));
+
+  let retried = false;
+  const retry = () => {
+    retried = true;
+    editor.retrySearch();
+  };
+  // Once a retry has found the reactions, the button of the first note takes the focus from the
+  // retry button, which has left the page.
+  $: firstNoteId = $editor.searchedNotes.find(({ note }) => note)?.id;
 </script>
 
 <div class="flex flex-col space-y-8">
   {#if $editor.searchFailed}
     <div role="alert">
       <Alert variant="warning">
-        <p>{$_('alert.failed-to-get-public-key')}</p>
+        <p>
+          {$editor.searchCanceled
+            ? $_('alert.nip07-canceled')
+            : $_('alert.failed-to-get-public-key')}
+        </p>
         <!-- Unlike disabled, aria-disabled keeps the focus on the button while the retry runs. -->
         <button
           type="button"
           class="btn preset-filled-surface-200-800 mt-2 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
           aria-disabled={$editor.searchRetrying}
-          on:click={editor.retrySearch}
+          use:focusWhen={$editor.searchCanceled && !$editor.searchRetrying}
+          on:click={retry}
         >
           {$editor.searchRetrying ? $_('retrying') : $_('retry')}
         </button>
       </Alert>
+    </div>
+    <!-- Outside the alert, which would announce the wait assertively. -->
+    <div aria-live="polite">
+      {#if $editor.searchAwaitingKey && $loginMethod === 'nip07'}
+        <Nip07Waiting
+          live={false}
+          cancelLabel={$_('cancel-getting-public-key')}
+          on:cancel={editor.cancelSearch}
+        />
+      {/if}
     </div>
   {/if}
   {#each $editor.searchedNotes as { id, note } (id)}
@@ -51,6 +78,7 @@
             class="btn"
             class:preset-filled-surface-200-800={isUsed(id)}
             class:preset-tonal-primary={!isUsed(id)}
+            use:focusWhen={retried && !$editor.searchFailed && id === firstNoteId}
             on:click|preventDefault={() => toggle(id)}
           >
             {isUsed(id) ? $_('remove') : $_('add')}

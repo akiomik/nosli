@@ -13,7 +13,7 @@ import {
 import LongFormContent from '#lib/entities/LongFormContent.js';
 import { nip07 } from '#lib/stores/cookie.js';
 import NostrClient, { decodeNoteId } from './NostrClient';
-import KeyManager from './KeyManager';
+import KeyManager, { Nip07CanceledError } from './KeyManager';
 import { PublicationFailedError, SignedByAnotherAccountError } from './publishToRelays';
 
 vi.mock('#lib/stores/cookie.js', async () => {
@@ -291,6 +291,96 @@ describe('NostrClient.postLongFormContent', () => {
     const { content } = await client.postLongFormContent(list);
 
     expect(content.pubkey).toBe(getPublicKey('1'.repeat(64)));
+    expect(publish).toHaveBeenCalledOnce();
+  });
+});
+
+describe('NostrClient with a NIP-07 extension that has not signed', () => {
+  // An extension whose prompt is left open, which signs only when told to.
+  const openPrompt = () => {
+    let sign = () => {};
+    const signEvent = vi.fn(
+      (event: Event) =>
+        new Promise<Event>((resolve) => (sign = () => resolve(finishEvent(event, '1'.repeat(64)))))
+    );
+    vi.stubGlobal('window', {
+      nostr: { getPublicKey: async () => getPublicKey('1'.repeat(64)), signEvent }
+    });
+    nip07.set(true);
+    return { signEvent, sign: () => sign() };
+  };
+  const sending = (action: 'update' | 'delete', signal: AbortSignal, onSigning = vi.fn()) => {
+    const client = new NostrClient(['wss://one']);
+    const options = { signal, onSigning };
+    const update = LongFormContent.compose({
+      identifier: publishedArticle.identifier,
+      title: 'New title',
+      summary: '',
+      notes: [{ id: 'e'.repeat(64) }],
+      previous: publishedArticle
+    });
+    return action === 'update'
+      ? client.postLongFormContent(update, publishedArticle.pubkey, options)
+      : client.deleteArticle(publishedArticle, options);
+  };
+
+  afterEach(() => {
+    nip07.set(false);
+    vi.unstubAllGlobals();
+  });
+
+  it.each(['update', 'delete'] as const)(
+    'sends no %s once the user stops waiting, even when the signature comes later',
+    async (action) => {
+      vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+      const publish = vi
+        .spyOn(SimplePool.prototype, 'publish')
+        .mockImplementation(() => acceptingPublication());
+      const { signEvent, sign } = openPrompt();
+      const wait = new AbortController();
+      const onSigning = vi.fn();
+
+      const sent = sending(action, wait.signal, onSigning);
+      await vi.waitFor(() => expect(signEvent).toHaveBeenCalledOnce());
+      expect(onSigning.mock.calls).toEqual([[true]]);
+      wait.abort();
+
+      await expect(sent).rejects.toBeInstanceOf(Nip07CanceledError);
+      expect(onSigning.mock.calls).toEqual([[true], [false]]);
+      sign();
+      await new Promise((resolve) => setTimeout(resolve));
+      expect(publish).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['update', 'delete'] as const)(
+    'sends no %s for a wait that was stopped, whatever signs it',
+    async (action) => {
+      vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+      const publish = vi.spyOn(SimplePool.prototype, 'publish');
+      // The secret key of the login signs at once, without looking at the signal.
+      const wait = new AbortController();
+      wait.abort();
+
+      await expect(sending(action, wait.signal)).rejects.toBeInstanceOf(Nip07CanceledError);
+      expect(publish).not.toHaveBeenCalled();
+    }
+  );
+
+  it('sends the update once signed, and reports when the signer had it', async () => {
+    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+    const publish = vi
+      .spyOn(SimplePool.prototype, 'publish')
+      .mockImplementation(() => acceptingPublication());
+    const { signEvent, sign } = openPrompt();
+    const onSigning = vi.fn();
+
+    const sent = sending('update', new AbortController().signal, onSigning);
+    await vi.waitFor(() => expect(signEvent).toHaveBeenCalledOnce());
+    sign();
+
+    await expect(sent).resolves.toBeDefined();
+    expect(onSigning.mock.calls).toEqual([[true], [false]]);
     expect(publish).toHaveBeenCalledOnce();
   });
 });

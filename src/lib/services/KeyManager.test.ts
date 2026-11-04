@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
-import { getPublicKey } from 'nostr-tools';
+import { finishEvent, getPublicKey, type Event } from 'nostr-tools';
 
 vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
@@ -16,6 +16,7 @@ const extension = {
 
 let KeyManager: typeof import('./KeyManager').default;
 let Nip07MissingError: typeof import('./KeyManager').Nip07MissingError;
+let Nip07CanceledError: typeof import('./KeyManager').Nip07CanceledError;
 let nip07: typeof import('#lib/stores/cookie.js').nip07;
 let pubkey: typeof import('#lib/stores/cookie.js').pubkey;
 let seckey: typeof import('#lib/stores/cookie.js').seckey;
@@ -25,7 +26,7 @@ beforeEach(async () => {
   // The app starts now: KeyManager is loaded again under fake timers, so it waits from now.
   vi.useFakeTimers({ toFake: ['setTimeout', 'performance'] });
   vi.resetModules();
-  ({ default: KeyManager, Nip07MissingError } = await import('./KeyManager'));
+  ({ default: KeyManager, Nip07MissingError, Nip07CanceledError } = await import('./KeyManager'));
   ({ nip07, pubkey, seckey } = await import('#lib/stores/cookie.js'));
   ({ loginMethod } = await import('#lib/stores/login.js'));
   vi.stubGlobal('window', {});
@@ -101,6 +102,121 @@ describe('KeyManager.getPublicKey with an extension that gives an invalid key', 
 
     await expect(KeyManager.getPublicKey()).rejects.toThrow('invalid public key');
     await expect(KeyManager.getNip07PublicKey()).rejects.toThrow('invalid public key');
+  });
+});
+
+describe('KeyManager with a NIP-07 extension that has not answered', () => {
+  // An extension whose prompt is left open, which answers only when told to.
+  const openPrompt = () => {
+    let giveKey = () => {};
+    let giveSignature = () => {};
+    const nostr = {
+      getPublicKey: vi.fn(() => new Promise<string>((resolve) => (giveKey = () => resolve(hex)))),
+      signEvent: vi.fn(
+        (event: Pick<Event, 'kind' | 'tags' | 'content' | 'created_at'>) =>
+          new Promise<Event>(
+            (resolve) => (giveSignature = () => resolve(finishEvent(event, '1'.repeat(64))))
+          )
+      ),
+      getRelays: async () => ({})
+    };
+    window.nostr = nostr;
+    nip07.set(true);
+    return { nostr, giveKey: () => giveKey(), giveSignature: () => giveSignature() };
+  };
+  const unsigned = (): Event => ({
+    id: '',
+    sig: '',
+    kind: 1,
+    content: '',
+    pubkey: '',
+    created_at: 1,
+    tags: []
+  });
+
+  it('stops waiting for the public key, and drops the key that comes later', async () => {
+    const { nostr, giveKey } = openPrompt();
+    const wait = new AbortController();
+
+    const key = KeyManager.getPublicKey(wait.signal);
+    const loggedInAs = KeyManager.isLoggedInAs(hex, wait.signal);
+    await vi.waitFor(() => expect(nostr.getPublicKey).toHaveBeenCalledTimes(2));
+    wait.abort();
+    giveKey();
+
+    await expect(key).rejects.toBeInstanceOf(Nip07CanceledError);
+    await expect(loggedInAs).rejects.toBeInstanceOf(Nip07CanceledError);
+  });
+
+  it('stops waiting for a signature, and drops the signature that comes later', async () => {
+    const { nostr, giveSignature } = openPrompt();
+    const wait = new AbortController();
+
+    const signed = KeyManager.signEvent(unsigned(), wait.signal);
+    await vi.waitFor(() => expect(nostr.signEvent).toHaveBeenCalledOnce());
+    wait.abort();
+    giveSignature();
+
+    await expect(signed).rejects.toBeInstanceOf(Nip07CanceledError);
+  });
+
+  it('does not ask the extension once the wait has been stopped', async () => {
+    const { nostr } = openPrompt();
+    const wait = new AbortController();
+    wait.abort();
+
+    await expect(KeyManager.getPublicKey(wait.signal)).rejects.toBeInstanceOf(Nip07CanceledError);
+    await expect(KeyManager.signEvent(unsigned(), wait.signal)).rejects.toBeInstanceOf(
+      Nip07CanceledError
+    );
+    expect(nostr.getPublicKey).not.toHaveBeenCalled();
+    expect(nostr.signEvent).not.toHaveBeenCalled();
+  });
+
+  it('does not ask an extension that appears after the wait has been stopped', async () => {
+    const { nostr } = openPrompt();
+    window.nostr = undefined;
+    const wait = new AbortController();
+
+    const key = KeyManager.getPublicKey(wait.signal);
+    const signed = KeyManager.signEvent(unsigned(), wait.signal);
+    await vi.advanceTimersByTimeAsync(500);
+    wait.abort();
+    await expect(key).rejects.toBeInstanceOf(Nip07CanceledError);
+    await expect(signed).rejects.toBeInstanceOf(Nip07CanceledError);
+    window.nostr = nostr;
+    await vi.advanceTimersByTimeAsync(100);
+
+    expect(nostr.getPublicKey).not.toHaveBeenCalled();
+    expect(nostr.signEvent).not.toHaveBeenCalled();
+  });
+
+  it('still fails when the extension refuses while the wait can be stopped', async () => {
+    const refusal = new Error('User rejected');
+    window.nostr = {
+      getPublicKey: () => Promise.reject(refusal),
+      signEvent: () => Promise.reject(refusal),
+      getRelays: async () => ({})
+    };
+    nip07.set(true);
+    const wait = new AbortController();
+
+    await expect(KeyManager.getPublicKey(wait.signal)).rejects.toBe(refusal);
+    await expect(KeyManager.signEvent(unsigned(), wait.signal)).rejects.toBe(refusal);
+  });
+
+  it('still gives the answer when the wait is not stopped', async () => {
+    const { giveKey, giveSignature } = openPrompt();
+    const wait = new AbortController();
+
+    const key = KeyManager.getPublicKey(wait.signal);
+    const signed = KeyManager.signEvent(unsigned(), wait.signal);
+    await vi.advanceTimersByTimeAsync(0);
+    giveKey();
+    giveSignature();
+
+    await expect(key).resolves.toBe(hex);
+    await expect(signed).resolves.toMatchObject({ pubkey: hex });
   });
 });
 

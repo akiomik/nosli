@@ -53,6 +53,17 @@ describe('login page load', () => {
     await expect(profile).resolves.toBe(`/p/${nip19.npubEncode(hex)}`);
   });
 
+  it('stops waiting for the NIP-07 extension when the page stops the lookup', async () => {
+    nip07.set(true);
+    vi.stubGlobal('window', { nostr: { getPublicKey: () => new Promise<string>(() => {}) } });
+
+    const { profile, keyLookup } = await run();
+    expect(keyLookup).toBeDefined();
+    keyLookup?.abort();
+
+    await expect(profile).resolves.toBeUndefined();
+  });
+
   it('shows the login form when the NIP-07 extension is missing', async () => {
     nip07.set(true);
     // KeyManager rejects once it has waited for the extension.

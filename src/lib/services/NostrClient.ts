@@ -5,13 +5,14 @@ import {
   utils,
   validateEvent,
   verifySignature,
+  type Event,
   type Relay
 } from 'nostr-tools';
 
 import { isEventId } from '#lib/entities/EventId.js';
 import LongFormContent from '#lib/entities/LongFormContent.js';
 import { toSeconds } from '#lib/helper.js';
-import KeyManager from '#lib/services/KeyManager.js';
+import KeyManager, { Nip07CanceledError } from '#lib/services/KeyManager.js';
 import { relayHints } from '#lib/services/relayHints.js';
 import {
   PublicationFailedError,
@@ -22,6 +23,14 @@ import {
 } from '#lib/services/publishToRelays.js';
 
 const PUBLICATION_CONNECTION_GRACE_MS = 1000;
+
+// How a publication tells the form about signing, so that the user can stop waiting for it.
+export type SigningOptions = {
+  // Aborted when the user stops waiting. Nothing is then sent, even if the signature comes later.
+  signal?: AbortSignal;
+  // Called with true when the event goes to the signer, and with false once it comes back.
+  onSigning?: (signing: boolean) => void;
+};
 
 // Returns the event ID of a note or nevent, and the relays that an nevent hints at.
 export const decodeNoteId = (b32: string): { id: string; relays: string[] } => {
@@ -192,15 +201,28 @@ export default class NostrClient {
     };
   }
 
+  private async sign(event: Event, { signal, onSigning }: SigningOptions = {}): Promise<Event> {
+    onSigning?.(true);
+    try {
+      const signed = await KeyManager.signEvent(event, signal);
+      // A signer that answers at once, such as a secret key, does not look at the signal.
+      if (signal?.aborted) throw new Nip07CanceledError();
+      return signed;
+    } finally {
+      onSigning?.(false);
+    }
+  }
+
   // For an update, `author` is the author of the list, the only account that can sign it. The event
   // to sign has no pubkey, since some NIP-07 extensions keep a pubkey they are given, and others
   // refuse one that is not theirs.
   public async postLongFormContent(
     lfc: LongFormContent,
-    author?: string
+    author?: string,
+    signing?: SigningOptions
   ): Promise<{ content: LongFormContent; publication: PublicationResult }> {
     await this.waitForRelayBeforeSigning();
-    const event = await KeyManager.signEvent({ ...lfc.toEvent(), pubkey: '' });
+    const event = await this.sign({ ...lfc.toEvent(), pubkey: '' }, signing);
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
@@ -215,7 +237,10 @@ export default class NostrClient {
   // The a tag also deletes the earlier versions that relays still hold, which the e tag misses.
   // NIP-09 has relays delete the versions up to and including the created_at of the request, so
   // the request is dated no earlier than the article, which can be from a clock that is ahead.
-  public async deleteArticle(article: LongFormContent): Promise<PublicationResult> {
+  public async deleteArticle(
+    article: LongFormContent,
+    signing?: SigningOptions
+  ): Promise<PublicationResult> {
     const id = article.id;
     if (!id) throw new Error('Unexpected error: the article is not published.');
 
@@ -233,7 +258,7 @@ export default class NostrClient {
         ['k', Kind.Article.toString()]
       ]
     };
-    event = await KeyManager.signEvent(event);
+    event = await this.sign(event, signing);
 
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');

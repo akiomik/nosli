@@ -6,10 +6,11 @@ import KeyManager from '#lib/services/KeyManager.js';
 import { LOGIN_DEPENDENCY } from '#lib/stores/login.js';
 
 // The profile page of the logged-in user, or undefined to show the login form instead. The NIP-07
-// extension can be missing or refuse, and the key from it or the cookie may not be hex.
-const profilePath = async (): Promise<string | undefined> => {
+// extension can be missing or refuse, and the key from it or the cookie may not be hex. `signal`
+// stops waiting for the extension.
+const profilePath = async (signal?: AbortSignal): Promise<string | undefined> => {
   try {
-    return `/p/${nip19.npubEncode(await KeyManager.getPublicKey())}`;
+    return `/p/${nip19.npubEncode(await KeyManager.getPublicKey(signal))}`;
   } catch {
     return undefined;
   }
@@ -20,7 +21,10 @@ const profilePath = async (): Promise<string | undefined> => {
 export const load = (async ({ depends }) => {
   depends(LOGIN_DEPENDENCY);
   if (!browser || !KeyManager.isLoggedIn()) return { profile: undefined };
-  if (KeyManager.isLoggedInWithNip07()) return { profile: profilePath() };
+  if (KeyManager.isLoggedInWithNip07()) {
+    const keyLookup = new AbortController();
+    return { profile: profilePath(keyLookup.signal), keyLookup };
+  }
 
   const path = await profilePath();
   if (path) throw redirect(302, path);
