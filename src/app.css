@@ -17,7 +17,8 @@
   --anchor-text-decoration-hover: underline;
   --anchor-text-decoration-active: underline;
   --anchor-text-decoration-focus: underline;
-  /* The theme's tinted text falls below 4.5:1 on the 500 shades, so use v2's black and white. */
+  /* Toasts fill with success, warning, and error 500, where the theme's tinted text falls below
+     4.5:1, so use v2's black and white. Primary keeps its color, which also sets .code text. */
   --color-success-contrast-dark: oklch(0 0 0);
   --color-warning-contrast-dark: oklch(0 0 0);
   --color-error-contrast-light: oklch(1 0 0);

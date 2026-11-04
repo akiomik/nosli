@@ -259,7 +259,11 @@
     <hr />
 
     <div>
-      <button on:click|preventDefault={onDelete} disabled={submitting} class="btn bg-error-400">
+      <button
+        on:click|preventDefault={onDelete}
+        disabled={submitting}
+        class="btn bg-error-400 text-black"
+      >
         {#if submission === 'deleting'}
           {$_('publication.deleting')}
         {:else}
