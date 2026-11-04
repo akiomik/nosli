@@ -40,7 +40,7 @@
       <div class="card">
         <div class="p-4">
           <p>{$_('alert.failed-to-get-note')}</p>
-          <p>{nip19.noteEncode(id)}</p>
+          <p class="break-all">{nip19.noteEncode(id)}</p>
         </div>
         <footer class="border-t border-surface-300 p-4">
           <NoteActions
@@ -56,7 +56,7 @@
   {#each $editor.adding as id (id)}
     <div class="card p-4" role="status">
       <p>{$_('loading-note')}</p>
-      <p>{nip19.noteEncode(id)}</p>
+      <p class="break-all">{nip19.noteEncode(id)}</p>
     </div>
   {/each}
 </div>
