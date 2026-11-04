@@ -122,8 +122,8 @@ describe('LongFormContent.hasContentBesidesNotes', () => {
         ['d', 'my-list'],
         ['title', 'Title'],
         ['summary', ''],
-        ['e', oldNote, '', 'mention'],
-        ['e', newNote, '', 'mention'],
+        ['e', oldNote],
+        ['e', newNote],
         ['t', 'nosli']
       ]
     });
@@ -139,7 +139,8 @@ describe('LongFormContent.hasContentBesidesNotes', () => {
     ],
     ['a reference to a profile', `nostr:${nip19.npubEncode(author)}`],
     ['a malformed reference', 'nostr:nevent1bad'],
-    ['a #[n] mention of a tag other than its e tags', '#[3]\n#[4]\n#[5]']
+    ['a #[n] mention of a tag after its e tags', '#[3]\n#[4]\n#[5]'],
+    ['a #[n] mention of a tag before its e tags', '#[2]\n#[3]']
   ])('is true for %s', (_name, content) => {
     expect(withContent(content).hasContentBesidesNotes()).toBe(true);
   });

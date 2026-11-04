@@ -43,8 +43,8 @@
       </h1>
 
       {#if $matome.hasContentBesidesNotes()}
-        <!-- Shown when editing starts rather than on saving, so that the author can decide before
-             doing any work. -->
+        <!-- Shown when editing starts, and again by the save button, so that the author can decide
+             before doing any work. -->
         <Alert variant="warning">
           <p>{$_('alert.content-replaced-on-edit')}</p>
           <details class="mt-2">
