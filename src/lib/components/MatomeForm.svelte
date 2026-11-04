@@ -87,7 +87,7 @@
 
   const onCreate = async () => {
     if (title === undefined || $editor.notes.length <= 0) {
-      throw new Error('Unexpected error: title is undefined');
+      throw new Error('Unexpected error: the title or the notes are missing');
     }
 
     const lfc = LongFormContent.compose({
