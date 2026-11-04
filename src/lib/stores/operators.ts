@@ -44,15 +44,14 @@ const isEvent = (event: unknown): event is Event =>
 export function requestedEvents(filters: Filter[]): MonoTypeOperatorFunction<EventPacket> {
   return (packets) =>
     defer(() => {
-      // An event whose ID is its hash holds the same signed fields as every copy with that ID, so a
-      // copy of a verified event is dropped without verifying it again.
+      // Once an event is verified, any later copy with its ID is dropped without checking it again.
       const verified = new Set<string>();
       return packets.pipe(
         filter(
           ({ event }) =>
             isEvent(event) &&
-            getEventHash(event) === event.id &&
             !verified.has(event.id) &&
+            getEventHash(event) === event.id &&
             matchesFilters(filters, event)
         ),
         verify(),
