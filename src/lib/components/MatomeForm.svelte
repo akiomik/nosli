@@ -117,13 +117,13 @@
   };
 
   const onDelete = async () => {
-    const id = matome?.id;
-    if (!submission && matome && id && confirm($_('dialog.delete-list-confirmation'))) {
-      const path = `/p/${nip19.npubEncode(matome.pubkey)}`;
+    const article = matome;
+    if (!submission && article && confirm($_('dialog.delete-list-confirmation'))) {
+      const path = `/p/${nip19.npubEncode(article.pubkey)}`;
 
       await submit(
         'deleting',
-        () => client.deleteEvent(id),
+        () => client.deleteArticle(article),
         (publication) => {
           notifySuccess('deleted', publication);
           goto(path);

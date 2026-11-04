@@ -34,6 +34,10 @@ describe('LongFormContent.fromEvent', () => {
     expect(LongFormContent.fromEvent(otherClientEvent).identifier).toBe('my-list');
   });
 
+  it('gives the address shared by every version of the list', () => {
+    expect(LongFormContent.fromEvent(otherClientEvent).address()).toBe(`30023:${author}:my-list`);
+  });
+
   it('keeps the tags that Nosli does not read or rebuild as they are', () => {
     expect(LongFormContent.fromEvent(otherClientEvent).otherTags).toEqual([
       ['t', 'nostr'],

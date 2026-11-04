@@ -113,6 +113,11 @@ export default class LongFormContent {
     return event;
   }
 
+  // The address of every version of this list, as NIP-01 defines it for addressable events.
+  address(): string {
+    return `${Kind.Article}:${this.pubkey}:${this.identifier}`;
+  }
+
   nip19Id(): string {
     return nip19.naddrEncode({
       kind: Kind.Article,
