@@ -25,20 +25,25 @@
     identifier: data.params.identifier
   });
   $: profile = profileStore({ client, pubkey: data.params.pubkey });
-  $: notes = $matome ? notesStore({ client, ids: $matome.eventIds() }) : undefined;
+  $: notes = $matome
+    ? notesStore({ client, ids: $matome.eventIds(), relays: $matome.noteRelays() })
+    : undefined;
   // Checked again for each login, and when the author changes rather than for each version.
   $: author = $matome?.pubkey;
   $: isMine = author && $loginMethod ? KeyManager.isLoggedInAs(author) : false;
 </script>
 
 <svelte:head>
-  {#if $matome && $profile}
-    <title>{$matome.title} by {$profile.formattedName()} | Nosli</title>
+  <!-- A title is always set, so that the previous page's title does not stay while the list loads. -->
+  {#if $matome}
+    <title>{$matome.title}{$profile ? ` by ${$profile.formattedName()}` : ''} | Nosli</title>
     <meta name="description" content={$matome.summary} />
     <meta name="keywords" content="nostr,curated,list,damus,snort" />
     <meta property="og:url" content="https://nosli.vercel.app/li/{$matome.nip19Id()}" />
     <meta property="og:title" content="{$matome.title} | Nosli" />
     <meta property="og:description" content={$matome.summary} />
+  {:else}
+    <title>Nosli</title>
   {/if}
 </svelte:head>
 

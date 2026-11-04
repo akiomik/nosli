@@ -94,7 +94,7 @@
       identifier,
       title,
       summary: summary || '',
-      noteIds: $editor.notes.map(({ id }) => id),
+      notes: $editor.notes,
       previous: matome
     });
 

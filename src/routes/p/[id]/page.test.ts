@@ -12,7 +12,10 @@ describe('profile route', () => {
   });
 
   it('rejects secret-key and profile-pointer identifiers', async () => {
-    await expect(loadProfile(nip19.nsecEncode(hex))).rejects.toMatchObject({ status: 404 });
+    await expect(loadProfile(nip19.nsecEncode(hex))).rejects.toMatchObject({
+      status: 404,
+      body: { message: 'Not Found 💔' }
+    });
     await expect(loadProfile(nip19.nprofileEncode({ pubkey: hex }))).rejects.toMatchObject({
       status: 404
     });

@@ -11,6 +11,7 @@ import {
 import { isEventId } from '$lib/entities/EventId';
 import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
+import { relayHints } from '$lib/services/relayHints';
 import {
   PublicationFailedError,
   emptyPublicationResult,
@@ -20,18 +21,21 @@ import {
 
 const PUBLICATION_CONNECTION_GRACE_MS = 1000;
 
-export const nip19ToHex = (b32: string): string => {
+// Returns the event ID of a note or nevent, and the relays that an nevent hints at.
+export const decodeNoteId = (b32: string): { id: string; relays: string[] } => {
   const data = nip19.decode(b32);
   let id: string | undefined;
+  let relays: string[] = [];
   if (data.type === 'note' && typeof data.data === 'string') id = data.data;
   if (data.type === 'nevent' && typeof data.data !== 'string' && 'id' in data.data) {
     id = data.data.id;
+    relays = relayHints(data.data.relays ?? []);
   }
   // A note decodes to however many bytes it holds, so check that it is a 32-byte event ID.
   if (id === undefined || !isEventId(id)) {
     throw new Error('Expected a note or nevent identifier.');
   }
-  return id;
+  return { id, relays };
 };
 
 export default class NostrClient {

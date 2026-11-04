@@ -1,25 +1,31 @@
 import { derived, get, writable } from 'svelte/store';
-import { catchError, defaultIfEmpty, of, take } from 'rxjs';
+import { catchError, defaultIfEmpty, map, of, take } from 'rxjs';
 import type { Subscription } from 'rxjs';
 import type { RxNostr } from 'rx-nostr';
 
 import { isEventId } from '$lib/entities/EventId';
 import type { LoadingNote } from '$lib/entities/LoadingNote';
 import type LongFormContent from '$lib/entities/LongFormContent';
-import { nip19ToHex } from '$lib/services/NostrClient';
+import { decodeNoteId } from '$lib/services/NostrClient';
+import { relayHints } from '$lib/services/relayHints';
 import KeyManager from '$lib/services/KeyManager';
 import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/nostr';
 
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
   const { matome, client } = params;
   // The editor lists each note once, so a list that holds a note twice keeps the first.
-  const initNoteIds = [...new Set(matome?.eventIds() ?? [])];
+  const initNotes = (matome?.noteReferences() ?? []).filter(
+    (note, i, all) => all.findIndex(({ id }) => id === note.id) === i
+  );
+  const initNoteIds = initNotes.map(({ id }) => id);
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const searchFailed = writable(false);
   const searchRetrying = writable(false);
   // Notes that no relay returns stay in the list, shown as not found, so that saving keeps them.
-  const notes = writable<LoadingNote[]>(initNoteIds.map((id) => ({ id, note: undefined })));
+  const notes = writable<LoadingNote[]>(
+    initNotes.map(({ id, relays }) => ({ id, note: undefined, relays }))
+  );
   // IDs of notes being added, which join `notes` once the note arrives or the request ends.
   const adding = writable<string[]>([]);
   const searchedNotes = writable<LoadingNote[]>([]);
@@ -29,13 +35,24 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
 
   // Initialize Editor tab
   if (initNoteIds.length > 0) {
-    notesStore({ client, ids: initNoteIds }).subscribe({
-      // Fills in the loaded notes without undoing changes made in the recent reactions tab.
+    notesStore({ client, ids: initNoteIds, relays: matome?.noteRelays() }).subscribe({
+      // Fills in the loaded notes without undoing changes made in the recent reactions tab. The relay
+      // that returned a note comes first among its hints.
       next: (loaded) => {
-        const loadedById = new Map(loaded.map(({ id, note }) => [id, note]));
+        const loadedById = new Map(loaded.map((entry) => [entry.id, entry]));
         notes.update((prev) =>
-          prev.map(({ id, note }) => ({ id, note: note ?? loadedById.get(id) }))
+          prev.map((entry) => {
+            const found = loadedById.get(entry.id);
+            if (entry.note || !found?.note) return entry;
+            const relays = relayHints([...(found.relays ?? []), ...(entry.relays ?? [])]);
+            return { ...entry, note: found.note, relays };
+          })
         );
+      },
+      // The notes that have not loaded stay as not found, so the editor can still be used.
+      error: (error) => {
+        console.error(error);
+        editorInitialized.set(true);
       },
       complete: () => editorInitialized.set(true)
     });
@@ -58,16 +75,22 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
         const limit = 100;
         // Show the notes at once, so a retry does not fill them in under the failure message.
         let found: LoadingNote[] = [];
+        const show = () => {
+          settleSearch(false);
+          searchedNotes.set(found);
+        };
         recentUserReactedNotesStore({
           client,
           pubkey,
           limit
         }).subscribe({
           next: (notes) => (found = notes),
-          complete: () => {
-            settleSearch(false);
-            searchedNotes.set(found);
-          }
+          // A failed request shows the notes found until then, like one that ends.
+          error: (error) => {
+            console.error(error);
+            show();
+          },
+          complete: show
         });
       },
       (error) => {
@@ -86,8 +109,9 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
     loadSearch();
   };
 
-  // Accepts a hex event ID, or a note or nevent ID in either case.
-  const toHex = (noteId: string) => (isEventId(noteId) ? noteId : nip19ToHex(noteId));
+  // Reads a hex event ID, or a note or nevent ID in either case, with the relays an nevent hints at.
+  const decode = (noteId: string) =>
+    isEventId(noteId) ? { id: noteId, relays: [] } : decodeNoteId(noteId);
 
   // Requests for the notes being added, so that removing a note cancels its request.
   const requests = new Map<string, Subscription>();
@@ -98,29 +122,36 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   };
 
   const appendNote = (noteId: string) => {
-    const hex = toHex(noteId);
+    const { id: hex, relays } = decode(noteId);
     if (isListed(hex)) return;
 
     adding.update((ids) => [...ids, hex]);
-    // The note joins the list as soon as it arrives, or as not found once no relay returns it.
-    const request = noteStore({ client, id: hex })
+    // The note joins the list as soon as it arrives, or as not found once no relay returns it. The
+    // relay that returned it comes first among its hints.
+    const notFound: LoadingNote = { id: hex, note: undefined, relays };
+    const request = noteStore({ client, id: hex, relays })
       .pipe(
         take(1),
-        defaultIfEmpty(undefined),
+        map(({ note, relay }): LoadingNote => ({
+          ...notFound,
+          note,
+          relays: relayHints([relay, ...relays])
+        })),
+        defaultIfEmpty(notFound),
         catchError((error) => {
           console.error(error);
-          return of(undefined);
+          return of(notFound);
         })
       )
-      .subscribe((note) => {
+      .subscribe((added) => {
         stopAdding(hex);
-        notes.update((prev) => [...prev, { id: hex, note }]);
+        notes.update((prev) => [...prev, added]);
       });
     if (!request.closed) requests.set(hex, request);
   };
 
   const removeNote = (noteId: string) => {
-    const hex = toHex(noteId);
+    const hex = decode(noteId).id;
     stopAdding(hex);
     notes.update((prev) => prev.filter((note) => note.id !== hex));
   };
