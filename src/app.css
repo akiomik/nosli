@@ -18,7 +18,6 @@
   --anchor-text-decoration-active: underline;
   --anchor-text-decoration-focus: underline;
   /* The theme's tinted text falls below 4.5:1 on the 500 shades, so use v2's black and white. */
-  --color-primary-contrast-dark: oklch(0 0 0);
   --color-success-contrast-dark: oklch(0 0 0);
   --color-warning-contrast-dark: oklch(0 0 0);
   --color-error-contrast-light: oklch(1 0 0);
