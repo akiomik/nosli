@@ -62,6 +62,11 @@
   "login-with-nip07": "with NIP-07 (recommended)",
   "logout": "Logout",
   "menu": "Menu",
+  "missing": {
+    "list": "This list was not found.",
+    "notes": "Some notes were not found.",
+    "unreachable": "Could not connect to any relay."
+  },
   "move-down": "Move Down",
   "move-up": "Move Up",
   "mypage": "My page",
