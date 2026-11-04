@@ -11,8 +11,8 @@
   export let isLast: boolean;
 </script>
 
-<div class="flex items-center">
-  <div class="btn-group preset-filled-surface-200-800 ml-5">
+<div class="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+  <div class="btn-group preset-filled-surface-200-800">
     <button on:click|preventDefault={() => editor.moveUp(noteId)} disabled={isFirst}>
       <FontAwesomeIcon icon={faAngleUp} title="Move Up" />
     </button>
@@ -24,7 +24,7 @@
 
   <button
     type="button"
-    class="btn preset-tonal-error ml-3"
+    class="btn preset-tonal-error"
     on:click|preventDefault={() => editor.removeNote(noteId)}
   >
     {$_('remove')}

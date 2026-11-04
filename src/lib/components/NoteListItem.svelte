@@ -70,7 +70,10 @@
 
   <hr />
 
-  <footer class="flex items-center justify-end border-t border-surface-300 p-4">
+  <!-- On a narrow screen, the editor's buttons move below the date instead of pushing it out. -->
+  <footer
+    class="flex flex-wrap items-center justify-end gap-x-5 gap-y-2 border-t border-surface-300 p-4"
+  >
     <p>
       {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
         note.createdAt
