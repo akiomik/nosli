@@ -183,7 +183,10 @@
     <Tabs value={tabActive} onValueChange={(details) => (tabActive = details.value)}>
       <Tabs.List>
         <Tabs.Trigger value="edit">{$_('edit')}</Tabs.Trigger>
-        <Tabs.Trigger value="recent-your-reactions">{$_('recent-your-reactions')}</Tabs.Trigger>
+        <!-- The longer label wraps on a narrow screen, while Edit keeps to one line. -->
+        <Tabs.Trigger value="recent-your-reactions" class="whitespace-normal text-balance">
+          {$_('recent-your-reactions')}
+        </Tabs.Trigger>
         <Tabs.Indicator />
       </Tabs.List>
       <Tabs.Content value="edit">

@@ -92,7 +92,7 @@
 
   <button
     type="button"
-    class="btn bg-surface-300"
+    class="btn bg-surface-300 whitespace-normal text-balance"
     disabled={$editor.notes === undefined || $editor.notes.length === 0}
     on:click|preventDefault={editor.sortByLeaastRecentlyCreated}
   >
