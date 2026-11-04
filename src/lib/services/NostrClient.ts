@@ -9,8 +9,8 @@ import {
 } from 'nostr-tools';
 
 import { isEventId } from '$lib/entities/EventId';
-import { toSeconds } from '$lib/helper';
 import LongFormContent from '$lib/entities/LongFormContent';
+import { toSeconds } from '$lib/helper';
 import KeyManager from '$lib/services/KeyManager';
 import { relayHints } from '$lib/services/relayHints';
 import {
@@ -213,8 +213,8 @@ export default class NostrClient {
   }
 
   // The a tag also deletes the earlier versions that relays still hold, which the e tag misses.
-  // NIP-09 has it delete the versions up to the created_at of the request, so the request is no
-  // earlier than the article, which can be from a clock that is ahead of this one.
+  // NIP-09 has relays delete the versions up to and including the created_at of the request, so
+  // the request is dated no earlier than the article, which can be from a clock that is ahead.
   public async deleteArticle(article: LongFormContent): Promise<PublicationResult> {
     const id = article.id;
     if (!id) throw new Error('Unexpected error: the article is not published.');

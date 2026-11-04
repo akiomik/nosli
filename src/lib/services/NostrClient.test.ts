@@ -149,6 +149,10 @@ describe('decodeNoteId', () => {
 });
 
 describe('NostrClient.deleteArticle', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('targets the address of the article as well as its latest event', async () => {
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
     const publish = vi
@@ -183,11 +187,7 @@ describe('NostrClient.deleteArticle', () => {
     const article = listVersion('f'.repeat(64));
     article.createdAt = new Date(articleCreatedAt * 1000);
 
-    try {
-      await client.deleteArticle(article);
-    } finally {
-      vi.useRealTimers();
-    }
+    await client.deleteArticle(article);
 
     expect(publish.mock.calls[0][1]).toMatchObject({ created_at: requestCreatedAt });
   });
