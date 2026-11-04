@@ -5,6 +5,7 @@ import ja from '$lib/locales/ja.json';
 import { publicationFailureKey, publicationSuccessMessage } from './publicationFeedback';
 import {
   PublicationFailedError,
+  SignedByAnotherAccountError,
   emptyPublicationResult,
   type PublicationResult
 } from './publishToRelays';
@@ -104,6 +105,12 @@ describe('publicationFailureKey', () => {
     expect(publicationFailureKey(error)).toBe('publication.failed-unconfirmed');
   });
 
+  it('reports that another account signed, which the user can fix', () => {
+    expect(publicationFailureKey(new SignedByAnotherAccountError())).toBe(
+      'publication.failed-another-account'
+    );
+  });
+
   it('falls back to a generic message for signing and other errors', () => {
     expect(publicationFailureKey(new Error('User rejected'))).toBe('publication.failed');
   });
@@ -120,6 +127,7 @@ describe.each([
     'updated-partially',
     'deleted-partially',
     'failed',
+    'failed-another-account',
     'failed-no-relay',
     'failed-rejected',
     'failed-unconfirmed',

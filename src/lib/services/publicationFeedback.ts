@@ -1,4 +1,8 @@
-import { PublicationFailedError, type PublicationResult } from '$lib/services/publishToRelays';
+import {
+  PublicationFailedError,
+  SignedByAnotherAccountError,
+  type PublicationResult
+} from '$lib/services/publishToRelays';
 
 export type PublicationAction = 'created' | 'updated' | 'deleted';
 
@@ -22,6 +26,7 @@ export function publicationSuccessMessage(
 }
 
 export function publicationFailureKey(error: unknown): string {
+  if (error instanceof SignedByAnotherAccountError) return 'publication.failed-another-account';
   if (!(error instanceof PublicationFailedError)) return 'publication.failed';
   // A silent relay may have stored the event, so it takes precedence over a rejection.
   if (error.result.timedOutRelays.length > 0) return 'publication.failed-unconfirmed';
