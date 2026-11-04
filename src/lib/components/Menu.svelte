@@ -5,12 +5,25 @@
 
   import { goto } from '$app/navigation';
   import KeyManager from '$lib/services/KeyManager';
-  import { loginMethod } from '$lib/stores/login';
+  import { loginMethod, type LoginMethod } from '$lib/stores/login';
+  import MenuProfile from '$lib/components/MenuProfile.svelte';
+
+  export let open = false;
 
   const dispatch = createEventDispatcher();
 
+  const loginMethodLabels: Record<LoginMethod, string> = {
+    nip07: 'logged-in-with-nip07',
+    nsec: 'logged-in-with-nsec',
+    npub: 'logged-in-with-npub'
+  };
+
   // Looked up again for each login.
   $: pubkey = $loginMethod ? KeyManager.getPublicKey() : undefined;
+  // The profile is loaded when the menu first opens, usually after the relays have connected, and then
+  // kept.
+  let opened = false;
+  $: if (open) opened = true;
 
   const logout = () => {
     dispatch('select', 'logout');
@@ -18,6 +31,24 @@
     goto('/');
   };
 </script>
+
+{#if $loginMethod}
+  <!-- The menu is as wide as its widest line, so this sets a width that fits most names on one line,
+       and a longer name wraps instead of widening the menu. -->
+  <div class="min-w-56 space-y-2">
+    {#await pubkey then pubkey}
+      {#if pubkey && opened}
+        <div class="whitespace-normal">
+          <MenuProfile {pubkey} />
+        </div>
+      {/if}
+    {:catch}
+      <!-- The NIP-07 extension is missing or refused the public key, so there is no profile. -->
+    {/await}
+    <p class="text-sm">{$_(loginMethodLabels[$loginMethod])}</p>
+  </div>
+  <hr class="my-4" />
+{/if}
 
 <ul class="flex flex-col space-y-4">
   {#await pubkey}
