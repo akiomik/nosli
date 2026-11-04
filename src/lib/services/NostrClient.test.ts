@@ -72,19 +72,22 @@ function acceptingPublication() {
   } as Pub;
 }
 
+const listVersion = (id: string | undefined, pubkey = getPublicKey('1'.repeat(64))) =>
+  new LongFormContent(
+    id,
+    'edited-list',
+    pubkey,
+    'content',
+    new Date(),
+    'title',
+    '',
+    undefined,
+    undefined,
+    []
+  );
+
 // The latest version of a list that has been edited, so relays may hold earlier versions too.
-const publishedArticle = new LongFormContent(
-  'f'.repeat(64),
-  'edited-list',
-  getPublicKey('1'.repeat(64)),
-  'content',
-  new Date(),
-  'title',
-  '',
-  undefined,
-  undefined,
-  []
-);
+const publishedArticle = listVersion('f'.repeat(64));
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -110,6 +113,25 @@ describe('NostrClient.deleteArticle', () => {
         ['k', `${Kind.Article}`]
       ]
     });
+  });
+
+  it('does not publish a request that someone other than the author signed', async () => {
+    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+    const publish = vi.spyOn(SimplePool.prototype, 'publish');
+    const client = new NostrClient(['wss://one']);
+    const othersArticle = listVersion('f'.repeat(64), getPublicKey('2'.repeat(64)));
+
+    await expect(client.deleteArticle(othersArticle)).rejects.toThrow('not signed by the author');
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('does not sign a request for an article that was never published', async () => {
+    const signEvent = vi.spyOn(KeyManager, 'signEvent');
+    const client = new NostrClient([]);
+    const draft = listVersion(undefined);
+
+    await expect(client.deleteArticle(draft)).rejects.toThrow('not published');
+    expect(signEvent).not.toHaveBeenCalled();
   });
 });
 

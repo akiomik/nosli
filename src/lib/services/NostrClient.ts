@@ -197,12 +197,10 @@ export default class NostrClient {
 
   // The a tag also deletes the earlier versions that relays still hold, which the e tag misses.
   public async deleteArticle(article: LongFormContent): Promise<PublicationResult> {
+    const id = article.id;
+    if (!id) throw new Error('Unexpected error: the article is not published.');
+
     await this.waitForRelayBeforeSigning();
-    const tags = [
-      ['a', article.address()],
-      ['k', Kind.Article.toString()]
-    ];
-    if (article.id) tags.unshift(['e', article.id]);
     let event = {
       id: '',
       sig: '',
@@ -210,12 +208,20 @@ export default class NostrClient {
       content: 'Deleted',
       pubkey: '',
       created_at: Math.round(new Date().getTime() / 1000),
-      tags
+      tags: [
+        ['e', id],
+        ['a', article.address()],
+        ['k', Kind.Article.toString()]
+      ]
     };
     event = await KeyManager.signEvent(event);
 
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
+    }
+    // Relays ignore a request from anyone but the author, such as another NIP-07 account.
+    if (event.pubkey !== article.pubkey) {
+      throw new Error('The deletion request is not signed by the author.');
     }
 
     const { available, unavailable } = await this.relaysAfterSigning();
