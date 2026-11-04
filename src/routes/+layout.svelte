@@ -6,13 +6,14 @@
   import { createRxNostr } from 'rx-nostr';
   import { _ } from 'svelte-i18n';
 
-  import { beforeNavigate, afterNavigate, invalidateAll } from '$app/navigation';
+  import { beforeNavigate, afterNavigate, invalidate } from '$app/navigation';
   import '../app.css';
   import * as settings from '$lib/services/settings';
   import KeyManager from '$lib/services/KeyManager';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import { LOGIN_DEPENDENCY } from '$lib/stores/login';
   import { toaster } from '$lib/stores/toaster';
 
   config.autoAddCss = false;
@@ -40,7 +41,7 @@
 
     toaster.warning({ title: $_('alert.nip07-logged-out') });
     // Pages that need a login check it again.
-    await invalidateAll();
+    await invalidate(LOGIN_DEPENDENCY);
   });
 </script>
 
