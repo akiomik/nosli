@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EMPTY, Subject, first, from, lastValueFrom, map, mergeMap, toArray } from 'rxjs';
+import { EMPTY, Subject, first, from, lastValueFrom, map, mergeMap, tap, toArray } from 'rxjs';
 import {
   createRxNostr,
   type ConnectionState,
   type ConnectionStatePacket,
+  type EventPacket,
   type RxNostr,
   type RxReq
 } from 'rx-nostr';
@@ -20,6 +21,7 @@ import {
 
 import NostrClient from '#lib/services/NostrClient.js';
 import {
+  matomeDeletionRequestsStore,
   matomeStore,
   notesStore,
   noteStore,
@@ -44,12 +46,15 @@ const note = (content: string) =>
   finishEvent({ kind: Kind.Text, content, created_at: 1, tags: [] }, key);
 
 // A client that reads from `relays`, which hold `events`, and answers each request once. The state
-// of each relay is `state`, and `states` reports changes to it.
+// of each relay is `state`, and `states` reports changes to it. `requested` holds the filters of
+// each request.
 const fakeClient = (relays: string[], events: Event[], state: ConnectionState = 'ongoing') => {
   const states = new Subject<ConnectionStatePacket>();
+  const requested: Filter[][] = [];
   const client = {
     state,
     states,
+    requested,
     setRelays: vi.fn(),
     dispose: vi.fn(),
     getRelays: () => relays.map((url) => ({ url, read: true, write: true })),
@@ -58,6 +63,7 @@ const fakeClient = (relays: string[], events: Event[], state: ConnectionState = 
     use: vi.fn((req: RxReq) =>
       req.getReqObservable().pipe(
         first((filters) => filters !== null),
+        tap((filters) => requested.push(filters as Filter[])),
         mergeMap((filters) =>
           from(events.filter((event) => matchFilters(filters as Filter[], event)))
         ),
@@ -542,5 +548,207 @@ describe.each(stores)('$name', ({ event, unrequested, read }) => {
     const badSignature = { ...genuine, sig: '0'.repeat(128) };
 
     expect(await show(genuine, [tampered, badSignature])).toEqual(['genuine']);
+  });
+});
+
+describe('deleted lists', () => {
+  const list = (identifier: string, createdAt = 10, key = author) =>
+    finishEvent(
+      {
+        kind: Kind.Article,
+        content: '',
+        created_at: createdAt,
+        tags: [['d', identifier], ['title', identifier], nosliTag]
+      },
+      key
+    );
+  const deletion = (tags: string[][], createdAt = 20, key = author) =>
+    finishEvent({ kind: Kind.EventDeletion, content: '', created_at: createdAt, tags }, key);
+  const address = (identifier: string) => `${Kind.Article}:${getPublicKey(author)}:${identifier}`;
+  const titles = (lists: { title: string }[][]) => lists.map((l) => l.map(({ title }) => title));
+  const relay = 'wss://shared.example.com';
+
+  describe.each([
+    {
+      name: 'recentGlobalMatomesStore',
+      read: (client: RxNostr) => recentGlobalMatomesStore({ client, limit: 10 })
+    },
+    {
+      name: 'recentUserMatomesStore',
+      read: (client: RxNostr) => recentUserMatomesStore({ client, pubkey: getPublicKey(author) })
+    }
+  ])('$name', ({ read }) => {
+    const emitted = (events: Event[]) =>
+      lastValueFrom(read(fakeClient([relay], events)).pipe(toArray()));
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('shows every list first, then hides those that their author deleted', async () => {
+      const kept = list('kept', 13);
+      const byId = list('by-id', 12);
+      const byAddress = list('by-address', 11);
+      const client = fakeClient(
+        [relay],
+        [
+          kept,
+          byId,
+          byAddress,
+          deletion([['e', byId.id]]),
+          deletion([['a', address('by-address')]])
+        ]
+      );
+
+      const lists = await lastValueFrom(read(client).pipe(toArray()));
+
+      expect(titles(lists)[0]).toEqual(['kept', 'by-id', 'by-address']);
+      expect(titles(lists).at(-1)).toEqual(['kept']);
+      expect(client.requested.at(-1)).toEqual([
+        {
+          kinds: [Kind.EventDeletion],
+          authors: [getPublicKey(author)],
+          '#e': [kept.id, byId.id, byAddress.id]
+        },
+        {
+          kinds: [Kind.EventDeletion],
+          authors: [getPublicKey(author)],
+          '#a': ['kept', 'by-id', 'by-address'].map(address)
+        }
+      ]);
+    });
+
+    it('shows the lists before deletion requests arrive, and waits 5 seconds for them', async () => {
+      vi.useFakeTimers();
+      const target = list('target');
+      const deletions = new Subject<EventPacket>();
+      const client = fakeClient([relay], [target]);
+      client.use.mockImplementationOnce(client.use.getMockImplementation()!);
+      client.use.mockImplementationOnce(() => deletions);
+      const lists: string[][] = [];
+      let completed = false;
+
+      read(client).subscribe({
+        next: (matomes) => lists.push(matomes.map(({ title }) => title)),
+        complete: () => (completed = true)
+      });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(lists).toEqual([['target']]);
+
+      deletions.next({ from: relay, subId: 'sub', event: deletion([['e', target.id]]) });
+      expect(lists).toEqual([['target'], []]);
+
+      await vi.advanceTimersByTimeAsync(3999);
+      expect(completed).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(completed).toBe(true);
+    });
+
+    it('ignores a deletion request from someone other than the author', async () => {
+      const target = list('target');
+      const lists = await emitted([
+        target,
+        deletion([['e', target.id]], 20, attacker),
+        deletion([['a', address('target')]], 20, attacker)
+      ]);
+
+      expect(titles(lists)).toEqual([['target']]);
+    });
+
+    it('keeps a list published again after its address was deleted', async () => {
+      const lists = await emitted([list('again', 30), deletion([['a', address('again')]], 20)]);
+
+      expect(titles(lists)).toEqual([['again']]);
+    });
+
+    it('does not ask for deletion requests when there are no lists', async () => {
+      const client = emptyClient();
+
+      expect(await lastValueFrom(read(client).pipe(toArray()))).toEqual([[]]);
+      expect(client.use).toHaveBeenCalledOnce();
+    });
+  });
+
+  it("does not hide a list for another author's request among the authors of the lists", async () => {
+    const mine = list('mine', 12);
+    const theirs = list('theirs', 11, attacker);
+    const client = fakeClient(
+      [relay],
+      [
+        mine,
+        theirs,
+        deletion([['e', mine.id]], 20, attacker),
+        deletion([['a', address('mine')]], 20, attacker)
+      ]
+    );
+
+    const lists = await lastValueFrom(
+      recentGlobalMatomesStore({ client, limit: 10 }).pipe(toArray())
+    );
+
+    expect(titles(lists)).toEqual([['mine', 'theirs']]);
+  });
+
+  describe('matomeDeletionRequestsStore', () => {
+    it("gathers the author's requests for the IDs and addresses as they arrive", async () => {
+      const version = list('my-list');
+      const byId = deletion([['e', version.id]]);
+      const byAddress = deletion([['a', address('my-list')]]);
+      const client = fakeClient(
+        [relay],
+        [byId, deletion([['e', version.id]], 20, attacker), byAddress]
+      );
+
+      const emitted = await lastValueFrom(
+        matomeDeletionRequestsStore({
+          client,
+          author: getPublicKey(author),
+          ids: [version.id],
+          addresses: [address('my-list')]
+        }).pipe(toArray())
+      );
+
+      expect(emitted.map((requests) => requests.map(({ id }) => id))).toEqual([
+        [],
+        [byId.id],
+        [byId.id, byAddress.id]
+      ]);
+      expect(client.requested).toEqual([
+        [
+          { kinds: [Kind.EventDeletion], authors: [getPublicKey(author)], '#e': [version.id] },
+          {
+            kinds: [Kind.EventDeletion],
+            authors: [getPublicKey(author)],
+            '#a': [address('my-list')]
+          }
+        ]
+      ]);
+    });
+
+    it('asks only for what it is given, and for nothing without IDs or addresses', async () => {
+      const client = fakeClient([relay], []);
+
+      await lastValueFrom(
+        matomeDeletionRequestsStore({
+          client,
+          author: getPublicKey(author),
+          addresses: [address('my-list')]
+        })
+      );
+      const emitted = await lastValueFrom(
+        matomeDeletionRequestsStore({ client, author: getPublicKey(author) }).pipe(toArray())
+      );
+
+      expect(emitted).toEqual([[]]);
+      expect(client.requested).toEqual([
+        [
+          {
+            kinds: [Kind.EventDeletion],
+            authors: [getPublicKey(author)],
+            '#a': [address('my-list')]
+          }
+        ]
+      ]);
+    });
   });
 });
