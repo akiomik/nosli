@@ -6,12 +6,13 @@ import KeyManager from '$lib/services/KeyManager';
 export const load = async () => {
   if (!browser || !KeyManager.isLoggedIn()) return;
 
-  let pubkey: string;
+  let location: string;
   try {
-    pubkey = await KeyManager.getPublicKey();
+    location = `/p/${nip19.npubEncode(await KeyManager.getPublicKey())}`;
   } catch {
-    // The NIP-07 extension can be missing or refuse, so show the login form instead.
+    // The NIP-07 extension can be missing, refuse, or return a key that is not hex, so show the
+    // login form instead.
     return;
   }
-  throw redirect(302, `/p/${nip19.npubEncode(pubkey)}`);
+  throw redirect(302, location);
 };
