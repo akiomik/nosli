@@ -1,9 +1,9 @@
 import { nip19, Kind } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
-import { isEventId } from '$lib/entities/EventId';
-import Tag from '$lib/entities/Tag';
-import { toSeconds } from '$lib/helper';
-import { relayHints } from '$lib/services/relayHints';
+import { isEventId } from '#lib/entities/EventId.js';
+import Tag from '#lib/entities/Tag.js';
+import { toSeconds } from '#lib/helper.js';
+import { relayHints } from '#lib/services/relayHints.js';
 
 // A note in a list, with the relays that hint where it can be found.
 export type NoteReference = { id: string; relays?: string[] };

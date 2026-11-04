@@ -1,6 +1,6 @@
 import { derived } from 'svelte/store';
 
-import { nip07, pubkey, seckey } from '$lib/stores/cookie';
+import { nip07, pubkey, seckey } from '#lib/stores/cookie.js';
 
 // How the user is logged in, kept up to date as they log in and out. A public key alone can only
 // read, while NIP-07 and a secret key can also sign.

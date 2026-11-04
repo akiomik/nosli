@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ConnectionStatePacket } from 'rx-nostr';
 
-  import RelayConnectionStatusIcon from '$lib/components/RelayConnectionStatusIcon.svelte';
+  import RelayConnectionStatusIcon from '#lib/components/RelayConnectionStatusIcon.svelte';
 
   export let connections: ConnectionStatePacket[];
 </script>

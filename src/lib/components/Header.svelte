@@ -6,10 +6,10 @@
   import { _ } from 'svelte-i18n';
   import type { RxNostr } from 'rx-nostr';
 
-  import { relayConnectionsStore } from '$lib/stores/nostr';
-  import { loginMethod } from '$lib/stores/login';
-  import Menu from '$lib/components/Menu.svelte';
-  import RelayConnectionStatusList from '$lib/components/RelayConnectionStatusList.svelte';
+  import { relayConnectionsStore } from '#lib/stores/nostr.js';
+  import { loginMethod } from '#lib/stores/login.js';
+  import Menu from '#lib/components/Menu.svelte';
+  import RelayConnectionStatusList from '#lib/components/RelayConnectionStatusList.svelte';
 
   const client: RxNostr = getContext('nostr-client');
   const connections = relayConnectionsStore(client);

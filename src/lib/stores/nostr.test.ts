@@ -18,7 +18,7 @@ import {
   type Filter
 } from 'nostr-tools';
 
-import NostrClient from '$lib/services/NostrClient';
+import NostrClient from '#lib/services/NostrClient.js';
 import {
   matomeStore,
   notesStore,
@@ -34,7 +34,7 @@ vi.mock('rx-nostr', async (importOriginal) => ({
   createRxNostr: vi.fn()
 }));
 
-vi.mock('$lib/stores/cookie', async () => {
+vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
   return { nip07: writable(false), pubkey: writable(''), seckey: writable('') };
 });

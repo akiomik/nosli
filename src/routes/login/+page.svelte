@@ -5,9 +5,9 @@
 
   import { beforeNavigate, goto } from '$app/navigation';
   import type { PageData } from './$types';
-  import LoginForm from '$lib/components/LoginForm.svelte';
-  import Alert from '$lib/components/Alert.svelte';
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import LoginForm from '#lib/components/LoginForm.svelte';
+  import Alert from '#lib/components/Alert.svelte';
+  import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
 
   export let data: PageData;
 
@@ -21,7 +21,7 @@
   // the login has changed since.
   const goToProfile = async (profile: Promise<string | undefined> | undefined) => {
     const path = await profile;
-    if (path && active && profile === data.profile) goto(path, { replaceState: true });
+    if (path && active && profile === data.profile) goto(path, { replace: true });
   };
   $: goToProfile(data.profile);
 

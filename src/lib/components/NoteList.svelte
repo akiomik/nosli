@@ -2,10 +2,10 @@
   import { nip19 } from 'nostr-tools';
   import { _ } from 'svelte-i18n';
 
-  import type { LoadingNote } from '$lib/entities/LoadingNote';
-  import ExternalLink from '$lib/components/ExternalLink.svelte';
-  import NoteListItem from '$lib/components/NoteListItem.svelte';
-  import Alert from '$lib/components/Alert.svelte';
+  import type { LoadingNote } from '#lib/entities/LoadingNote.js';
+  import ExternalLink from '#lib/components/ExternalLink.svelte';
+  import NoteListItem from '#lib/components/NoteListItem.svelte';
+  import Alert from '#lib/components/Alert.svelte';
 
   export let notes: LoadingNote[];
 </script>

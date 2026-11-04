@@ -1,9 +1,9 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
 
-  import NostrClient from '$lib/services/NostrClient';
-  import ExternalLink from '$lib/components/ExternalLink.svelte';
-  import GlobalMatomeList from '$lib/components/GlobalMatomeList.svelte';
+  import NostrClient from '#lib/services/NostrClient.js';
+  import ExternalLink from '#lib/components/ExternalLink.svelte';
+  import GlobalMatomeList from '#lib/components/GlobalMatomeList.svelte';
 
   const title = 'Nosli | Create curated lists of posts on nostr';
   const desc = 'Nosli helps you create a curated list of posts on nostr';

@@ -3,7 +3,7 @@
   import { faAngleUp, faAngleDown } from '@fortawesome/free-solid-svg-icons';
   import { _ } from 'svelte-i18n';
 
-  import type { NoteEditorStore } from '$lib/stores/noteEditor';
+  import type { NoteEditorStore } from '#lib/stores/noteEditor.js';
 
   export let editor: NoteEditorStore;
   export let noteId: string;

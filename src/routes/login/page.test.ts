@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPublicKey, nip19 } from 'nostr-tools';
 
-import KeyManager, { Nip07MissingError } from '$lib/services/KeyManager';
-import { nip07, pubkey } from '$lib/stores/cookie';
-import { LOGIN_DEPENDENCY } from '$lib/stores/login';
+import KeyManager, { Nip07MissingError } from '#lib/services/KeyManager.js';
+import { nip07, pubkey } from '#lib/stores/cookie.js';
+import { LOGIN_DEPENDENCY } from '#lib/stores/login.js';
 import { load } from './+page';
 
-vi.mock('$app/environment', () => ({ browser: true }));
-vi.mock('$lib/stores/cookie', async () => {
+vi.mock('$app/env', () => ({ browser: true }));
+vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
   return { nip07: writable(false), pubkey: writable(''), seckey: writable('') };
 });

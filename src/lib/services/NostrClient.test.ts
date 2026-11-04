@@ -10,13 +10,13 @@ import {
   type Relay
 } from 'nostr-tools';
 
-import LongFormContent from '$lib/entities/LongFormContent';
-import { nip07 } from '$lib/stores/cookie';
+import LongFormContent from '#lib/entities/LongFormContent.js';
+import { nip07 } from '#lib/stores/cookie.js';
 import NostrClient, { decodeNoteId } from './NostrClient';
 import KeyManager from './KeyManager';
 import { PublicationFailedError, SignedByAnotherAccountError } from './publishToRelays';
 
-vi.mock('$lib/stores/cookie', async () => {
+vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
   const { getPublicKey } = await import('nostr-tools');
   const secret = '1'.repeat(64);

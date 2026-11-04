@@ -24,15 +24,15 @@ import {
   hasNaddr,
   latestEachNaddr,
   latestConnectionState
-} from '$lib/stores/operators';
-import NostrClient from '$lib/services/NostrClient';
-import { normalizeRelayHint, relayHints } from '$lib/services/relayHints';
-import { isEventId } from '$lib/entities/EventId';
-import LongFormContent from '$lib/entities/LongFormContent';
-import Profile from '$lib/entities/Profile';
-import Note from '$lib/entities/Note';
-import Reaction from '$lib/entities/Reaction';
-import type { LoadingNote } from '$lib/entities/LoadingNote';
+} from '#lib/stores/operators.js';
+import NostrClient from '#lib/services/NostrClient.js';
+import { normalizeRelayHint, relayHints } from '#lib/services/relayHints.js';
+import { isEventId } from '#lib/entities/EventId.js';
+import LongFormContent from '#lib/entities/LongFormContent.js';
+import Profile from '#lib/entities/Profile.js';
+import Note from '#lib/entities/Note.js';
+import Reaction from '#lib/entities/Reaction.js';
+import type { LoadingNote } from '#lib/entities/LoadingNote.js';
 
 const DEFAULT_TIMEOUT_WITHOUT_SORT = 1000;
 const DEFAULT_TIMEOUT_WITH_SORT = 750;

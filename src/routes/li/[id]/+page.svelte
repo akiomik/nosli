@@ -5,14 +5,14 @@
   import { _ } from 'svelte-i18n';
 
   import type { PageData } from './$types';
-  import { matomeStore, profileStore, notesStore } from '$lib/stores/nostr';
-  import { linkify, linkifyOpts } from '$lib/actions/linkify';
-  import KeyManager from '$lib/services/KeyManager';
-  import { loginMethod } from '$lib/stores/login';
-  import NoteList from '$lib/components/NoteList.svelte';
-  import ProfileLink from '$lib/components/ProfileLink.svelte';
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
-  import ProfileLine from '$lib/components/ProfileLine.svelte';
+  import { matomeStore, profileStore, notesStore } from '#lib/stores/nostr.js';
+  import { linkify, linkifyOpts } from '#lib/actions/linkify.js';
+  import KeyManager from '#lib/services/KeyManager.js';
+  import { loginMethod } from '#lib/stores/login.js';
+  import NoteList from '#lib/components/NoteList.svelte';
+  import ProfileLink from '#lib/components/ProfileLink.svelte';
+  import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
+  import ProfileLine from '#lib/components/ProfileLine.svelte';
 
   export let data: PageData & {
     params: nip19.AddressPointer;

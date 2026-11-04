@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Kind } from 'nostr-tools';
 
-import LongFormContent from '$lib/entities/LongFormContent';
+import LongFormContent from '#lib/entities/LongFormContent.js';
 import { initialIdentifier, isValidIdentifier } from './listIdentifier';
 
 const list = (tags: string[][]) =>

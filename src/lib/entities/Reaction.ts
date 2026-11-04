@@ -1,6 +1,6 @@
 import type { Event } from 'nostr-tools';
 
-import Tag from '$lib/entities/Tag';
+import Tag from '#lib/entities/Tag.js';
 
 export default class Reaction {
   constructor(

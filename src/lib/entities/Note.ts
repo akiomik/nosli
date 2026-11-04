@@ -1,8 +1,8 @@
 import { nip19 } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 
-import type Profile from '$lib/entities/Profile';
-import Tag from '$lib/entities/Tag';
+import type Profile from '#lib/entities/Profile.js';
+import Tag from '#lib/entities/Tag.js';
 
 // NIP-01 gives event IDs and pubkeys as 32 bytes of lowercase hex.
 const isHexKey = (value: string): boolean => /^[0-9a-f]{64}$/.test(value);

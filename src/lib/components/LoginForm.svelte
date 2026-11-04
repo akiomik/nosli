@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { goto } from '$app/navigation';
   import { nip19, getPublicKey } from 'nostr-tools';
   import { _ } from 'svelte-i18n';
 
-  import { pubkey, seckey, nip07 } from '$lib/stores/cookie.js';
-  import KeyManager from '$lib/services/KeyManager';
-  import Alert from '$lib/components/Alert.svelte';
-  import ExternalLink from '$lib/components/ExternalLink.svelte';
+  import { pubkey, seckey, nip07 } from '#lib/stores/cookie.js';
+  import KeyManager from '#lib/services/KeyManager.js';
+  import Alert from '#lib/components/Alert.svelte';
+  import ExternalLink from '#lib/components/ExternalLink.svelte';
 
   let key: string | undefined = undefined; // TODO: support NIP-07
 
