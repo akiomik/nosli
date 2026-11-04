@@ -36,6 +36,7 @@ describe('LongFormContent.fromEvent', () => {
 
   it('gives the address shared by every version of the list', () => {
     expect(LongFormContent.fromEvent(otherClientEvent).address()).toBe(`30023:${author}:my-list`);
+    expect(LongFormContent.addressOf(author, 'my-list')).toBe(`30023:${author}:my-list`);
   });
 
   it('keeps the tags that Nosli does not read or rebuild as they are', () => {
@@ -56,6 +57,38 @@ describe('LongFormContent.fromEvent', () => {
     const tags = [['p', author, null]] as unknown as string[][];
 
     expect(LongFormContent.fromEvent({ ...otherClientEvent, tags }).otherTags).toEqual([]);
+  });
+});
+
+describe('LongFormContent.isDeletedBy', () => {
+  const list = LongFormContent.fromEvent(otherClientEvent);
+  const request = (tags: string[][], createdAt: number, pubkey = author): Event => ({
+    id: 'e'.repeat(64),
+    sig: '',
+    kind: Kind.EventDeletion,
+    pubkey,
+    content: '',
+    created_at: createdAt,
+    tags
+  });
+
+  it('counts a request by the author for this version', () => {
+    expect(list.isDeletedBy([request([['e', otherClientEvent.id]], 0)])).toBe(true);
+    expect(list.isDeletedBy([request([['e', oldNote]], 0)])).toBe(false);
+    expect(list.isDeletedBy([request([['e', otherClientEvent.id]], 0, oldNote)])).toBe(false);
+  });
+
+  it('counts an address request made no earlier than the version', () => {
+    const createdAt = otherClientEvent.created_at;
+
+    expect(list.isDeletedBy([request([['a', list.address()]], createdAt)])).toBe(true);
+    expect(list.isDeletedBy([request([['a', list.address()]], createdAt - 1)])).toBe(false);
+  });
+
+  it('ignores an event that is not a deletion request', () => {
+    expect(list.isDeletedBy([{ ...request([['e', otherClientEvent.id]], 0), kind: 1 }])).toBe(
+      false
+    );
   });
 });
 

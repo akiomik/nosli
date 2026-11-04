@@ -147,9 +147,31 @@ export default class LongFormContent {
     return event;
   }
 
-  // The address of every version of this list, as NIP-01 defines it for addressable events.
+  // The address of every version of the list with this author and identifier, as NIP-01 defines it
+  // for addressable events.
+  static addressOf(pubkey: string, identifier: string): string {
+    return `${Kind.Article}:${pubkey}:${identifier}`;
+  }
+
+  // The address of every version of this list.
   address(): string {
-    return `${Kind.Article}:${this.pubkey}:${this.identifier}`;
+    return LongFormContent.addressOf(this.pubkey, this.identifier);
+  }
+
+  // NIP-09: only the author's requests count, and an `a` tag covers the versions up to the request,
+  // so a list published again after its deletion is not deleted.
+  isDeletedBy(requests: Event[]): boolean {
+    const createdAt = toSeconds(this.createdAt);
+    return requests.some(
+      (request) =>
+        request.kind === Kind.EventDeletion &&
+        request.pubkey === this.pubkey &&
+        request.tags.some(
+          ([typ, value]) =>
+            (typ === 'e' && value === this.id) ||
+            (typ === 'a' && value === this.address() && createdAt <= request.created_at)
+        )
+    );
   }
 
   nip19Id(): string {
