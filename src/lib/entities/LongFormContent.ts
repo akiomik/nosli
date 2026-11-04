@@ -16,7 +16,7 @@ const MAX_NOTE_RELAY_HINTS = 3;
 const isNosliTag = ([typ, value]: string[]): boolean =>
   typ === nosliTag.typ && value === nosliTag.value;
 
-// Nostr timestamps are in seconds, which toEvent rounds createdAt to.
+// Nostr timestamps are in whole seconds, rounded from a Date.
 const toSeconds = (date: Date): number => Math.round(date.getTime() / 1000);
 
 // NIP-23 gives published_at as a string of seconds.
