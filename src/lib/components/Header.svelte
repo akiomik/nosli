@@ -25,8 +25,12 @@
 </script>
 
 <AppBar class="bg-surface-50">
-  <AppBar.Toolbar class="grid-cols-[1fr_auto]">
-    <AppBar.Lead>
+  <!-- On a narrow screen, or with a large font, the buttons move below the logo instead of
+       overflowing. -->
+  <AppBar.Toolbar class="flex flex-wrap gap-y-2">
+    <!-- The image's max-width: 100% would let the logo shrink to the width of the name, and the
+         buttons would cover the name. -->
+    <AppBar.Lead class="shrink-0">
       <a href="/">
         <span class="flex items-center">
           <img src="/favicon.svg" alt="Nosli icon" class="h-10 mr-1" width="40" height="40" />
@@ -34,11 +38,13 @@
         </span>
       </a>
     </AppBar.Lead>
-    <AppBar.Trail>
+    <!-- On a screen narrower than 16rem, the buttons take less padding so that they still fit on
+         one line below the logo. Narrower still, they wrap. -->
+    <AppBar.Trail class="flex-wrap justify-end ml-auto">
       <div class="relative">
         <button
           type="button"
-          class="btn preset-tonal-surface bg-surface-100"
+          class="btn preset-tonal-surface bg-surface-100 max-[16rem]:px-2"
           on:click|stopPropagation={handleRelayConnectionStatus}
         >
           <span><FontAwesomeIcon icon={faSignal} title="Relay connections" /></span>
@@ -54,7 +60,7 @@
 
       {#if $loginMethod}
         {#if $loginMethod !== 'npub'}
-          <a href="/li/new" class="btn bg-primary-500">{$_('create')}</a>
+          <a href="/li/new" class="btn bg-primary-500 max-[16rem]:px-2">{$_('create')}</a>
         {/if}
 
         <div class="relative">
@@ -69,7 +75,7 @@
           />
         </div>
       {:else}
-        <a href="/login" class="btn bg-primary-500">{$_('login')}</a>
+        <a href="/login" class="btn bg-primary-500 max-[16rem]:px-2">{$_('login')}</a>
       {/if}
     </AppBar.Trail>
   </AppBar.Toolbar>
