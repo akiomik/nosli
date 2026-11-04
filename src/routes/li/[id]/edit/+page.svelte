@@ -6,7 +6,7 @@
 
   import type { PageData } from './$types';
   import { matomeStore } from '$lib/stores/nostr';
-  import KeyManager from '$lib/services/KeyManager';
+  import KeyManager, { Nip07MissingError } from '$lib/services/KeyManager';
   import { loginMethod } from '$lib/stores/login';
   import MatomeForm from '$lib/components/MatomeForm.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -32,12 +32,13 @@
   <title>{$_('edit-identifier', { values: { identifier: data.params.identifier } })} | Nosli</title>
 </svelte:head>
 
-{#if $matome}
+<!-- After a logout, the load answers with a 401. -->
+{#if $matome && $loginMethod}
   {#await loggedInAs}
     <LoadingSpinner />
   {:then loggedInAs}
     {#if loggedInAs}
-      <h1 class="text-3xl md:text-5xl font-heading-token">
+      <h1 class="text-3xl md:text-5xl font-heading-token wrap-anywhere">
         {$_('edit-identifier', { values: { identifier: $matome.identifier } })}
       </h1>
 
@@ -47,10 +48,15 @@
         <p>Unauthorized &#128581;</p>
       </Alert>
     {/if}
-  {:catch}
-    <Alert variant="error">
-      <p>{$_('alert.failed-to-get-public-key-for-edit')}</p>
-    </Alert>
+  {:catch error}
+    {#if error instanceof Nip07MissingError}
+      <!-- The layout logs out a NIP-07 login without its extension. -->
+      <LoadingSpinner />
+    {:else}
+      <Alert variant="error">
+        <p>{$_('alert.failed-to-get-public-key-for-edit')}</p>
+      </Alert>
+    {/if}
   {/await}
 {:else}
   <LoadingSpinner />

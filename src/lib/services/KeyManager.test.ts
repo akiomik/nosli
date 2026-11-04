@@ -11,6 +11,7 @@ const hex = getPublicKey('1'.repeat(64));
 const extension = { getPublicKey: async () => hex, signEvent: vi.fn() };
 
 let KeyManager: typeof import('./KeyManager').default;
+let Nip07MissingError: typeof import('./KeyManager').Nip07MissingError;
 let nip07: typeof import('$lib/stores/cookie').nip07;
 let pubkey: typeof import('$lib/stores/cookie').pubkey;
 let seckey: typeof import('$lib/stores/cookie').seckey;
@@ -20,7 +21,7 @@ beforeEach(async () => {
   // The app starts now: KeyManager is loaded again under fake timers, so it waits from now.
   vi.useFakeTimers({ toFake: ['setTimeout', 'performance'] });
   vi.resetModules();
-  KeyManager = (await import('./KeyManager')).default;
+  ({ default: KeyManager, Nip07MissingError } = await import('./KeyManager'));
   ({ nip07, pubkey, seckey } = await import('$lib/stores/cookie'));
   ({ loginMethod } = await import('$lib/stores/login'));
   vi.stubGlobal('window', {});
@@ -54,7 +55,7 @@ describe('KeyManager.getPublicKey with NIP-07', () => {
     expect(failed).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(100);
 
-    await expect(key).rejects.toThrow('Failed to resolve NIP-07');
+    await expect(key).rejects.toBeInstanceOf(Nip07MissingError);
   });
 
   it('fails at once after that', async () => {
