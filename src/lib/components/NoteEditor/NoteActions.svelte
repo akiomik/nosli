@@ -11,7 +11,7 @@
   export let isLast: boolean;
 </script>
 
-<div class="flex flex-wrap items-center justify-end gap-3">
+<div class="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
   <div class="btn-group preset-filled-surface-200-800">
     <button on:click|preventDefault={() => editor.moveUp(noteId)} disabled={isFirst}>
       <FontAwesomeIcon icon={faAngleUp} title="Move Up" />

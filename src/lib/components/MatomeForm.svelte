@@ -184,7 +184,10 @@
       <Tabs.List>
         <Tabs.Trigger value="edit">{$_('edit')}</Tabs.Trigger>
         <!-- The longer label wraps on a narrow screen, while Edit keeps to one line. -->
-        <Tabs.Trigger value="recent-your-reactions" class="whitespace-normal text-balance">
+        <Tabs.Trigger
+          value="recent-your-reactions"
+          class="whitespace-normal text-balance [line-break:strict]"
+        >
           {$_('recent-your-reactions')}
         </Tabs.Trigger>
         <Tabs.Indicator />
