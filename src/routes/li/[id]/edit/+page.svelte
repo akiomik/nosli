@@ -25,9 +25,7 @@
 </script>
 
 <svelte:head>
-  {#if $matome}
-    <title>{$_('edit-identifier', { values: { identifier: $matome.identifier } })} | Nosli</title>
-  {/if}
+  <title>{$_('edit-identifier', { values: { identifier: data.params.identifier } })} | Nosli</title>
 </svelte:head>
 
 {#if $matome}
