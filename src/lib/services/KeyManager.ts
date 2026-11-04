@@ -24,6 +24,29 @@ export class Nip07MissingError extends Error {
   }
 }
 
+// The user stopped waiting for the NIP-07 extension, which may never answer, for example while its
+// prompt is left open.
+export class Nip07CanceledError extends Error {
+  constructor() {
+    super('Stopped waiting for NIP-07');
+  }
+}
+
+// The answer of a NIP-07 call, or a Nip07CanceledError once `signal` aborts. The extension cannot be
+// told to stop, so an answer that comes later is dropped.
+const unlessCanceled = <T>(call: () => Promise<T>, signal?: AbortSignal): Promise<T> => {
+  if (signal?.aborted) return Promise.reject(new Nip07CanceledError());
+  if (!signal) return call();
+
+  return new Promise<T>((resolve, reject) => {
+    const cancel = () => reject(new Nip07CanceledError());
+    signal.addEventListener('abort', cancel, { once: true });
+    call()
+      .then(resolve, reject)
+      .finally(() => signal.removeEventListener('abort', cancel));
+  });
+};
+
 export default class KeyManager {
   private constructor() {
     // noop
@@ -48,27 +71,38 @@ export default class KeyManager {
     );
   }
 
+  // Asks the NIP-07 extension, unless `signal` aborts first, as it can while the extension is still
+  // being waited for.
+  private static askNip07<T>(ask: (nostr: Nip07) => Promise<T>, signal?: AbortSignal): Promise<T> {
+    return unlessCanceled(async () => {
+      const nostr = await KeyManager.nip07();
+      if (signal?.aborted) throw new Nip07CanceledError();
+      return ask(nostr);
+    }, signal);
+  }
+
   // The public key that the NIP-07 extension gives, which goes into npub links and is compared with
-  // event authors.
-  static async getNip07PublicKey(): Promise<string> {
-    const key = await (await KeyManager.nip07()).getPublicKey();
+  // event authors. `signal` stops waiting for it.
+  static async getNip07PublicKey(signal?: AbortSignal): Promise<string> {
+    const key = await KeyManager.askNip07((nostr) => nostr.getPublicKey(), signal);
     if (typeof key !== 'string' || !/^[0-9a-f]{64}$/.test(key)) {
       throw new Error('The NIP-07 extension gave an invalid public key');
     }
     return key;
   }
 
-  static async getPublicKey(): Promise<string> {
+  static async getPublicKey(signal?: AbortSignal): Promise<string> {
     if (get(nip07)) {
-      return KeyManager.getNip07PublicKey();
+      return KeyManager.getNip07PublicKey(signal);
     } else {
       return get(pubkey);
     }
   }
 
-  static async signEvent(event: Event): Promise<Event> {
+  // `signal` stops waiting for a NIP-07 extension to sign.
+  static async signEvent(event: Event, signal?: AbortSignal): Promise<Event> {
     if (get(nip07)) {
-      return (await KeyManager.nip07()).signEvent(event);
+      return KeyManager.askNip07((nostr) => nostr.signEvent(event), signal);
     } else {
       event.pubkey = get(pubkey);
       event.id = getEventHash(event);
@@ -77,12 +111,12 @@ export default class KeyManager {
     }
   }
 
-  static async isLoggedInAs(pubkey: string): Promise<boolean> {
+  static async isLoggedInAs(pubkey: string, signal?: AbortSignal): Promise<boolean> {
     if (!KeyManager.isLoggedIn()) {
       return false;
     }
 
-    const key = await KeyManager.getPublicKey();
+    const key = await KeyManager.getPublicKey(signal);
     return pubkey === key;
   }
 

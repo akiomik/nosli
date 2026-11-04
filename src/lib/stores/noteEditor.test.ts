@@ -31,7 +31,7 @@ import { createRxNostr, type RxNostr, type RxReq } from 'rx-nostr';
 
 import type { LoadingNote } from '#lib/entities/LoadingNote.js';
 import LongFormContent from '#lib/entities/LongFormContent.js';
-import KeyManager from '#lib/services/KeyManager.js';
+import KeyManager, { Nip07CanceledError } from '#lib/services/KeyManager.js';
 import { createNoteEditorStore } from './noteEditor';
 
 vi.mock('rx-nostr', async (importOriginal) => ({
@@ -143,6 +143,40 @@ describe('createNoteEditorStore', () => {
 
     await vi.waitFor(() => expect(get(editor).searchRetrying).toBe(false));
     expect(get(editor)).toMatchObject({ searchInitialized: true, searchFailed: true });
+  });
+
+  it('stops waiting for the public key, and offers a retry that can find it', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // An extension whose prompt is left open, until the user stops waiting.
+    vi.spyOn(KeyManager, 'getPublicKey')
+      .mockImplementationOnce(
+        (signal) =>
+          new Promise((_, reject) =>
+            signal?.addEventListener('abort', () => reject(new Nip07CanceledError()))
+          )
+      )
+      .mockResolvedValue(user);
+    const editor = createNoteEditorStore({ client: emptyClient });
+    expect(get(editor)).toMatchObject({ searchInitialized: false, searchAwaitingKey: true });
+
+    editor.cancelSearch();
+
+    await vi.waitFor(() => expect(get(editor).searchInitialized).toBe(true));
+    expect(get(editor)).toMatchObject({
+      searchFailed: true,
+      searchCanceled: true,
+      searchAwaitingKey: false
+    });
+    expect(error).not.toHaveBeenCalled();
+
+    editor.retrySearch();
+
+    await vi.waitFor(() => expect(get(editor).searchRetrying).toBe(false));
+    expect(get(editor)).toMatchObject({
+      searchFailed: false,
+      searchCanceled: false,
+      searchAwaitingKey: false
+    });
   });
 
   it('shows recent reactions once when a retry finds the public key', async () => {

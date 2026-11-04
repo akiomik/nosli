@@ -8,7 +8,7 @@ import type { LoadingNote } from '#lib/entities/LoadingNote.js';
 import type LongFormContent from '#lib/entities/LongFormContent.js';
 import { decodeNoteId } from '#lib/services/NostrClient.js';
 import { relayHints } from '#lib/services/relayHints.js';
-import KeyManager from '#lib/services/KeyManager.js';
+import KeyManager, { Nip07CanceledError } from '#lib/services/KeyManager.js';
 import { notesStore, noteStore, recentUserReactedNotesStore } from '#lib/stores/nostr.js';
 
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
@@ -21,7 +21,11 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const searchFailed = writable(false);
+  // Whether the failure is that the user stopped waiting for the NIP-07 extension.
+  const searchCanceled = writable(false);
   const searchRetrying = writable(false);
+  // Whether the public key is still being asked for, which the user can stop.
+  const searchAwaitingKey = writable(false);
   // Notes that no relay returns stay in the list, shown as not found, so that saving keeps them.
   const notes = writable<LoadingNote[]>(
     initNotes.map(({ id, relays }) => ({ id, note: undefined, relays }))
@@ -62,16 +66,22 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
 
   // Initialize Search tab
   let searching = false;
-  const settleSearch = (failed: boolean) => {
+  // Stopping the lookup of the public key fails the search.
+  let keyLookup: AbortController | undefined;
+  const settleSearch = (failed: boolean, canceled = false) => {
     searching = false;
     searchFailed.set(failed);
+    searchCanceled.set(canceled);
     searchRetrying.set(false);
     searchInitialized.set(true);
   };
   const loadSearch = () => {
     searching = true;
-    KeyManager.getPublicKey().then(
+    keyLookup = new AbortController();
+    searchAwaitingKey.set(true);
+    KeyManager.getPublicKey(keyLookup.signal).then(
       (pubkey) => {
+        searchAwaitingKey.set(false);
         const limit = 100;
         // Show the notes at once, so a retry does not fill them in under the failure message.
         let found: LoadingNote[] = [];
@@ -94,7 +104,12 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
         });
       },
       (error) => {
-        // A missing or refusing NIP-07 extension rejects the lookup.
+        // A missing or refusing NIP-07 extension rejects the lookup, and so does stopping it.
+        searchAwaitingKey.set(false);
+        if (error instanceof Nip07CanceledError) {
+          settleSearch(true, true);
+          return;
+        }
         console.error(error);
         settleSearch(true);
       }
@@ -108,6 +123,8 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
     searchRetrying.set(true);
     loadSearch();
   };
+
+  const cancelSearch = () => keyLookup?.abort();
 
   // Reads a hex event ID, or a note or nevent ID in either case, with the relays an nevent hints at.
   const decode = (noteId: string) =>
@@ -213,7 +230,9 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       editorInitialized,
       searchInitialized,
       searchFailed,
+      searchCanceled,
       searchRetrying,
+      searchAwaitingKey,
       notes,
       adding,
       searchedNotes
@@ -222,7 +241,9 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       editorInitialized,
       searchInitialized,
       searchFailed,
+      searchCanceled,
       searchRetrying,
+      searchAwaitingKey,
       notes,
       adding,
       searchedNotes
@@ -230,7 +251,9 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       editorInitialized,
       searchInitialized,
       searchFailed,
+      searchCanceled,
       searchRetrying,
+      searchAwaitingKey,
       notes,
       adding,
       searchedNotes
@@ -243,7 +266,8 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
     moveUp,
     moveDown,
     sortByLeaastRecentlyCreated,
-    retrySearch
+    retrySearch,
+    cancelSearch
   };
 }
 

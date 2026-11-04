@@ -6,12 +6,15 @@
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
+  import { focusWhen } from '#lib/actions/focusWhen.js';
   import Alert from '#lib/components/Alert.svelte';
   import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
+  import Nip07Waiting from '#lib/components/Nip07Waiting.svelte';
   import Editor from '#lib/components/NoteEditor/Editor.svelte';
   import RecentReactionList from '#lib/components/NoteEditor/RecentReactionList.svelte';
   import LongFormContent from '#lib/entities/LongFormContent.js';
-  import NostrClient from '#lib/services/NostrClient.js';
+  import { Nip07CanceledError } from '#lib/services/KeyManager.js';
+  import NostrClient, { type SigningOptions } from '#lib/services/NostrClient.js';
   import { initialIdentifier, isValidIdentifier } from '#lib/services/listIdentifier.js';
   import {
     publicationFailureKey,
@@ -20,6 +23,7 @@
   } from '#lib/services/publicationFeedback.js';
   import type { PublicationResult } from '#lib/services/publishToRelays.js';
   import * as settings from '#lib/services/settings.js';
+  import { loginMethod } from '#lib/stores/login.js';
   import { createNoteEditorStore } from '#lib/stores/noteEditor.js';
   import { toaster } from '#lib/stores/toaster.js';
 
@@ -38,6 +42,10 @@
   let inactive = false;
   let submission: 'saving' | 'deleting' | undefined = undefined;
   let failureKey: string | undefined = undefined;
+  // Set while the signer has the event, to stop waiting for it.
+  let signing: AbortController | undefined = undefined;
+  // What the user stopped signing, whose button then takes the focus back.
+  let canceled: 'saving' | 'deleting' | undefined = undefined;
 
   $: isIdentifierValid = isValidIdentifier(identifier, matome);
   $: isTitleValid = title !== undefined && title.length > 0 && title.length <= 150;
@@ -62,19 +70,30 @@
 
   const submit = async <T,>(
     kind: 'saving' | 'deleting',
-    publish: () => Promise<T>,
+    publish: (signingOptions: SigningOptions) => Promise<T>,
     onPublished: (result: T) => void
   ) => {
     if (submission) return;
     submission = kind;
     failureKey = undefined;
+    canceled = undefined;
 
+    const attempt = new AbortController();
+    const signingOptions: SigningOptions = {
+      signal: attempt.signal,
+      onSigning: (isSigning) => (signing = isSigning ? attempt : undefined)
+    };
     let result: T;
     try {
-      result = await publish();
+      result = await publish(signingOptions);
     } catch (error) {
       // Leaving the editor closes the client, which can discard an acknowledgment.
       if (inactive) return;
+      if (error instanceof Nip07CanceledError) {
+        canceled = kind;
+        submission = undefined;
+        return;
+      }
       console.error(error);
       failureKey = publicationFailureKey(error);
       submission = undefined;
@@ -101,7 +120,7 @@
 
     await submit(
       'saving',
-      () => client.postLongFormContent(lfc, matome?.pubkey),
+      (signingOptions) => client.postLongFormContent(lfc, matome?.pubkey, signingOptions),
       ({ content, publication }) => {
         notifySuccess(matome ? 'updated' : 'created', publication);
         goto(`/li/${content.nip19Id()}`);
@@ -124,7 +143,7 @@
 
       await submit(
         'deleting',
-        () => client.deleteArticle(article),
+        (signingOptions) => client.deleteArticle(article, signingOptions),
         (publication) => {
           notifySuccess('deleted', publication);
           goto(path);
@@ -203,7 +222,15 @@
         {#if $editor.searchInitialized}
           <RecentReactionList {editor} />
         {:else}
-          <LoadingSpinner />
+          <LoadingSpinner>
+            {#if $editor.searchAwaitingKey && $loginMethod === 'nip07'}
+              <Nip07Waiting
+                centered
+                cancelLabel={$_('cancel-getting-public-key')}
+                on:cancel={editor.cancelSearch}
+              />
+            {/if}
+          </LoadingSpinner>
         {/if}
       </Tabs.Content>
     </Tabs>
@@ -225,8 +252,18 @@
   {/if}
 
   <div aria-live="polite">
-    {#if submitting}
+    {#if signing && $loginMethod === 'nip07'}
+      <div class="mb-6">
+        <Nip07Waiting
+          live={false}
+          cancelLabel={$_('cancel-signing')}
+          on:cancel={() => signing?.abort()}
+        />
+      </div>
+    {:else if submitting}
       <p class="mb-6">{$_('publication.waiting')}</p>
+    {:else if canceled}
+      <p class="mb-6">{$_('publication.canceled')}</p>
     {/if}
 
     <button on:click|preventDefault={onCancel} class="btn bg-surface-300">
@@ -240,6 +277,7 @@
         !isSummaryValid ||
         $editor.notes.length <= 0 ||
         $editor.adding.length > 0}
+      use:focusWhen={canceled === 'saving'}
       class="btn bg-primary-500"
     >
       {#if submission === 'saving'}
@@ -259,6 +297,7 @@
       <button
         on:click|preventDefault={onDelete}
         disabled={submitting}
+        use:focusWhen={canceled === 'deleting'}
         class="btn bg-error-400 text-black"
       >
         {#if submission === 'deleting'}
