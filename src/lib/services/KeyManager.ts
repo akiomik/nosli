@@ -21,6 +21,13 @@ const NIP07_POLL_MS = 100;
 // When the app loaded this module, which is after the page itself arrived, however long that took.
 const startedAt = performance.now();
 
+// The NIP-07 extension was waited for and did not appear, as when it was removed after logging in.
+export class Nip07MissingError extends Error {
+  constructor() {
+    super('Failed to resolve NIP-07');
+  }
+}
+
 export default class KeyManager {
   private constructor() {
     // noop
@@ -31,7 +38,7 @@ export default class KeyManager {
       await new Promise((resolve) => setTimeout(resolve, NIP07_POLL_MS));
     }
     if (!window.nostr) {
-      throw new Error('Failed to resolve NIP-07');
+      throw new Nip07MissingError();
     }
 
     return window.nostr;
