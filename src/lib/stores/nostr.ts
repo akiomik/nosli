@@ -12,7 +12,7 @@ import {
   toArray
 } from 'rxjs';
 import type { Observable } from 'rxjs';
-import { uniq, latest, createRxNostr, createRxOneshotReq } from 'rx-nostr';
+import { latest, createRxNostr, createRxOneshotReq } from 'rx-nostr';
 import type { RxNostr, RxReq, ConnectionStatePacket, EventPacket } from 'rx-nostr';
 import { Kind } from 'nostr-tools';
 import type { Filter } from 'nostr-tools';
@@ -112,7 +112,6 @@ export function recentGlobalMatomesStore({
 
   return client.use(createRxOneshotReq({ filters })).pipe(
     requestedEvents(filters),
-    uniq(),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
@@ -140,7 +139,6 @@ export function recentUserMatomesStore({
 
   return client.use(createRxOneshotReq({ filters })).pipe(
     requestedEvents(filters),
-    uniq(),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
@@ -230,7 +228,6 @@ export function notesStore({
   // A found note comes with the relay that returned it.
   return useWithRelayHints(client, () => createRxOneshotReq({ filters }), relays).pipe(
     requestedEvents(filters),
-    uniq(),
     takeTimeout(timeout),
     map(({ event, from }) => {
       found[event.id] = { id: event.id, note: Note.fromEvent(event), relays: relayHints([from]) };
@@ -263,7 +260,6 @@ export function noteStore({
 
   return useWithRelayHints(client, () => createRxOneshotReq({ filters }), relays).pipe(
     requestedEvents(filters),
-    uniq(),
     takeTimeout(timeout),
     map(({ event, from }) => ({ note: Note.fromEvent(event), relay: from }))
   );
@@ -290,7 +286,6 @@ export function recentUserReactionsStore({
 
   return client.use(createRxOneshotReq({ filters })).pipe(
     requestedEvents(filters),
-    uniq(),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     take(limit),

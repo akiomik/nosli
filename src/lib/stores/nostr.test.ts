@@ -260,12 +260,12 @@ const attacker = generatePrivateKey();
 const nosliTag = ['t', NostrClient.TAG];
 
 // For each store: how to make an event it asks for, labelled `label`, how to make one it does not
-// ask for, and the labels of what it shows when a relay sends the given events.
+// ask for, and the labels of what it shows. The note stores ask for the IDs of `requested`.
 const stores: {
   name: string;
   event: (label: string, key?: string, createdAt?: number) => Event;
   unrequested: () => Event;
-  read: (client: RxNostr, genuine: Event) => Promise<(string | undefined)[]>;
+  read: (client: RxNostr, requested: Event[]) => Promise<(string | undefined)[]>;
 }[] = [
   {
     name: 'recentGlobalMatomesStore',
@@ -377,8 +377,10 @@ const stores: {
       finishEvent({ kind: Kind.Text, content: label, created_at: createdAt, tags: [] }, key),
     unrequested: () =>
       finishEvent({ kind: Kind.Text, content: 'unrequested', created_at: 2, tags: [] }, author),
-    read: async (client, genuine) =>
-      contents(await lastValueFrom(notesStore({ client, ids: [genuine.id] })))
+    read: async (client, requested) => {
+      const ids = [...new Set(requested.map(({ id }) => id))];
+      return contents(await lastValueFrom(notesStore({ client, ids }))).filter(Boolean);
+    }
   },
   {
     name: 'noteStore',
@@ -386,10 +388,11 @@ const stores: {
       finishEvent({ kind: Kind.Text, content: label, created_at: createdAt, tags: [] }, key),
     unrequested: () =>
       finishEvent({ kind: Kind.Text, content: 'unrequested', created_at: 2, tags: [] }, author),
-    read: async (client, genuine) =>
-      (await lastValueFrom(noteStore({ client, id: genuine.id }).pipe(toArray()))).map(
-        ({ note }) => note.content
-      )
+    read: async (client, requested) => {
+      const ids = [...new Set(requested.map(({ id }) => id))];
+      const found = ids.map((id) => lastValueFrom(noteStore({ client, id }).pipe(toArray())));
+      return (await Promise.all(found)).flat().map(({ note }) => note.content);
+    }
   },
   {
     name: 'recentUserReactionsStore',
@@ -425,7 +428,7 @@ const stores: {
 
 describe.each(stores)('$name', ({ event, unrequested, read }) => {
   // A relay sends `before`, and then the genuine event.
-  const show = (genuine: Event, before: unknown[]) => {
+  const show = (genuine: Event, before: unknown[], requested = [genuine]) => {
     const client = fakeClient(['wss://shared.example.com'], []);
     client.use.mockImplementation(() =>
       from(
@@ -436,8 +439,14 @@ describe.each(stores)('$name', ({ event, unrequested, read }) => {
         }))
       )
     );
-    return read(client, genuine);
+    return read(client, requested);
   };
+
+  it('shows an event that more than one relay sends once', async () => {
+    const genuine = event('genuine');
+
+    expect(await show(genuine, [genuine])).toEqual(['genuine']);
+  });
 
   it('skips events that are not objects', async () => {
     const genuine = event('genuine');
@@ -453,10 +462,17 @@ describe.each(stores)('$name', ({ event, unrequested, read }) => {
 
   it('skips an event that claims the ID of the real one', async () => {
     const genuine = event('genuine');
-    // A newer event, signed by its own author, under the ID of the genuine one.
-    const forged = { ...event('forged', attacker, 2), id: genuine.id };
+    // Another, newer event of the same author, under the ID of the genuine one.
+    const forged = { ...event('forged', author, 2), id: genuine.id };
 
     expect(await show(genuine, [forged])).toEqual(['genuine']);
+  });
+
+  it('skips an event whose signature is wrong', async () => {
+    const genuine = event('genuine');
+    const unsigned = { ...event('unsigned', author, 2), sig: '0'.repeat(128) };
+
+    expect(await show(genuine, [unsigned], [unsigned, genuine])).toEqual(['genuine']);
   });
 
   it('does not let a bad copy that arrives first hide the real event', async () => {

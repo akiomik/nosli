@@ -1,4 +1,16 @@
-import { filter, map, pipe, mergeMap, toArray, from, timer, takeUntil, scan } from 'rxjs';
+import {
+  defer,
+  filter,
+  map,
+  pipe,
+  mergeMap,
+  tap,
+  toArray,
+  from,
+  timer,
+  takeUntil,
+  scan
+} from 'rxjs';
 import type { MonoTypeOperatorFunction, OperatorFunction } from 'rxjs';
 import { latestEach, verify } from 'rx-nostr';
 import type { EventPacket, ConnectionStatePacket } from 'rx-nostr';
@@ -10,7 +22,7 @@ import type { Event, Filter } from 'nostr-tools';
 const identifierOf = (event: Event): string => event.tags.find((tag) => tag[0] === 'd')?.[1] ?? '';
 
 // Like matchFilters of nostr-tools, but the d tags of a filter are matched against the identifier of
-// the event, and not against any of its d tags.
+// the event, and not against any of its d tags. Only filters for addressable kinds have d tags here.
 const matchesFilters = (filters: Filter[], event: Event): boolean =>
   filters.some(
     ({ '#d': identifiers, ...rest }) =>
@@ -18,22 +30,35 @@ const matchesFilters = (filters: Filter[], event: Event): boolean =>
       (identifiers === undefined || identifiers.includes(identifierOf(event)))
   );
 
-// A relay can answer with any event under any ID. Only the events that match the request's filters
-// and whose ID is their hash are kept, and they are verified here, so that dropping duplicates after
-// this does not let a bad copy that arrives first hide the real event.
+// A relay can send anything as the event, and reading a field of null throws. NIP-01 tags hold only
+// strings, which validateEvent of nostr-tools does not check.
+const isEvent = (event: unknown): event is Event =>
+  typeof event === 'object' &&
+  event !== null &&
+  validateEvent(event as Event) &&
+  (event as Event).tags.every((tag) => tag.every((value) => typeof value === 'string'));
+
+// A relay can answer with any event under any ID. Keeps each event that matches the request's
+// filters, whose ID is its hash, and whose signature is valid, once. A bad copy that arrives first is
+// dropped, so it does not hide the real event.
 export function requestedEvents(filters: Filter[]): MonoTypeOperatorFunction<EventPacket> {
-  return pipe(
-    filter(
-      ({ event }) =>
-        // A relay can send anything as the event, and reading a field of null throws.
-        typeof event === 'object' &&
-        event !== null &&
-        validateEvent(event) &&
-        getEventHash(event) === event.id &&
-        matchesFilters(filters, event)
-    ),
-    verify()
-  );
+  return (packets) =>
+    defer(() => {
+      // An event whose ID is its hash holds the same signed fields as every copy with that ID, so a
+      // copy of a verified event is dropped without verifying it again.
+      const verified = new Set<string>();
+      return packets.pipe(
+        filter(
+          ({ event }) =>
+            isEvent(event) &&
+            getEventHash(event) === event.id &&
+            !verified.has(event.id) &&
+            matchesFilters(filters, event)
+        ),
+        verify(),
+        tap(({ event }) => verified.add(event.id))
+      );
+    });
 }
 
 export function sorted<A>(f: (a: A, b: A) => number): MonoTypeOperatorFunction<A> {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { firstValueFrom, from, toArray } from 'rxjs';
 import type { EventPacket } from 'rx-nostr';
 import { finishEvent, generatePrivateKey, getPublicKey, Kind } from 'nostr-tools';
-import type { Event, Filter } from 'nostr-tools';
+import type { Event, Filter, EventTemplate } from 'nostr-tools';
 
 import { latestEachNaddr, requestedEvents } from './operators';
 
@@ -79,13 +79,13 @@ describe('requestedEvents', () => {
 
   it('takes an event without a d tag to be at the empty identifier', async () => {
     const list = (tags: string[][]) =>
-      finishEvent({ kind: Kind.Article, content: `${tags.length} tags`, created_at: 1, tags }, key);
+      finishEvent({ kind: Kind.Article, content: JSON.stringify(tags), created_at: 1, tags }, key);
     const lists = [[], [['d']], [['d', '']], [['d', 'other']]].map(list);
 
     expect(await contents(lists, [{ kinds: [Kind.Article], '#d': [''] }])).toEqual([
-      '0 tags',
-      '1 tags',
-      '1 tags'
+      '[]',
+      '[["d"]]',
+      '[["d",""]]'
     ]);
   });
 
@@ -95,6 +95,39 @@ describe('requestedEvents', () => {
 
   it('drops an event whose signature is wrong', async () => {
     expect(await contents([{ ...note('unsigned'), sig: '0'.repeat(128) }])).toEqual([]);
+  });
+
+  it('keeps each event once, and the first valid copy of it', async () => {
+    const genuine = note('genuine');
+    const badSignature = { ...genuine, sig: '0'.repeat(128) };
+    const packets = [badSignature, genuine, genuine].map((event, i) => ({
+      from: `wss://relay${i}.example.com`,
+      subId: 'sub',
+      event
+    }));
+
+    const kept = await firstValueFrom(
+      from(packets).pipe(requestedEvents([{ kinds: [Kind.Text] }]), toArray())
+    );
+
+    expect(kept.map(({ from }) => from)).toEqual(['wss://relay1.example.com']);
+  });
+
+  it('keeps an event again for another subscription', async () => {
+    const events = from([note('genuine')].map((event) => ({ from: 'wss://r', subId: 's', event })));
+    const kept = events.pipe(requestedEvents([{ kinds: [Kind.Text] }]), toArray());
+
+    expect(await firstValueFrom(kept)).toHaveLength(1);
+    expect(await firstValueFrom(kept)).toHaveLength(1);
+  });
+
+  it('drops an event with a tag value that is not a string', async () => {
+    const unsigned = { kind: Kind.Text, tags: [['t', 1]], content: 'number', created_at: 1 };
+    // Signed as it is, so that only the type of the tag value is wrong.
+    const event = finishEvent(unsigned as unknown as EventTemplate, key);
+
+    expect(event.tags).toEqual([['t', 1]]);
+    expect(await contents([event])).toEqual([]);
   });
 
   it('drops an event without the fields of an event', async () => {
