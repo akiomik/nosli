@@ -134,9 +134,14 @@ describe('requestedEvents', () => {
     const dated = (content: string, createdAt: number) =>
       finishEvent({ kind: Kind.Text, content, created_at: createdAt, tags: [] }, key);
 
-    expect(await contents([dated('latest', 8.64e12), dated('too late', 8.64e12 + 1)])).toEqual([
-      'latest'
-    ]);
+    const events = [
+      dated('earliest', -8.64e12),
+      dated('too early', -8.64e12 - 1),
+      dated('latest', 8.64e12),
+      dated('too late', 8.64e12 + 1)
+    ];
+
+    expect(await contents(events)).toEqual(['earliest', 'latest']);
   });
 
   it('drops an event without the fields of an event', async () => {

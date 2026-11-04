@@ -81,6 +81,13 @@ export function takeTimeout<A>(timeout: number | Date): MonoTypeOperatorFunction
   return takeUntil(timer(timeout));
 }
 
+// NIP-19 holds each TLV value in at most 255 bytes, so an addressable event whose identifier is
+// longer has no naddr, and no link can open it.
+const MAX_TLV_BYTES = 255;
+
+export const hasNaddr = ({ event }: EventPacket): boolean =>
+  new TextEncoder().encode(identifierOf(event)).length <= MAX_TLV_BYTES;
+
 export function latestEachNaddr(): MonoTypeOperatorFunction<EventPacket> {
   return latestEach(({ event }) => `${event.kind}:${event.pubkey}:${identifierOf(event)}`);
 }

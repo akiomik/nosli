@@ -255,6 +255,35 @@ describe('noteStore', () => {
   });
 });
 
+describe('recentGlobalMatomesStore', () => {
+  it('leaves out a list whose identifier is too long for an naddr', async () => {
+    const key = generatePrivateKey();
+    // 'あ' is 3 bytes in UTF-8.
+    const list = (identifier: string) =>
+      finishEvent(
+        {
+          kind: Kind.Article,
+          content: '',
+          created_at: 1,
+          tags: [
+            ['d', identifier],
+            ['title', `${identifier.length}`],
+            ['t', NostrClient.TAG]
+          ]
+        },
+        key
+      );
+    const client = fakeClient(
+      ['wss://shared.example.com'],
+      [list('あ'.repeat(85)), list('あ'.repeat(86))]
+    );
+    const lists = await lastValueFrom(recentGlobalMatomesStore({ client, limit: 10 }));
+
+    expect(lists.map(({ title }) => title)).toEqual(['85']);
+    expect(lists[0].nip19Id()).toMatch(/^naddr1/);
+  });
+});
+
 describe('profileStore', () => {
   const key = generatePrivateKey();
   const profile = (content: string, createdAt: number) =>

@@ -33,7 +33,7 @@ export default class Note {
     );
   }
 
-  // A tag whose value cannot be encoded leaves its #[i] as it is.
+  // A tag whose value is not an event ID or a pubkey leaves its #[i] as it is.
   private replaceNip08(content: string): string {
     this.tags.forEach((tag, i) => {
       if ((!tag.isEvent() && !tag.isPubkey()) || !isHexKey(tag.value)) {
