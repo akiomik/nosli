@@ -18,18 +18,24 @@
     isNip07Available = await KeyManager.hasNip07();
   });
 
-  const keyIsValid = (key: string | undefined) => {
-    if (key === undefined || (!key.startsWith('npub') && !key.startsWith('nsec'))) {
-      return false;
-    }
+  // The pubkey of a key, with the seckey of an nsec, or undefined for a key that cannot be used.
+  // nip19.decode takes an npub or nsec of any length. A pubkey is 32 bytes, and a secret key is a
+  // number from 1 to one less than the curve order, which getPublicKey checks.
+  const readKey = (key: string | undefined): { pubkey: string; seckey?: string } | undefined => {
+    if (key === undefined) return undefined;
 
     try {
-      nip19.decode(key);
-      return true;
+      const { type, data } = nip19.decode(key);
+      if (typeof data !== 'string') return undefined;
+      if (type === 'nsec') return { pubkey: getPublicKey(data), seckey: data };
+      if (type === 'npub' && /^[0-9a-f]{64}$/.test(data)) return { pubkey: data };
     } catch {
-      return false;
+      // Not NIP-19, or an nsec that is not a secret key.
     }
+    return undefined;
   };
+
+  $: login = readKey(key);
 
   const onLoginWithNip07 = async () => {
     try {
@@ -45,22 +51,13 @@
   };
 
   const onLoginWithKey = () => {
-    if (browser && typeof key === 'string' && keyIsValid(key)) {
-      const decoded = nip19.decode(key).data;
-      if (typeof decoded !== 'string') {
-        throw new Error('Unexpected error: decoded key is not string');
-      }
-
+    if (browser && login) {
       // Replaces any login, such as a NIP-07 one whose extension refused, which would be used instead.
       KeyManager.logout();
-      if (key.startsWith('npub')) {
-        $pubkey = decoded;
-      } else {
-        $seckey = decoded;
-        $pubkey = getPublicKey(decoded);
-      }
+      if (login.seckey !== undefined) $seckey = login.seckey;
+      $pubkey = login.pubkey;
 
-      goto(`/p/${nip19.npubEncode($pubkey)}`);
+      goto(`/p/${nip19.npubEncode(login.pubkey)}`);
     }
   };
 </script>
@@ -101,15 +98,10 @@
     bind:value={key}
     required
     class="input"
-    class:input-error={key !== undefined && !keyIsValid(key)}
+    class:input-error={key !== undefined && !login}
   />
 </label>
 
-<button
-  type="submit"
-  on:click={onLoginWithKey}
-  disabled={!keyIsValid(key)}
-  class="btn bg-surface-300"
->
+<button type="submit" on:click={onLoginWithKey} disabled={!login} class="btn bg-surface-300">
   {$_('login')}
 </button>
