@@ -7,11 +7,11 @@ export const load = (async ({ params }) => {
   try {
     decoded = nip19.decode(params.id);
   } catch {
-    throw error(404, 'Not Found &#128148;');
+    throw error(404, 'Not Found 💔');
   }
 
   if (decoded.type !== 'npub' || typeof decoded.data !== 'string') {
-    throw error(404, 'Not Found &#128148;');
+    throw error(404, 'Not Found 💔');
   }
 
   return {
