@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPublicKey, nip19 } from 'nostr-tools';
 
+import KeyManager from '$lib/services/KeyManager';
 import { nip07, pubkey } from '$lib/stores/cookie';
 import { load } from './+page';
 
@@ -14,6 +15,7 @@ afterEach(() => {
   nip07.set(false);
   pubkey.set('');
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('login page load', () => {
@@ -37,7 +39,8 @@ describe('login page load', () => {
 
   it('shows the login form when the NIP-07 extension is missing', async () => {
     nip07.set(true);
-    vi.stubGlobal('window', {});
+    // KeyManager rejects once it has waited for the extension.
+    vi.spyOn(KeyManager, 'getPublicKey').mockRejectedValue(new Error('Failed to resolve NIP-07'));
 
     await expect(load()).resolves.toBeUndefined();
   });

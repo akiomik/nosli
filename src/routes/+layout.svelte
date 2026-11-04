@@ -1,13 +1,15 @@
 <script lang="ts">
-  import { setContext } from 'svelte';
+  import { onMount, setContext } from 'svelte';
   import { Toast } from '@skeletonlabs/skeleton-svelte';
   import '@fortawesome/fontawesome-svg-core/styles.css';
   import { config } from '@fortawesome/fontawesome-svg-core';
   import { createRxNostr } from 'rx-nostr';
+  import { _ } from 'svelte-i18n';
 
-  import { beforeNavigate, afterNavigate } from '$app/navigation';
+  import { beforeNavigate, afterNavigate, invalidateAll } from '$app/navigation';
   import '../app.css';
   import * as settings from '$lib/services/settings';
+  import KeyManager from '$lib/services/KeyManager';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -31,6 +33,14 @@
   afterNavigate(() => {
     clearTimeout(timeout);
     loading = false;
+  });
+
+  onMount(async () => {
+    if (!(await KeyManager.logoutIfNip07Missing())) return;
+
+    toaster.warning({ title: $_('alert.nip07-logged-out') });
+    // Pages that need a login check it again.
+    await invalidateAll();
   });
 </script>
 

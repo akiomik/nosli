@@ -7,7 +7,7 @@
   import type { RxNostr } from 'rx-nostr';
 
   import { relayConnectionsStore } from '$lib/stores/nostr';
-  import KeyManager from '$lib/services/KeyManager';
+  import { loginMethod } from '$lib/stores/login';
   import MenuPopover from '$lib/components/MenuPopover.svelte';
   import RelayConnectionStatusListPopover from '$lib/components/RelayConnectionStatusListPopover.svelte';
 
@@ -52,8 +52,8 @@
         />
       </div>
 
-      {#if KeyManager.isLoggedIn()}
-        {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
+      {#if $loginMethod}
+        {#if $loginMethod !== 'npub'}
           <a href="/li/new" class="btn bg-primary-500">{$_('create')}</a>
         {/if}
 
