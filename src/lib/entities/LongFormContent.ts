@@ -2,8 +2,16 @@ import { nip19, Kind } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 import { isEventId } from '$lib/entities/EventId';
 import Tag from '$lib/entities/Tag';
+import { relayHints } from '$lib/services/relayHints';
+
+// A note in a list, with the relays that hint where it can be found.
+export type NoteReference = { id: string; relays?: string[] };
 
 const nosliTag = new Tag('t', 'nosli');
+
+// The relay hints that the nevent of each note holds. An nevent of nostr-tools is at most 5000
+// characters, and the first hints are those that returned the note.
+const MAX_NOTE_RELAY_HINTS = 3;
 
 const isNosliTag = ([typ, value]: string[]): boolean =>
   typ === nosliTag.typ && value === nosliTag.value;
@@ -60,26 +68,32 @@ export default class LongFormContent {
   }
 
   // Builds a new list, or an update of `previous` that keeps its image, published_at, and other
-  // tags. The content is always rebuilt from the notes.
+  // tags. The content is always rebuilt from the notes. An e tag holds one relay hint, and the
+  // nevent in the content holds up to MAX_NOTE_RELAY_HINTS.
   static compose(params: {
     identifier: string;
     title: string;
     summary: string;
-    noteIds: string[];
+    notes: NoteReference[];
     previous?: LongFormContent;
   }): LongFormContent {
-    const { identifier, title, summary, noteIds, previous } = params;
+    const { identifier, title, summary, notes, previous } = params;
     return new LongFormContent(
       undefined,
       identifier,
       '',
-      noteIds.map((id) => `nostr:${nip19.neventEncode({ id })}`).join('\n'),
+      notes
+        .map(
+          ({ id, relays }) =>
+            `nostr:${nip19.neventEncode({ id, relays: relays?.slice(0, MAX_NOTE_RELAY_HINTS) })}`
+        )
+        .join('\n'),
       new Date(),
       title,
       summary,
       previous?.image,
       previous?.publishedAt,
-      [...noteIds.map((id) => new Tag('e', id, '', 'mention')), nosliTag],
+      [...notes.map(({ id, relays }) => new Tag('e', id, relays?.[0])), nosliTag],
       previous?.otherTags
     );
   }
@@ -89,9 +103,9 @@ export default class LongFormContent {
       ['d', this.identifier],
       ['title', this.title],
       ['summary', this.summary],
-      ...this.tags.map((tag: Tag) => {
-        return [tag.typ, tag.value];
-      }),
+      ...this.tags.map((tag: Tag) =>
+        tag.relay ? [tag.typ, tag.value, tag.relay] : [tag.typ, tag.value]
+      ),
       ...this.otherTags
     ];
     if (this.image) {
@@ -132,5 +146,36 @@ export default class LongFormContent {
     return this.tags
       .filter((tag: Tag) => tag.typ === 'e' && isEventId(tag.value))
       .map((tag) => tag.value);
+  }
+
+  // The notes of the e tags, each with the relay of its tag and then those of its nevents in the
+  // content, which can hold more than one.
+  noteReferences(): NoteReference[] {
+    const contentRelays = new Map<string, string[]>();
+    for (const word of this.content.split(/\s+/)) {
+      if (!word.startsWith('nostr:nevent1')) continue;
+      try {
+        const { data } = nip19.decode(word.slice('nostr:'.length));
+        if (typeof data === 'string' || !('id' in data)) continue;
+        contentRelays.set(data.id, [...(contentRelays.get(data.id) ?? []), ...(data.relays ?? [])]);
+      } catch {
+        // Words that only look like an nevent hint at nothing.
+      }
+    }
+    return this.tags
+      .filter((tag: Tag) => tag.typ === 'e' && isEventId(tag.value))
+      .map((tag) => ({
+        id: tag.value,
+        relays: relayHints([tag.relay, ...(contentRelays.get(tag.value) ?? [])])
+      }));
+  }
+
+  // The relays that the notes of the list hint at, those that more notes hint at first.
+  noteRelays(): string[] {
+    const counts = new Map<string, number>();
+    for (const { relays } of this.noteReferences()) {
+      for (const relay of relays ?? []) counts.set(relay, (counts.get(relay) ?? 0) + 1);
+    }
+    return [...counts].sort(([, a], [, b]) => b - a).map(([relay]) => relay);
   }
 }
