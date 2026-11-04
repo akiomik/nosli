@@ -120,7 +120,7 @@ export default class LongFormContent {
       tags.push(['image', this.image]);
     }
     if (this.publishedAt) {
-      tags.push(['published_at', Math.round(this.publishedAt.getTime() / 1000).toString()]);
+      tags.push(['published_at', toSeconds(this.publishedAt).toString()]);
     }
 
     const event = {

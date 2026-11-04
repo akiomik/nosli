@@ -85,7 +85,7 @@ describe('LongFormContent.compose', () => {
 
   // Composes a list at `now`, in seconds, and returns its created_at.
   const createdAt = (now: number, previousCreatedAt?: number) => {
-    vi.useFakeTimers({ now: now * 1000 });
+    vi.useFakeTimers({ now: now * 1000, toFake: ['Date'] });
     const previous =
       previousCreatedAt === undefined
         ? undefined
@@ -104,6 +104,10 @@ describe('LongFormContent.compose', () => {
 
   it('updates a list later than a previous version from the same second', () => {
     expect(createdAt(1_800_000_000.4, 1_800_000_000)).toBe(1_800_000_001);
+  });
+
+  it('updates a list later than a previous version, also when the current time rounds up', () => {
+    expect(createdAt(1_800_000_000.6, 1_800_000_001)).toBe(1_800_000_002);
   });
 
   it('updates a list later than a previous version from a clock that is ahead', () => {
