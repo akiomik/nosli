@@ -26,7 +26,7 @@ export default class LongFormContent {
     public image: string | undefined,
     public publishedAt: Date | undefined,
     public tags: Tag[],
-    // Tags that Nosli neither reads nor rebuilds, written back after its own tags on an update.
+    // Tags that Nosli neither reads nor rebuilds, written back with an update.
     public otherTags: string[][] = []
   ) {}
 
@@ -34,7 +34,7 @@ export default class LongFormContent {
     const value = (typ: string) => event.tags.find((tag) => tag[0] === typ)?.[1];
     const publishedAt = parseTimestamp(value('published_at'));
     // Nosli reads these tags into fields or rebuilds them, except a published_at that it cannot
-    // read. A client tag names the app that published the event, which Nosli replaces on update.
+    // read. A client tag names the app that published the event, so Nosli drops it on update.
     const ownTypes = ['d', 'title', 'summary', 'image', 'e', 'client'];
     if (publishedAt) ownTypes.push('published_at');
     const isOwnTag = (tag: string[]) => ownTypes.includes(tag[0]) || isNosliTag(tag);
@@ -53,7 +53,7 @@ export default class LongFormContent {
         .filter((tag) => tag[0] === 'e' || isNosliTag(tag))
         .map((tag) => Tag.fromEvent(tag))
         .filter((tag: Tag | undefined): tag is Tag => tag !== undefined),
-      // A tag with a value that is not a string would make the update impossible to sign.
+      // NIP-01 tags hold only strings, and a null value would make the update impossible to sign.
       event.tags.filter((tag) => !isOwnTag(tag) && tag.every((v) => typeof v === 'string'))
     );
   }
