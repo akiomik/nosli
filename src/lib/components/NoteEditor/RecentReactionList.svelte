@@ -60,7 +60,7 @@
     {:else}
       <Alert variant="warning">
         <p>{$_('alert.failed-to-get-note')}</p>
-        <p>{nip19.noteEncode(id)}</p>
+        <p class="break-all">{nip19.noteEncode(id)}</p>
       </Alert>
     {/if}
   {/each}
