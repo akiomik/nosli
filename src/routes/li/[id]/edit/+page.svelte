@@ -30,7 +30,11 @@
   $: author = $matome?.pubkey;
   let keyLookup = new AbortController();
   let retried = false;
-  $: if (author && $loginMethod) keyLookup = new AbortController();
+  // A lookup for another author or login is not a retry.
+  $: if (author && $loginMethod) {
+    keyLookup = new AbortController();
+    retried = false;
+  }
   $: loggedInAs =
     author && $loginMethod ? KeyManager.isLoggedInAs(author, keyLookup.signal) : false;
   const retry = () => {

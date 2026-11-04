@@ -32,10 +32,12 @@
     retried = true;
     editor.retrySearch();
   };
+  // Once a retry has found the reactions, the button of the first note takes the focus from the
+  // retry button, which has left the page.
+  $: firstNoteId = $editor.searchedNotes.find(({ note }) => note)?.id;
 </script>
 
-<!-- Takes the focus from the retry button once a retry has found the reactions. -->
-<div class="flex flex-col space-y-8" tabindex="-1" use:focusWhen={retried && !$editor.searchFailed}>
+<div class="flex flex-col space-y-8">
   {#if $editor.searchFailed}
     <div role="alert">
       <Alert variant="warning">
@@ -76,6 +78,7 @@
             class="btn"
             class:preset-filled-surface-200-800={isUsed(id)}
             class:preset-tonal-primary={!isUsed(id)}
+            use:focusWhen={retried && !$editor.searchFailed && id === firstNoteId}
             on:click|preventDefault={() => toggle(id)}
           >
             {isUsed(id) ? $_('remove') : $_('add')}

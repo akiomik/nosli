@@ -4,9 +4,9 @@ import type { Action } from 'svelte/action';
 // when the button that the user pressed leaves the page. The check waits for the update that removes
 // that button to end. A value that stays true does nothing, since Svelte can pass it again.
 export const focusWhen: Action<HTMLElement, boolean> = (node, focus) => {
-  let focused = false;
+  let previous = false;
   const update = (focus: boolean) => {
-    if (focus && !focused) {
+    if (focus && !previous) {
       queueMicrotask(() => {
         if (
           node.isConnected &&
@@ -16,7 +16,7 @@ export const focusWhen: Action<HTMLElement, boolean> = (node, focus) => {
         }
       });
     }
-    focused = focus;
+    previous = focus;
   };
   update(focus);
   return { update };
