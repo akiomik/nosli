@@ -255,7 +255,16 @@ describe('noteStore', () => {
   });
 });
 
-describe('recentGlobalMatomesStore', () => {
+describe.each([
+  {
+    name: 'recentGlobalMatomesStore',
+    read: (client: RxNostr) => recentGlobalMatomesStore({ client, limit: 10 })
+  },
+  {
+    name: 'recentUserMatomesStore',
+    read: (client: RxNostr, pubkey: string) => recentUserMatomesStore({ client, pubkey })
+  }
+])('$name', ({ read }) => {
   it('leaves out a list whose identifier is too long for an naddr', async () => {
     const key = generatePrivateKey();
     // 'あ' is 3 bytes in UTF-8.
@@ -277,7 +286,7 @@ describe('recentGlobalMatomesStore', () => {
       ['wss://shared.example.com'],
       [list('あ'.repeat(85)), list('あ'.repeat(86))]
     );
-    const lists = await lastValueFrom(recentGlobalMatomesStore({ client, limit: 10 }));
+    const lists = await lastValueFrom(read(client, getPublicKey(key)));
 
     expect(lists.map(({ title }) => title)).toEqual(['85']);
     expect(lists[0].nip19Id()).toMatch(/^naddr1/);
