@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Kind, nip19 } from 'nostr-tools';
+import { nip19 } from 'nostr-tools';
+import { KIND } from '#lib/testing/nostr.js';
 
 import { nip07 } from '#lib/stores/cookie.js';
 import { LOGIN_DEPENDENCY } from '#lib/stores/login.js';
@@ -10,7 +11,7 @@ vi.mock('#lib/stores/cookie.js', async () => {
   return { nip07: writable(false), pubkey: writable(''), seckey: writable('') };
 });
 
-const pointer = { kind: Kind.Article, pubkey: '01'.repeat(32), identifier: 'my-list' };
+const pointer = { kind: KIND.article, pubkey: '01'.repeat(32), identifier: 'my-list' };
 const depends = vi.fn();
 const run = async () =>
   load({

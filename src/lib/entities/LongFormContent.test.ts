@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Kind, nip19, type Event } from 'nostr-tools';
+import { nip19 } from 'nostr-tools';
+import { KIND, type Event } from '#lib/testing/nostr.js';
 
 import LongFormContent from './LongFormContent';
 
@@ -11,7 +12,7 @@ const author = 'c'.repeat(64);
 const otherClientEvent: Event = {
   id: 'd'.repeat(64),
   sig: '',
-  kind: Kind.Article,
+  kind: KIND.article,
   pubkey: author,
   content: 'Prose from another client',
   created_at: 1_700_000_000,
@@ -65,7 +66,7 @@ describe('LongFormContent.isDeletedBy', () => {
   const request = (tags: string[][], createdAt: number, pubkey = author): Event => ({
     id: 'e'.repeat(64),
     sig: '',
-    kind: Kind.EventDeletion,
+    kind: KIND.deletion,
     pubkey,
     content: '',
     created_at: createdAt,

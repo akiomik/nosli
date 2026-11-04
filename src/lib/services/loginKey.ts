@@ -1,4 +1,4 @@
-import { nip19, getPublicKey } from 'nostr-tools';
+import { nip19, getPublicKey, utils } from 'nostr-tools';
 
 // A key to log in with: the pubkey, and the seckey of an nsec, both in hex as the cookies keep them.
 export type LoginKey = { pubkey: string; seckey?: string };
@@ -10,10 +10,13 @@ export const readLoginKey = (key: string | undefined): LoginKey | undefined => {
   if (key === undefined) return undefined;
 
   try {
-    const { type, data } = nip19.decode(key);
-    if (typeof data !== 'string') return undefined;
-    if (type === 'nsec') return { pubkey: getPublicKey(data), seckey: data };
-    if (type === 'npub' && /^[0-9a-f]{64}$/.test(data)) return { pubkey: data };
+    const decoded = nip19.decode(key);
+    if (decoded.type === 'nsec') {
+      return { pubkey: getPublicKey(decoded.data), seckey: utils.bytesToHex(decoded.data) };
+    }
+    if (decoded.type === 'npub' && /^[0-9a-f]{64}$/.test(decoded.data)) {
+      return { pubkey: decoded.data };
+    }
   } catch {
     // Not NIP-19, or an nsec that is not a secret key.
   }

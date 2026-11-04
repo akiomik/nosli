@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Kind, nip19, type Event } from 'nostr-tools';
+import { nip19 } from 'nostr-tools';
+import { KIND, type Event } from '#lib/testing/nostr.js';
 
 import Note from './Note';
 
@@ -9,7 +10,7 @@ const note = (content: string, tags: string[][]): Note =>
   Note.fromEvent({
     id: 'c'.repeat(64),
     sig: '',
-    kind: Kind.Text,
+    kind: KIND.text,
     pubkey,
     content,
     created_at: 1_700_000_000,

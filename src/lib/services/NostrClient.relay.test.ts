@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { SimplePool } from 'nostr-tools';
 
 import LongFormContent from '#lib/entities/LongFormContent.js';
 import KeyManager from './KeyManager';
 import NostrClient from './NostrClient';
 import { FakeWebSocket, setOpenDelay, setRelayBehavior } from '#lib/testing/FakeWebSocket.js';
-import { publicKeyOf, type Event } from '#lib/testing/nostr.js';
+import { nip07 } from '#lib/stores/cookie.js';
+import { publicKeyOf, signWith, type Event } from '#lib/testing/nostr.js';
 
 vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
@@ -195,12 +197,10 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
     try {
       await client.connect();
       const old = FakeWebSocket.instances[0];
-      old.readyState = 2;
-      const reconnect = client.ensureRelay('wss://relay.example', 1000);
-      await new Promise((resolve) => setTimeout(resolve, 5));
-      old.close();
-      await reconnect;
+      old.drop();
+      await client.ensureRelay('wss://relay.example', 1000);
       expect(FakeWebSocket.instances).toHaveLength(2);
+      // The old socket reports its closing once more.
       old.onclose?.({ code: 1000, reason: '' });
 
       await expect(client.deleteArticle(article('e'.repeat(64)))).resolves.toMatchObject({
@@ -210,6 +210,40 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
       expect(FakeWebSocket.instances[1].sent.some((message) => message.includes('"EVENT"'))).toBe(
         true
       );
+    } finally {
+      await client.close();
+    }
+  });
+
+  // nostr-tools takes a closing socket as connected, and sends on it, so the event is lost and the
+  // relay counts as one that did not answer. Nosli 1.x, with nostr-tools 1.7, opened a new socket
+  // instead. The next publication opens one, and the old socket does not close it.
+  it('counts a relay whose socket is closing as unanswered, and opens it again after', async () => {
+    const client = new NostrClient(['wss://one.example', 'wss://relay.example'], 1000);
+    try {
+      await client.connect();
+      const old = FakeWebSocket.instances[1];
+      old.readyState = FakeWebSocket.CLOSING;
+      const first = client.deleteArticle(article('e'.repeat(64)));
+      await vi.waitFor(() => expect(FakeWebSocket.instances[0].sentEvents()).toHaveLength(1));
+      old.close();
+
+      await expect(first).resolves.toEqual({
+        acceptedRelays: ['wss://one.example'],
+        rejectedRelays: [],
+        timedOutRelays: ['wss://relay.example'],
+        unavailableRelays: []
+      });
+      expect(old.sentEvents()).toHaveLength(0);
+
+      // The old socket reports its closing once more.
+      old.onclose?.({ code: 1000, reason: '' });
+      await expect(client.deleteArticle(article('e'.repeat(64)))).resolves.toMatchObject({
+        acceptedRelays: ['wss://one.example', 'wss://relay.example'],
+        unavailableRelays: []
+      });
+      expect(FakeWebSocket.instances).toHaveLength(3);
+      expect(FakeWebSocket.instances[2].sentEvents()).toHaveLength(1);
     } finally {
       await client.close();
     }
@@ -247,6 +281,70 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
       await expect(publication).rejects.toMatchObject({
         result: { acceptedRelays: [], rejectedRelays: [], timedOutRelays: ['wss://silent.example'] }
       });
+    } finally {
+      vi.useRealTimers();
+      await client.close();
+    }
+  });
+
+  // The signature is valid for the hash of the event, but the ID is not that hash, so relays would
+  // refuse it.
+  it.each(['update', 'delete'] as const)(
+    'sends no %s that a NIP-07 extension signed with a wrong ID',
+    async (action) => {
+      const secret = '1'.repeat(64);
+      const signEvent = vi.fn(async (event: Event) => ({
+        ...signWith(secret, { ...event }),
+        id: 'f'.repeat(64)
+      }));
+      vi.stubGlobal('window', {
+        nostr: { getPublicKey: async () => publicKeyOf(secret), signEvent }
+      });
+      nip07.set(true);
+      const client = new NostrClient(['wss://relay.example'], 1000);
+      try {
+        await client.connect();
+        const sent =
+          action === 'update'
+            ? client.postLongFormContent(article())
+            : client.deleteArticle(article('e'.repeat(64)));
+
+        await expect(sent).rejects.toThrow('event is invalid');
+        expect(signEvent).toHaveBeenCalledOnce();
+        expect(FakeWebSocket.sentEvents()).toEqual([]);
+      } finally {
+        nip07.set(false);
+        vi.unstubAllGlobals();
+        await client.close();
+      }
+    }
+  );
+
+  // The pool opens a relay that has closed again when it publishes, and that relay waits less.
+  it('waits 10 seconds as well for a relay that dropped and was opened again', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    setRelayBehavior('wss://silent.example', 'silent');
+    const poolPublish = vi.spyOn(SimplePool.prototype, 'publish');
+    const client = new NostrClient(['wss://silent.example'], 1000);
+    try {
+      const connected = client.connect();
+      await vi.advanceTimersByTimeAsync(10);
+      await connected;
+      FakeWebSocket.instances[0].drop();
+
+      const publication = client.postLongFormContent(article());
+      const settled = vi.fn();
+      publication.then(settled, settled);
+      await vi.advanceTimersByTimeAsync(9_900);
+      expect(settled).not.toHaveBeenCalled();
+      expect(FakeWebSocket.instances).toHaveLength(2);
+      expect(FakeWebSocket.instances[1].sentEvents()).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(200);
+
+      await expect(publication).rejects.toMatchObject({
+        result: { acceptedRelays: [], rejectedRelays: [], timedOutRelays: ['wss://silent.example'] }
+      });
+      expect(poolPublish).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
       await client.close();

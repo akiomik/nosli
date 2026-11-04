@@ -1,10 +1,6 @@
 {
   "extends": "$app/tsconfig",
   "compilerOptions": {
-    // nostr-tools v1 ships type declarations but does not expose them via package exports.
-    "paths": {
-      "nostr-tools": ["./node_modules/nostr-tools/lib/index.d.ts"]
-    },
     "sourceMap": true,
     "strict": true
   },

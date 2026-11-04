@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { Kind, nip19 } from 'nostr-tools';
+import { kinds, nip19 } from 'nostr-tools';
 import type { PageLoad } from './$types';
 import { ensureAddressPointer } from '#lib/helper.js';
 
@@ -11,7 +11,7 @@ export const load = (({ params }) => {
     throw error(404, 'Not Found 💔');
   }
 
-  if (!ensureAddressPointer(data) || data.kind != Kind.Article) {
+  if (!ensureAddressPointer(data) || data.kind != kinds.LongFormArticle) {
     throw error(404, 'Not Found 💔');
   }
 

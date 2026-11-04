@@ -1,88 +1,61 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  finishEvent,
-  getPublicKey,
-  Kind,
-  nip19,
-  SimplePool,
-  type Event,
-  type Pub,
-  type Relay
-} from 'nostr-tools';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { nip19, SimplePool } from 'nostr-tools';
+import type { AbstractRelay } from 'nostr-tools/abstract-relay';
 
 import LongFormContent from '#lib/entities/LongFormContent.js';
 import { nip07 } from '#lib/stores/cookie.js';
+import { KIND, publicKeyOf, signWith, type Event } from '#lib/testing/nostr.js';
 import NostrClient, { decodeNoteId } from './NostrClient';
 import KeyManager, { Nip07CanceledError } from './KeyManager';
 import { PublicationFailedError, SignedByAnotherAccountError } from './publishToRelays';
 
 vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
-  const { getPublicKey } = await import('nostr-tools');
+  const { publicKeyOf } = await import('#lib/testing/nostr.js');
   const secret = '1'.repeat(64);
   return {
     nip07: writable(false),
-    pubkey: writable(getPublicKey(secret)),
+    pubkey: writable(publicKeyOf(secret)),
     seckey: writable(secret)
   };
 });
 
+// What the relays were sent, as (url, event). Each relay accepts unless a test says otherwise.
+const publish = vi.fn<(url: string, event: Event) => Promise<string>>();
+beforeEach(() => {
+  publish.mockReset().mockResolvedValue('');
+});
+
+// A relay of nostr-tools, which is connected once the pool's ensureRelay gives it.
 function fakeRelay(url: string) {
-  const listeners = {
-    connect: new Set<() => void>(),
-    disconnect: new Set<() => void>(),
-    error: new Set<() => void>()
-  };
-  const emit = (type: 'connect' | 'disconnect' | 'error') => {
-    listeners[type].forEach((callback) => callback());
-  };
   const relay = {
     url,
-    status: 1,
-    on(type: 'connect' | 'disconnect' | 'error', callback: () => void) {
-      listeners[type].add(callback);
-      if (type === 'connect' && relay.status === 1) callback();
-    },
-    off(type: 'connect' | 'disconnect' | 'error', callback: () => void) {
-      listeners[type].delete(callback);
-    },
-    connect: vi.fn(async () => {
-      relay.status = 1;
-      emit('connect');
-    }),
+    connected: true,
+    publishTimeout: 4400,
+    publish: (event: Event) => publish(url, event),
     close: vi.fn(() => {
-      relay.status = 3;
-      emit('disconnect');
+      relay.connected = false;
     })
   };
   return {
-    relay: relay as unknown as Relay,
-    connect: relay.connect,
+    relay: relay as unknown as AbstractRelay,
     close: relay.close,
     disconnect: () => {
-      relay.status = 3;
-      emit('disconnect');
-    },
-    startConnecting: () => {
-      relay.status = 0;
-    },
-    finishConnecting: () => {
-      relay.status = 1;
-      emit('connect');
+      relay.connected = false;
     }
   };
 }
 
-function acceptingPublication() {
-  return {
-    on(type: 'ok' | 'failed', callback: () => void) {
-      if (type === 'ok') callback();
-    },
-    off() {}
-  } as Pub;
+// The pool's ensureRelay, which connects the relay of the URL again, as nostr-tools does.
+function ensuring(...relays: ReturnType<typeof fakeRelay>[]) {
+  return vi.spyOn(SimplePool.prototype, 'ensureRelay').mockImplementation(async (url) => {
+    const target = relays.find(({ relay }) => relay.url === url) ?? relays[0];
+    (target.relay as unknown as { connected: boolean }).connected = true;
+    return target.relay;
+  });
 }
 
-const listVersion = (id: string | undefined, pubkey = getPublicKey('1'.repeat(64))) =>
+const listVersion = (id: string | undefined, pubkey = publicKeyOf('1'.repeat(64))) =>
   new LongFormContent(
     id,
     'edited-list',
@@ -154,22 +127,19 @@ describe('NostrClient.deleteArticle', () => {
   });
 
   it('targets the address of the article as well as its latest event', async () => {
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-    const publish = vi
-      .spyOn(SimplePool.prototype, 'publish')
-      .mockImplementation(() => acceptingPublication());
+    ensuring(fakeRelay('wss://one'));
     const client = new NostrClient(['wss://one']);
 
     await client.deleteArticle(publishedArticle);
 
     expect(publish).toHaveBeenCalledOnce();
     expect(publish.mock.calls[0][1]).toMatchObject({
-      kind: Kind.EventDeletion,
+      kind: KIND.deletion,
       pubkey: publishedArticle.pubkey,
       tags: [
         ['e', publishedArticle.id],
-        ['a', `${Kind.Article}:${publishedArticle.pubkey}:edited-list`],
-        ['k', `${Kind.Article}`]
+        ['a', `${KIND.article}:${publishedArticle.pubkey}:edited-list`],
+        ['k', `${KIND.article}`]
       ]
     });
   });
@@ -179,10 +149,7 @@ describe('NostrClient.deleteArticle', () => {
     ['no earlier than an article from a clock that is ahead', 1_800_000_300, 1_800_000_300]
   ])('dates the request %s', async (_case, articleCreatedAt, requestCreatedAt) => {
     vi.useFakeTimers({ now: 1_800_000_000_000, toFake: ['Date'] });
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-    const publish = vi
-      .spyOn(SimplePool.prototype, 'publish')
-      .mockImplementation(() => acceptingPublication());
+    ensuring(fakeRelay('wss://one'));
     const client = new NostrClient(['wss://one']);
     const article = listVersion('f'.repeat(64));
     article.createdAt = new Date(articleCreatedAt * 1000);
@@ -193,10 +160,9 @@ describe('NostrClient.deleteArticle', () => {
   });
 
   it('does not publish a request that someone other than the author signed', async () => {
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-    const publish = vi.spyOn(SimplePool.prototype, 'publish');
+    ensuring(fakeRelay('wss://one'));
     const client = new NostrClient(['wss://one']);
-    const othersArticle = listVersion('f'.repeat(64), getPublicKey('2'.repeat(64)));
+    const othersArticle = listVersion('f'.repeat(64), publicKeyOf('2'.repeat(64)));
 
     await expect(client.deleteArticle(othersArticle)).rejects.toBeInstanceOf(
       SignedByAnotherAccountError
@@ -230,10 +196,7 @@ describe('NostrClient.postLongFormContent', () => {
   });
 
   it('publishes an update that its author signed', async () => {
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-    const publish = vi
-      .spyOn(SimplePool.prototype, 'publish')
-      .mockImplementation(() => acceptingPublication());
+    ensuring(fakeRelay('wss://one'));
     const client = new NostrClient(['wss://one']);
 
     await client.postLongFormContent(update(publishedArticle), publishedArticle.pubkey);
@@ -242,10 +205,9 @@ describe('NostrClient.postLongFormContent', () => {
   });
 
   it('does not publish an update that another account signed', async () => {
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-    const publish = vi.spyOn(SimplePool.prototype, 'publish');
+    ensuring(fakeRelay('wss://one'));
     const client = new NostrClient(['wss://one']);
-    const othersArticle = listVersion('f'.repeat(64), getPublicKey('2'.repeat(64)));
+    const othersArticle = listVersion('f'.repeat(64), publicKeyOf('2'.repeat(64)));
 
     await expect(
       client.postLongFormContent(update(othersArticle), othersArticle.pubkey)
@@ -254,16 +216,15 @@ describe('NostrClient.postLongFormContent', () => {
   });
 
   it('keeps the author from a NIP-07 extension, which may keep a given pubkey', async () => {
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-    const publish = vi.spyOn(SimplePool.prototype, 'publish');
+    ensuring(fakeRelay('wss://one'));
     // Signs with another account, and keeps the pubkey of the event when it has one, as Alby does.
     const other = '2'.repeat(64);
     const signEvent = vi.fn(async (event: Event) => {
-      const signed = finishEvent({ ...event }, other);
+      const signed = signWith(other, { ...event });
       return event.pubkey ? { ...signed, pubkey: event.pubkey } : signed;
     });
     vi.stubGlobal('window', {
-      nostr: { getPublicKey: async () => getPublicKey(other), signEvent }
+      nostr: { getPublicKey: async () => publicKeyOf(other), signEvent }
     });
     nip07.set(true);
     const client = new NostrClient(['wss://one']);
@@ -276,10 +237,7 @@ describe('NostrClient.postLongFormContent', () => {
   });
 
   it('publishes a new list that any account signed', async () => {
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-    const publish = vi
-      .spyOn(SimplePool.prototype, 'publish')
-      .mockImplementation(() => acceptingPublication());
+    ensuring(fakeRelay('wss://one'));
     const client = new NostrClient(['wss://one']);
     const list = LongFormContent.compose({
       identifier: 'new-list',
@@ -290,7 +248,7 @@ describe('NostrClient.postLongFormContent', () => {
 
     const { content } = await client.postLongFormContent(list);
 
-    expect(content.pubkey).toBe(getPublicKey('1'.repeat(64)));
+    expect(content.pubkey).toBe(publicKeyOf('1'.repeat(64)));
     expect(publish).toHaveBeenCalledOnce();
   });
 });
@@ -301,10 +259,10 @@ describe('NostrClient with a NIP-07 extension that has not signed', () => {
     let sign = () => {};
     const signEvent = vi.fn(
       (event: Event) =>
-        new Promise<Event>((resolve) => (sign = () => resolve(finishEvent(event, '1'.repeat(64)))))
+        new Promise<Event>((resolve) => (sign = () => resolve(signWith('1'.repeat(64), event))))
     );
     vi.stubGlobal('window', {
-      nostr: { getPublicKey: async () => getPublicKey('1'.repeat(64)), signEvent }
+      nostr: { getPublicKey: async () => publicKeyOf('1'.repeat(64)), signEvent }
     });
     nip07.set(true);
     return { signEvent, sign: () => sign() };
@@ -332,10 +290,7 @@ describe('NostrClient with a NIP-07 extension that has not signed', () => {
   it.each(['update', 'delete'] as const)(
     'sends no %s once the user stops waiting, even when the signature comes later',
     async (action) => {
-      vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-      const publish = vi
-        .spyOn(SimplePool.prototype, 'publish')
-        .mockImplementation(() => acceptingPublication());
+      ensuring(fakeRelay('wss://one'));
       const { signEvent, sign } = openPrompt();
       const wait = new AbortController();
       const onSigning = vi.fn();
@@ -356,8 +311,7 @@ describe('NostrClient with a NIP-07 extension that has not signed', () => {
   it.each(['update', 'delete'] as const)(
     'sends no %s for a wait that was stopped, whatever signs it',
     async (action) => {
-      vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-      const publish = vi.spyOn(SimplePool.prototype, 'publish');
+      ensuring(fakeRelay('wss://one'));
       // The secret key of the login signs at once, without looking at the signal.
       const wait = new AbortController();
       wait.abort();
@@ -368,10 +322,7 @@ describe('NostrClient with a NIP-07 extension that has not signed', () => {
   );
 
   it('sends the update once signed, and reports when the signer had it', async () => {
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
-    const publish = vi
-      .spyOn(SimplePool.prototype, 'publish')
-      .mockImplementation(() => acceptingPublication());
+    ensuring(fakeRelay('wss://one'));
     const { signEvent, sign } = openPrompt();
     const onSigning = vi.fn();
 
@@ -387,10 +338,10 @@ describe('NostrClient with a NIP-07 extension that has not signed', () => {
 
 describe('NostrClient relay readiness', () => {
   it('waits for initial relay connections before deleting', async () => {
-    let resolveRelay: (relay: Relay) => void = () => {};
+    let resolveRelay: (relay: AbstractRelay) => void = () => {};
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockImplementation(
       () =>
-        new Promise<Relay>((resolve) => {
+        new Promise<AbstractRelay>((resolve) => {
           resolveRelay = resolve;
         })
     );
@@ -409,10 +360,7 @@ describe('NostrClient relay readiness', () => {
 
   it('reconnects a dropped relay before publishing a deletion', async () => {
     const target = fakeRelay('wss://one');
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(target.relay);
-    const publish = vi
-      .spyOn(SimplePool.prototype, 'publish')
-      .mockImplementation(() => acceptingPublication());
+    const ensureRelay = ensuring(target);
     const client = new NostrClient(['wss://one']);
     await client.connect();
 
@@ -420,19 +368,14 @@ describe('NostrClient relay readiness', () => {
     await expect(client.deleteArticle(publishedArticle)).resolves.toMatchObject({
       acceptedRelays: ['wss://one']
     });
-    expect(target.connect).toHaveBeenCalledOnce();
-    expect(publish).toHaveBeenCalledWith(['wss://one'], expect.any(Object));
+    expect(ensureRelay).toHaveBeenCalledTimes(2);
+    expect(publish).toHaveBeenCalledWith('wss://one', expect.any(Object));
   });
 
   it('includes a promptly reconnected relay in a deletion', async () => {
     const first = fakeRelay('wss://one');
     const second = fakeRelay('wss://two');
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockImplementation(async (url) =>
-      url === 'wss://one' ? first.relay : second.relay
-    );
-    const publish = vi
-      .spyOn(SimplePool.prototype, 'publish')
-      .mockImplementation(() => acceptingPublication());
+    const ensureRelay = ensuring(first, second);
     const client = new NostrClient(['wss://one', 'wss://two']);
     await client.connect();
 
@@ -441,36 +384,33 @@ describe('NostrClient relay readiness', () => {
       acceptedRelays: ['wss://one', 'wss://two'],
       unavailableRelays: []
     });
-    expect(second.connect).toHaveBeenCalledOnce();
+    expect(ensureRelay.mock.calls.filter(([url]) => url === 'wss://two')).toHaveLength(2);
     expect(publish).toHaveBeenCalledTimes(2);
   });
 
   it('retries a relay cached after the initial connection fails', async () => {
     const target = fakeRelay('wss://one');
-    target.disconnect();
-    vi.spyOn(SimplePool.prototype, 'ensureRelay')
+    const ensureRelay = vi
+      .spyOn(SimplePool.prototype, 'ensureRelay')
       .mockRejectedValueOnce(new Error('initial connection failed'))
       .mockResolvedValue(target.relay);
-    const publish = vi
-      .spyOn(SimplePool.prototype, 'publish')
-      .mockImplementation(() => acceptingPublication());
     const client = new NostrClient(['wss://one']);
 
     await expect(client.deleteArticle(publishedArticle)).resolves.toMatchObject({
       acceptedRelays: ['wss://one']
     });
-    expect(target.connect).toHaveBeenCalledOnce();
-    expect(publish).toHaveBeenCalledWith(['wss://one'], expect.any(Object));
+    expect(ensureRelay).toHaveBeenCalledTimes(2);
+    expect(publish).toHaveBeenCalledWith('wss://one', expect.any(Object));
   });
 
   it('waits for an initial connection that is still opening after the first timeout', async () => {
+    // nostr-tools gives each caller the same connection while it opens.
     const target = fakeRelay('wss://one');
-    target.startConnecting();
-    const ensureRelay = vi
-      .spyOn(SimplePool.prototype, 'ensureRelay')
-      .mockImplementationOnce(() => new Promise<Relay>(() => {}))
-      .mockResolvedValue(target.relay);
-    vi.spyOn(SimplePool.prototype, 'publish').mockImplementation(() => acceptingPublication());
+    let finishConnecting = () => {};
+    const opening = new Promise<AbstractRelay>((resolve) => {
+      finishConnecting = () => resolve(target.relay);
+    });
+    const ensureRelay = vi.spyOn(SimplePool.prototype, 'ensureRelay').mockReturnValue(opening);
     const client = new NostrClient(['wss://one'], 100);
     await client.connect();
 
@@ -479,20 +419,14 @@ describe('NostrClient relay readiness', () => {
       acceptedRelays: ['wss://one']
     });
     await vi.waitFor(() => expect(ensureRelay).toHaveBeenCalledTimes(2));
-    target.finishConnecting();
+    finishConnecting();
     await assertion;
-    expect(target.connect).not.toHaveBeenCalled();
   });
 
   it('reconnects a relay that drops during signing a new article', async () => {
     const first = fakeRelay('wss://one');
     const second = fakeRelay('wss://two');
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockImplementation(async (url) =>
-      url === 'wss://one' ? first.relay : second.relay
-    );
-    const publish = vi
-      .spyOn(SimplePool.prototype, 'publish')
-      .mockImplementation(() => acceptingPublication());
+    const ensureRelay = ensuring(first, second);
     const originalSignEvent = KeyManager.signEvent.bind(KeyManager);
     let resumeSigning = () => {};
     const signing = new Promise<void>((resolve) => {
@@ -508,7 +442,7 @@ describe('NostrClient relay readiness', () => {
     const article = new LongFormContent(
       undefined,
       'test',
-      getPublicKey('1'.repeat(64)),
+      publicKeyOf('1'.repeat(64)),
       'content',
       new Date(),
       'title',
@@ -525,16 +459,14 @@ describe('NostrClient relay readiness', () => {
     await expect(publication).resolves.toMatchObject({
       publication: { acceptedRelays: ['wss://one', 'wss://two'] }
     });
-    expect(second.connect).toHaveBeenCalledOnce();
+    expect(ensureRelay.mock.calls.filter(([url]) => url === 'wss://two')).toHaveLength(2);
     expect(publish).toHaveBeenCalledTimes(2);
-    expect(publish).toHaveBeenCalledWith(['wss://one'], expect.any(Object));
-    expect(publish).toHaveBeenCalledWith(['wss://two'], expect.any(Object));
+    expect(publish).toHaveBeenCalledWith('wss://one', expect.any(Object));
+    expect(publish).toHaveBeenCalledWith('wss://two', expect.any(Object));
   });
 
   it('does not publish after the client closes during signing', async () => {
-    const target = fakeRelay('wss://one');
-    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(target.relay);
-    const publish = vi.spyOn(SimplePool.prototype, 'publish');
+    ensuring(fakeRelay('wss://one'));
     const originalSignEvent = KeyManager.signEvent.bind(KeyManager);
     let resumeSigning = () => {};
     const signing = new Promise<void>((resolve) => {
@@ -549,7 +481,7 @@ describe('NostrClient relay readiness', () => {
     const article = new LongFormContent(
       undefined,
       'test',
-      getPublicKey('1'.repeat(64)),
+      publicKeyOf('1'.repeat(64)),
       'content',
       new Date(),
       'title',
@@ -570,14 +502,14 @@ describe('NostrClient relay readiness', () => {
 
   it('closes a relay that connects after the client closes', async () => {
     const target = fakeRelay('wss://one');
-    let resolveRelay: (relay: Relay) => void = () => {};
+    let resolveRelay: (relay: AbstractRelay) => void = () => {};
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockImplementation(
       () =>
-        new Promise<Relay>((resolve) => {
+        new Promise<AbstractRelay>((resolve) => {
           resolveRelay = resolve;
         })
     );
-    vi.spyOn(SimplePool.prototype, 'close').mockResolvedValue();
+    vi.spyOn(SimplePool.prototype, 'close').mockImplementation(() => {});
     const client = new NostrClient(['wss://one']);
     await client.close();
     resolveRelay(target.relay);
@@ -587,7 +519,6 @@ describe('NostrClient relay readiness', () => {
 
   it('does not sign or publish if no relay becomes available', async () => {
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockRejectedValue(new Error('offline'));
-    const publish = vi.spyOn(SimplePool.prototype, 'publish');
     const signEvent = vi.spyOn(KeyManager, 'signEvent');
     const client = new NostrClient(['wss://one']);
     await expect(client.deleteArticle(publishedArticle)).rejects.toBeInstanceOf(

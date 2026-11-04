@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Kind } from 'nostr-tools';
+import { KIND } from '#lib/testing/nostr.js';
 
 import LongFormContent from '#lib/entities/LongFormContent.js';
 import { initialIdentifier, isValidIdentifier } from './listIdentifier';
@@ -8,7 +8,7 @@ const list = (tags: string[][]) =>
   LongFormContent.fromEvent({
     id: 'd'.repeat(64),
     sig: '',
-    kind: Kind.Article,
+    kind: KIND.article,
     pubkey: 'c'.repeat(64),
     content: '',
     created_at: 1_700_000_000,

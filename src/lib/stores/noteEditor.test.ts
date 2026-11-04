@@ -18,20 +18,13 @@ import {
   type Observable
 } from 'rxjs';
 import { get } from 'svelte/store';
-import {
-  finishEvent,
-  getPublicKey,
-  Kind,
-  matchFilters,
-  nip19,
-  type Event,
-  type Filter
-} from 'nostr-tools';
+import { matchFilters, nip19 } from 'nostr-tools';
 import { createRxNostr, type RxNostr, type RxReq } from 'rx-nostr';
 
 import type { LoadingNote } from '#lib/entities/LoadingNote.js';
 import LongFormContent from '#lib/entities/LongFormContent.js';
 import KeyManager, { Nip07CanceledError } from '#lib/services/KeyManager.js';
+import { KIND, publicKeyOf, signWith, type Event, type Filter } from '#lib/testing/nostr.js';
 import { createNoteEditorStore } from './noteEditor';
 
 vi.mock('rx-nostr', async (importOriginal) => ({
@@ -45,14 +38,16 @@ vi.mock('#lib/stores/cookie.js', async () => {
 });
 
 const key = '1'.repeat(64);
-const user = getPublicKey(key);
+const user = publicKeyOf(key);
 const note = (content: string) =>
-  finishEvent({ kind: Kind.Text, content, created_at: 1, tags: [] }, key);
+  signWith(key, { kind: KIND.text, content, created_at: 1, tags: [] });
 const reaction = (target: Event, createdAt: number) =>
-  finishEvent(
-    { kind: Kind.Reaction, content: '+', created_at: createdAt, tags: [['e', target.id]] },
-    key
-  );
+  signWith(key, {
+    kind: KIND.reaction,
+    content: '+',
+    created_at: createdAt,
+    tags: [['e', target.id]]
+  });
 
 // Serves the events that match each request once, like a relay that answers and sends EOSE. With
 // `interval`, the events arrive that many milliseconds apart.
@@ -216,14 +211,18 @@ describe('createNoteEditorStore', () => {
   it('skips a recent reaction that does not point to an event ID', async () => {
     vi.spyOn(KeyManager, 'getPublicKey').mockResolvedValue(user);
     const liked = note('liked');
-    const withoutTag = finishEvent(
-      { kind: Kind.Reaction, content: '+', created_at: 4, tags: [] },
-      key
-    );
-    const withBadTag = finishEvent(
-      { kind: Kind.Reaction, content: '+', created_at: 5, tags: [['e', 'abc']] },
-      key
-    );
+    const withoutTag = signWith(key, {
+      kind: KIND.reaction,
+      content: '+',
+      created_at: 4,
+      tags: []
+    });
+    const withBadTag = signWith(key, {
+      kind: KIND.reaction,
+      content: '+',
+      created_at: 5,
+      tags: [['e', 'abc']]
+    });
     const events = [liked, reaction(liked, 2), withoutTag, withBadTag];
     const editor = createNoteEditorStore({ client: fakeClient(events) });
 

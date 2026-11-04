@@ -1,13 +1,13 @@
 import {
-  Kind,
+  kinds,
   SimplePool,
   nip19,
   utils,
   validateEvent,
-  verifySignature,
-  type Event,
-  type Relay
+  verifyEvent,
+  type Event
 } from 'nostr-tools';
+import type { AbstractRelay } from 'nostr-tools/abstract-relay';
 
 import { isEventId } from '#lib/entities/EventId.js';
 import LongFormContent from '#lib/entities/LongFormContent.js';
@@ -15,6 +15,7 @@ import { toSeconds } from '#lib/helper.js';
 import KeyManager, { Nip07CanceledError } from '#lib/services/KeyManager.js';
 import { relayHints } from '#lib/services/relayHints.js';
 import {
+  ACK_TIMEOUT_MS,
   PublicationFailedError,
   SignedByAnotherAccountError,
   emptyPublicationResult,
@@ -52,8 +53,8 @@ export const decodeNoteId = (b32: string): { id: string; relays: string[] } => {
 export default class NostrClient {
   static TAG = 'nosli';
 
-  private pool = new SimplePool();
-  private relays = new Map<string, Relay>();
+  private pool = NostrClient.newPool();
+  private relays = new Map<string, AbstractRelay>();
   private connectionAttempts = new Map<string, Promise<void>>();
   private connectionStatus: Promise<void>;
   private firstConnection: Promise<void>;
@@ -77,53 +78,26 @@ export default class NostrClient {
     return this.connectionStatus;
   }
 
-  private waitForRelay(
-    relay: Relay,
-    event: 'connect' | 'disconnect',
-    timeoutInMillis: number
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const cleanup = () => {
-        clearTimeout(timeoutId);
-        // nostr-tools iterates listener arrays; removing during a callback skips the next listener.
-        queueMicrotask(() => relay.off(event, onReady));
-        queueMicrotask(() => relay.off('error', onError));
-      };
-      const onReady = () => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve();
-      };
-      const onError = () => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(new Error(`Failed to connect to ${relay.url}.`));
-      };
-      const timeoutId = setTimeout(onError, timeoutInMillis);
-      relay.on('error', onError);
-      relay.on(event, onReady);
-    });
+  // nostr-tools closes a relay after 20 seconds without a request, but a list is published long after
+  // its form opens, so connections stay open until the client closes.
+  private static newPool(): SimplePool {
+    const pool = new SimplePool();
+    pool.idleTimeout = 0;
+    return pool;
   }
 
-  private async openRelay(url: string, timeoutInMillis: number): Promise<void> {
+  // ensureRelay gets no timeout, so that a relay that is slow to connect keeps connecting after the
+  // wait for it ends, and a later publication can use it.
+  private async openRelay(url: string): Promise<void> {
     const relay = await this.pool.ensureRelay(url);
     if (this.closed) {
       relay.close();
       throw new Error('The relay client is closed.');
     }
 
+    // nostr-tools gives up on an answer sooner than publishToRelays does, which decides instead.
+    relay.publishTimeout = ACK_TIMEOUT_MS * 2;
     this.relays.set(utils.normalizeURL(url), relay);
-    if (relay.status === 0) await this.waitForRelay(relay, 'connect', timeoutInMillis);
-    if (relay.status === 2) await this.waitForRelay(relay, 'disconnect', timeoutInMillis);
-    if (relay.status === 3) await relay.connect();
-    if (this.closed) {
-      relay.close();
-      throw new Error('The relay client is closed.');
-    }
-    if (relay.status !== 1) throw new Error(`Failed to connect to ${url}.`);
   }
 
   public ensureRelay(url: string, timeoutInMillis: number): Promise<void> {
@@ -139,7 +113,7 @@ export default class NostrClient {
         timeoutInMillis
       );
     });
-    const attempt = Promise.race([this.openRelay(url, timeoutInMillis), timeout]).finally(() => {
+    const attempt = Promise.race([this.openRelay(url), timeout]).finally(() => {
       clearTimeout(timeoutId);
       if (this.connectionAttempts.get(key) === attempt) this.connectionAttempts.delete(key);
     });
@@ -147,13 +121,23 @@ export default class NostrClient {
     return attempt;
   }
 
+  // Publishes through the relays that openRelay opened, which wait for an answer as long as
+  // publishToRelays does. The pool would open a relay that has closed again, which waits less.
+  private opened = {
+    publish: (urls: string[], event: Event): Promise<string>[] =>
+      urls.map((url) => {
+        const relay = this.relays.get(utils.normalizeURL(url));
+        return relay ? relay.publish(event) : Promise.reject(`${url} is not open`);
+      })
+  };
+
   private availableUrls(): string[] {
-    return this.urls.filter((url) => this.relays.get(utils.normalizeURL(url))?.status === 1);
+    return this.urls.filter((url) => this.relays.get(utils.normalizeURL(url))?.connected);
   }
 
   private startMissingConnections(): Promise<void>[] {
     return this.urls
-      .filter((url) => this.relays.get(utils.normalizeURL(url))?.status !== 1)
+      .filter((url) => !this.relays.get(utils.normalizeURL(url))?.connected)
       .map((url) => this.ensureRelay(url, this.connectionTimeoutInMillis));
   }
 
@@ -223,13 +207,19 @@ export default class NostrClient {
   ): Promise<{ content: LongFormContent; publication: PublicationResult }> {
     await this.waitForRelayBeforeSigning();
     const event = await this.sign({ ...lfc.toEvent(), pubkey: '' }, signing);
-    if (!validateEvent(event) || !verifySignature(event)) {
+    if (!validateEvent(event) || !verifyEvent(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
     if (author !== undefined && event.pubkey !== author) throw new SignedByAnotherAccountError();
 
     const { available, unavailable } = await this.relaysAfterSigning();
-    const publication = await publishToRelays(this.pool, available, event, undefined, unavailable);
+    const publication = await publishToRelays(
+      this.opened,
+      available,
+      event,
+      undefined,
+      unavailable
+    );
     console.log('new LFC is published.', event);
     return { content: LongFormContent.fromEvent(event), publication };
   }
@@ -248,25 +238,25 @@ export default class NostrClient {
     let event = {
       id: '',
       sig: '',
-      kind: Kind.EventDeletion,
+      kind: kinds.EventDeletion,
       content: 'Deleted',
       pubkey: '',
       created_at: Math.max(toSeconds(new Date()), toSeconds(article.createdAt)),
       tags: [
         ['e', id],
         ['a', article.address()],
-        ['k', Kind.Article.toString()]
+        ['k', kinds.LongFormArticle.toString()]
       ]
     };
     event = await this.sign(event, signing);
 
-    if (!validateEvent(event) || !verifySignature(event)) {
+    if (!validateEvent(event) || !verifyEvent(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
     if (event.pubkey !== article.pubkey) throw new SignedByAnotherAccountError();
 
     const { available, unavailable } = await this.relaysAfterSigning();
-    return publishToRelays(this.pool, available, event, undefined, unavailable);
+    return publishToRelays(this.opened, available, event, undefined, unavailable);
   }
 
   public async close(): Promise<void> {

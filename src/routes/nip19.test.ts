@@ -97,6 +97,22 @@ describe('list page load', () => {
       await expect(list(id)).rejects.toMatchObject({ status: 404 });
     }
   );
+
+  // An naddr of a list that ends in a type without a length, and one whose identifier is longer
+  // than its data. nostr-tools 1.7 never finished reading the first.
+  it.each([
+    [
+      'ends in a type',
+      'naddr1qqrk67fdd35hxaqzyq9q5zs2pg9q5zs2pg9q5zs2pg9q5zs2pg9q5zs2pg9q5zs2pg9q5qcyqqq82dcpdrm248'
+    ],
+    ['runs past its data', 'naddr1qqex67fdd35hxaq3vg8fj']
+  ])(
+    'is not found at once for an naddr that %s',
+    async (_, id) => {
+      await expect(list(id)).rejects.toMatchObject({ status: 404 });
+    },
+    1000
+  );
 });
 
 describe('edit page load', () => {

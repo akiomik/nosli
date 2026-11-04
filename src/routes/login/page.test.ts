@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getPublicKey, nip19 } from 'nostr-tools';
+import { nip19 } from 'nostr-tools';
+import { publicKeyOf } from '#lib/testing/nostr.js';
 
 import KeyManager, { Nip07MissingError } from '#lib/services/KeyManager.js';
 import { nip07, pubkey } from '#lib/stores/cookie.js';
@@ -31,7 +32,7 @@ describe('login page load', () => {
   });
 
   it('redirects a user logged in with a key to their profile', async () => {
-    const hex = getPublicKey('1'.repeat(64));
+    const hex = publicKeyOf('1'.repeat(64));
     pubkey.set(hex);
 
     await expect(run()).rejects.toMatchObject({
@@ -41,7 +42,7 @@ describe('login page load', () => {
   });
 
   it('gives a NIP-07 user the profile that the extension gives, without waiting for it', async () => {
-    const hex = getPublicKey('2'.repeat(64));
+    const hex = publicKeyOf('2'.repeat(64));
     nip07.set(true);
     let answer = () => {};
     const asked = new Promise<void>((resolve) => (answer = resolve));

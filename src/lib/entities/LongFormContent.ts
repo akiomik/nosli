@@ -1,4 +1,4 @@
-import { nip19, Kind } from 'nostr-tools';
+import { nip19, kinds } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 import { isEventId } from '#lib/entities/EventId.js';
 import Tag from '#lib/entities/Tag.js';
@@ -137,7 +137,7 @@ export default class LongFormContent {
     const event = {
       id: this.id || '',
       sig: '',
-      kind: Kind.Article,
+      kind: kinds.LongFormArticle,
       content: this.content,
       pubkey: this.pubkey,
       created_at: toSeconds(this.createdAt),
@@ -150,7 +150,7 @@ export default class LongFormContent {
   // The address of every version of the list with this author and identifier, as NIP-01 defines it
   // for addressable events.
   static addressOf(pubkey: string, identifier: string): string {
-    return `${Kind.Article}:${pubkey}:${identifier}`;
+    return `${kinds.LongFormArticle}:${pubkey}:${identifier}`;
   }
 
   // The address of every version of this list.
@@ -164,7 +164,7 @@ export default class LongFormContent {
     const createdAt = toSeconds(this.createdAt);
     return requests.some(
       (request) =>
-        request.kind === Kind.EventDeletion &&
+        request.kind === kinds.EventDeletion &&
         request.pubkey === this.pubkey &&
         request.tags.some(
           ([typ, value]) =>
@@ -176,7 +176,7 @@ export default class LongFormContent {
 
   nip19Id(): string {
     return nip19.naddrEncode({
-      kind: Kind.Article,
+      kind: kinds.LongFormArticle,
       pubkey: this.pubkey,
       identifier: this.identifier
     });

@@ -38,6 +38,9 @@ const v1Nevent =
 const v1OtherNevent =
   'nevent1qqsqurswpc8qurswpc8qurswpc8qurswpc8qurswpc8qurswpc8qurspzamhxue69uhhg6rfwfjzuetcv9khqmr99e3k7mgagd3ld';
 
+// An nevent that ends in a type without a length, which nostr-tools 1.7 never finished reading.
+const neventEndingInType = 'nevent1qqsqwpc8qurswpc8qurswpc8qurswpc8qurswpc8qurswpc8qurswpcp2q3lu4';
+
 const list = (identifier: string, pubkey = author) =>
   new LongFormContent(
     undefined,
@@ -113,6 +116,10 @@ describe('decodeNoteId', () => {
 
     expect(() => decodeNoteId(note.slice(0, -1) + (note.endsWith('q') ? 'p' : 'q'))).toThrow();
   });
+
+  it('rejects an nevent that ends in a type, at once', () => {
+    expect(() => decodeNoteId(neventEndingInType)).toThrow();
+  }, 1000);
 });
 
 describe('Note.nip19Id', () => {
@@ -248,6 +255,21 @@ describe('LongFormContent.compose', () => {
     ]);
     expect(lfc.hasContentBesidesNotes()).toBe(false);
   });
+
+  it('takes an nevent that ends in a type for content that is not a note, at once', () => {
+    const lfc = LongFormContent.fromEvent({
+      ...listEvent('my-list'),
+      content: `nostr:${neventEndingInType}`,
+      tags: [
+        ['d', 'my-list'],
+        ['e', id]
+      ]
+    });
+
+    expect(lfc.noteReferences()).toEqual([{ id, relays: [] }]);
+    expect(lfc.noteRelays()).toEqual([]);
+    expect(lfc.hasContentBesidesNotes()).toBe(true);
+  }, 1000);
 
   it('reads the hints of an nevent that another client wrote back', () => {
     const lfc = LongFormContent.fromEvent({

@@ -2,8 +2,13 @@ import { nip19, nip05 } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 
 // nostr-tools keeps the fetch that it finds when it loads, so the one of the moment is looked up at
-// each request instead, as a test can replace it.
-nip05.useFetchImplementation((...args: Parameters<typeof fetch>) => fetch(...args));
+// each request instead, as a test can replace it. nostr-tools 2 asks fetch not to follow redirects,
+// as NIP-05 has it, but Nosli has always followed them, so a domain that redirects keeps its check
+// mark.
+nip05.useFetchImplementation(
+  (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+    fetch(input, { ...init, redirect: 'follow' })
+);
 
 // NIP-01 has the content as a JSON object, but a relay can send anything.
 const parseContent = (content: string): Record<string, unknown> | undefined => {

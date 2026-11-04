@@ -1,11 +1,12 @@
 import {
-  finishEvent,
-  generatePrivateKey,
+  finalizeEvent,
+  generateSecretKey,
   getEventHash,
   getPublicKey,
   nip19,
   SimplePool,
-  verifySignature,
+  utils,
+  verifyEvent,
   type Event,
   type EventTemplate,
   type Filter
@@ -19,23 +20,28 @@ export const KIND = { metadata: 0, text: 1, deletion: 5, reaction: 7, article: 3
 
 export type { Event, EventTemplate, Filter };
 
-export const newSecretKey = (): string => generatePrivateKey();
+// nostr-tools marks an event that it signed or checked as verified, which a copy keeps. Events from
+// relays and extensions come as JSON, without the mark.
+const asJson = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
-export const publicKeyOf = (secretKey: string): string => getPublicKey(secretKey);
+export const newSecretKey = (): string => utils.bytesToHex(generateSecretKey());
+
+export const publicKeyOf = (secretKey: string): string => getPublicKey(utils.hexToBytes(secretKey));
 
 export const signWith = (secretKey: string, template: EventTemplate): Event =>
-  finishEvent(template, secretKey);
+  asJson(finalizeEvent(template, utils.hexToBytes(secretKey)));
 
 // Whether the ID of an event is its hash, and its signature is that of its pubkey.
 export const isSigned = (event: Event): boolean => {
   try {
-    return getEventHash(event) === event.id && verifySignature(event);
+    const copy = asJson(event);
+    return getEventHash(copy) === copy.id && verifyEvent(copy);
   } catch {
     return false;
   }
 };
 
-export const nsecOf = (secretKey: string): string => nip19.nsecEncode(secretKey);
+export const nsecOf = (secretKey: string): string => nip19.nsecEncode(utils.hexToBytes(secretKey));
 export const npubOf = (pubkey: string): string => nip19.npubEncode(pubkey);
 export const noteOf = (id: string): string => nip19.noteEncode(id);
 export const nprofileOf = (pubkey: string, relays?: string[]): string =>
