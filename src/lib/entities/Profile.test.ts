@@ -252,10 +252,11 @@ describe('Profile.isNip05Valid', () => {
     expect(profile('_@Example.COM').formattedNip05()).toBe('Example.COM');
   });
 
-  it('is valid when the domain sends the request on to its nostr.json', async () => {
+  it('is not valid when the domain sends the request on, since NIP-05 has redirects ignored', async () => {
     serve({ 'www.example.com': { alice: pubkey } }, { 'example.com': 'www.example.com' });
 
-    expect(await profile('alice@example.com').isNip05Valid()).toBe(true);
+    expect(await profile('alice@example.com').isNip05Valid()).toBe(false);
+    expect(requests).toEqual(['https://example.com/.well-known/nostr.json?name=alice']);
   });
 
   it('is not valid when the domain has no nostr.json', async () => {
