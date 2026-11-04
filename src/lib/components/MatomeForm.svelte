@@ -226,7 +226,8 @@
         !isIdentifierValid ||
         !isTitleValid ||
         !isSummaryValid ||
-        $editor.notes.length <= 0}
+        $editor.notes.length <= 0 ||
+        $editor.adding.length > 0}
       class="btn bg-primary-500"
     >
       {#if submission === 'saving'}

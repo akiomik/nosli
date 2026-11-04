@@ -1,17 +1,31 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EMPTY, concatMap, delay, first, from, map, mergeMap, of } from 'rxjs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  EMPTY,
+  Subject,
+  concatMap,
+  delay,
+  first,
+  from,
+  ignoreElements,
+  map,
+  mergeMap,
+  of,
+  timer
+} from 'rxjs';
 import { get } from 'svelte/store';
 import {
   finishEvent,
   getPublicKey,
   Kind,
   matchFilters,
+  nip19,
   type Event,
   type Filter
 } from 'nostr-tools';
 import type { RxNostr, RxReq } from 'rx-nostr';
 
 import type { LoadingNote } from '$lib/entities/LoadingNote';
+import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
 import { createNoteEditorStore } from './noteEditor';
 
@@ -47,6 +61,15 @@ const fakeClient = (events: Event[], interval = 0) =>
 
 // A client whose relays have nothing, so every request completes empty.
 const emptyClient = { use: () => EMPTY } as unknown as RxNostr;
+
+// A client whose relays have nothing and send EOSE after `ms` milliseconds.
+const slowEmptyClient = (ms: number) =>
+  ({ use: () => timer(ms).pipe(ignoreElements()) }) as unknown as RxNostr;
+
+const listOf = (noteIds: string[]) =>
+  LongFormContent.compose({ identifier: 'list', title: 'List', summary: '', noteIds });
+
+const contents = (notes: LoadingNote[]) => notes.map(({ note }) => note?.content);
 
 const lookupError = new Error('Failed to resolve NIP-07');
 
@@ -113,5 +136,105 @@ describe('createNoteEditorStore', () => {
     expect(shownWhileRetrying.every((notes) => notes.length === 0)).toBe(true);
     expect(get(editor).searchFailed).toBe(false);
     expect(get(editor).searchedNotes.map(({ note }) => note?.content)).toEqual(['newer', 'older']);
+  });
+});
+
+describe('createNoteEditorStore notes', () => {
+  beforeEach(() => {
+    vi.spyOn(KeyManager, 'getPublicKey').mockResolvedValue(user);
+  });
+
+  it('keeps the notes of a list that no relay returns', async () => {
+    const kept = note('kept');
+    const missing = 'f'.repeat(64);
+    const editor = createNoteEditorStore({
+      matome: listOf([missing, kept.id]),
+      client: fakeClient([kept])
+    });
+
+    await vi.waitFor(() => expect(get(editor).editorInitialized).toBe(true));
+    expect(get(editor).notes.map(({ id }) => id)).toEqual([missing, kept.id]);
+    expect(contents(get(editor).notes)).toEqual([undefined, 'kept']);
+  });
+
+  it('keeps the notes of a list when no relay returns any of them', async () => {
+    const ids = ['e'.repeat(64), 'f'.repeat(64)];
+    const editor = createNoteEditorStore({ matome: listOf(ids), client: emptyClient });
+
+    await vi.waitFor(() => expect(get(editor).editorInitialized).toBe(true));
+    expect(get(editor).notes).toEqual(ids.map((id) => ({ id, note: undefined })));
+  });
+
+  it('lists a note that a list holds twice once', async () => {
+    const first = note('first');
+    const second = note('second');
+    const editor = createNoteEditorStore({
+      matome: listOf([first.id, second.id, first.id]),
+      client: fakeClient([first, second])
+    });
+
+    await vi.waitFor(() => expect(get(editor).editorInitialized).toBe(true));
+    expect(contents(get(editor).notes)).toEqual(['first', 'second']);
+  });
+
+  it('keeps a note added from recent reactions while the list is loading', async () => {
+    const listed = note('listed');
+    const added = note('added');
+    const listLoad = new Subject<Event>();
+    const client = {
+      use: (req: RxReq) =>
+        req.getReqObservable().pipe(
+          first((filters) => filters !== null),
+          mergeMap((filters) => {
+            const ids = (filters as Filter[])[0].ids ?? [];
+            return ids.includes(listed.id) ? listLoad : from(ids.includes(added.id) ? [added] : []);
+          }),
+          map((event) => ({ from: 'wss://relay.example.com', subId: 'sub', event }))
+        )
+    } as unknown as RxNostr;
+    const editor = createNoteEditorStore({ matome: listOf([listed.id]), client });
+
+    editor.appendNote(added.id);
+    listLoad.next(listed);
+    listLoad.complete();
+
+    expect(contents(get(editor).notes)).toEqual(['listed', 'added']);
+  });
+
+  it('adds a note that no relay returns as not found once its request ends', async () => {
+    const missing = 'f'.repeat(64);
+    const editor = createNoteEditorStore({ client: slowEmptyClient(20) });
+
+    editor.appendNote(nip19.noteEncode(missing));
+
+    expect(get(editor)).toMatchObject({ notes: [], adding: [missing] });
+    await vi.waitFor(() => expect(get(editor).adding).toEqual([]));
+    expect(get(editor).notes).toEqual([{ id: missing, note: undefined }]);
+  });
+
+  it('adds a note once however often it is added', async () => {
+    const added = note('added');
+    const editor = createNoteEditorStore({ client: fakeClient([added], 20) });
+
+    editor.appendNote(nip19.noteEncode(added.id));
+    editor.appendNote(nip19.neventEncode({ id: added.id }));
+    editor.appendNote(added.id);
+    expect(get(editor).adding).toEqual([added.id]);
+    await vi.waitFor(() => expect(get(editor).adding).toEqual([]));
+    editor.appendNote(added.id);
+
+    expect(get(editor)).toMatchObject({ adding: [] });
+    expect(contents(get(editor).notes)).toEqual(['added']);
+  });
+
+  it('does not add a note that is removed while it is being added', async () => {
+    const missing = 'f'.repeat(64);
+    const editor = createNoteEditorStore({ client: slowEmptyClient(20) });
+
+    editor.appendNote(missing);
+    editor.removeNote(missing);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    expect(get(editor)).toMatchObject({ notes: [], adding: [] });
   });
 });

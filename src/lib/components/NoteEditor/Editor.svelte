@@ -4,24 +4,24 @@
 
   import NoteListItem from '$lib/components/NoteListItem.svelte';
   import NoteActions from '$lib/components/NoteEditor/NoteActions.svelte';
+  import { nip19ToHex } from '$lib/services/NostrClient';
   import type { NoteEditorStore } from '$lib/stores/noteEditor';
 
   export let editor: NoteEditorStore;
 
   let newNoteId = '';
 
-  $: isNewNoteIdValid = (() => {
-    if (!newNoteId.startsWith('note') && !newNoteId.startsWith('nevent')) {
-      return false;
-    }
-
+  $: newNoteHex = (() => {
     try {
-      nip19.decode(newNoteId);
-      return true;
+      return nip19ToHex(newNoteId.trim());
     } catch {
-      return false;
+      return undefined;
     }
   })();
+  $: isNewNoteListed =
+    newNoteHex !== undefined &&
+    ($editor.notes.some(({ id }) => id === newNoteHex) || $editor.adding.includes(newNoteHex));
+  $: canAddNewNote = newNoteHex !== undefined && !isNewNoteListed;
 </script>
 
 <div class="flex flex-col space-y-8">
@@ -53,6 +53,12 @@
       </div>
     {/if}
   {/each}
+  {#each $editor.adding as id (id)}
+    <div class="card p-4" role="status">
+      <p>{$_('loading-note')}</p>
+      <p>{nip19.noteEncode(id)}</p>
+    </div>
+  {/each}
 </div>
 
 <div class="mt-4 input-group grid-cols-[1fr_auto]">
@@ -60,20 +66,25 @@
     type="text"
     bind:value={newNoteId}
     class="ig-input"
-    class:input-error={newNoteId && !isNewNoteIdValid}
+    class:input-error={newNoteId.trim() && !canAddNewNote}
+    aria-invalid={newNoteId.trim() !== '' && !canAddNewNote}
+    aria-describedby={isNewNoteListed ? 'new-note-listed' : undefined}
     placeholder="note1.../nevent1..."
   />
   <button
     class="ig-btn preset-filled-surface-300-700 disabled:opacity-50 disabled:cursor-not-allowed"
-    disabled={!isNewNoteIdValid}
+    disabled={!canAddNewNote}
     on:click|preventDefault={() => {
-      editor.appendNote(newNoteId);
+      editor.appendNote(newNoteId.trim());
       newNoteId = '';
     }}
   >
     {$_('add-note')}
   </button>
 </div>
+{#if isNewNoteListed}
+  <p id="new-note-listed" class="mt-2">{$_('alert.note-already-added')}</p>
+{/if}
 
 <div class="mt-4">
   {$_('reorder-notes')}

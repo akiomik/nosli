@@ -6,6 +6,7 @@
     "failed-to-get-note": "Failed to get a note.",
     "failed-to-get-public-key": "Could not get your public key from the NIP-07 extension, so your recent reactions cannot be shown.",
     "nip07-unavailable": "It seems that NIP-07 is not available.",
+    "note-already-added": "This note is already in the list.",
     "npub-limitation": "You are logged in with npub and unable to create or edit a list.",
     "nsec-and-nip07-info": "You can create or edit your lists by logging in with NIP-07 (browser extension) or nsec."
   },
@@ -27,6 +28,7 @@
   "identifier-required": "Identifier (required, cannot be changed after creation)",
   "key": "Key",
   "last-updated": "Last updated:",
+  "loading-note": "Loading the note…",
   "login": "Login",
   "login-to-nosli": "Login to Nosli",
   "login-with-key": "with npub/nsec",

@@ -1,26 +1,40 @@
-import { derived, writable } from 'svelte/store';
+import { derived, get, writable } from 'svelte/store';
 import type { RxNostr } from 'rx-nostr';
 
 import type { LoadingNote } from '$lib/entities/LoadingNote';
 import type LongFormContent from '$lib/entities/LongFormContent';
+import type Note from '$lib/entities/Note';
 import { nip19ToHex } from '$lib/services/NostrClient';
 import KeyManager from '$lib/services/KeyManager';
 import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/nostr';
 
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
   const { matome, client } = params;
-  const initNoteIds = matome?.eventIds() ?? [];
+  // The editor lists each note once, so a list that holds a note twice keeps the first.
+  const initNoteIds = [...new Set(matome?.eventIds() ?? [])];
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const searchFailed = writable(false);
   const searchRetrying = writable(false);
-  const notes = writable<LoadingNote[]>([]);
+  // Notes that no relay returns stay in the list, shown as not found, so that saving keeps them.
+  const notes = writable<LoadingNote[]>(initNoteIds.map((id) => ({ id, note: undefined })));
+  // IDs of notes being added, which join `notes` once their request completes.
+  const adding = writable<string[]>([]);
   const searchedNotes = writable<LoadingNote[]>([]);
+
+  const isListed = (id: string) =>
+    get(notes).some((note) => note.id === id) || get(adding).includes(id);
 
   // Initialize Editor tab
   if (initNoteIds.length > 0) {
     notesStore({ client, ids: initNoteIds }).subscribe({
-      next: notes.set,
+      // Fills in the loaded notes without undoing changes made in the recent reactions tab.
+      next: (loaded) => {
+        const loadedById = new Map(loaded.map(({ id, note }) => [id, note]));
+        notes.update((prev) =>
+          prev.map(({ id, note }) => ({ id, note: note ?? loadedById.get(id) }))
+        );
+      },
       complete: () => editorInitialized.set(true)
     });
   } else {
@@ -73,20 +87,25 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   const appendNote = (noteId: string) => {
     const hex =
       noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
-    noteStore({ client, id: hex }).subscribe((note) => {
-      notes.update((prev) => [
-        ...prev,
-        {
-          id: hex,
-          note
-        }
-      ]);
+    if (isListed(hex)) return;
+
+    adding.update((ids) => [...ids, hex]);
+    let found: Note | undefined;
+    noteStore({ client, id: hex }).subscribe({
+      next: (note) => (found ??= note),
+      complete: () => {
+        // The note was removed while it was being added.
+        if (!get(adding).includes(hex)) return;
+        adding.update((ids) => ids.filter((id) => id !== hex));
+        notes.update((prev) => [...prev, { id: hex, note: found }]);
+      }
     });
   };
 
   const removeNote = (noteId: string) => {
     const hex =
       noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
+    adding.update((ids) => ids.filter((id) => id !== hex));
     notes.update((prev) => prev.filter((note) => note.id !== hex));
   };
 
@@ -143,13 +162,22 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   };
 
   const { subscribe } = derived(
-    [editorInitialized, searchInitialized, searchFailed, searchRetrying, notes, searchedNotes],
+    [
+      editorInitialized,
+      searchInitialized,
+      searchFailed,
+      searchRetrying,
+      notes,
+      adding,
+      searchedNotes
+    ],
     ([
       editorInitialized,
       searchInitialized,
       searchFailed,
       searchRetrying,
       notes,
+      adding,
       searchedNotes
     ]) => ({
       editorInitialized,
@@ -157,6 +185,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       searchFailed,
       searchRetrying,
       notes,
+      adding,
       searchedNotes
     })
   );
