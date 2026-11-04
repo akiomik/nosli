@@ -30,12 +30,17 @@ const matchesFilters = (filters: Filter[], event: Event): boolean =>
       (identifiers === undefined || identifiers.includes(identifierOf(event)))
   );
 
+// A Date holds at most this many seconds either side of 1970, and showing one beyond them throws.
+const MAX_DATE_SECONDS = 8.64e12;
+
 // A relay can send anything as the event, and reading a field of null throws. NIP-01 tags hold only
-// strings, which validateEvent of nostr-tools does not check.
+// strings, which validateEvent of nostr-tools does not check, and neither does it check that
+// created_at fits in a Date.
 const isEvent = (event: unknown): event is Event =>
   typeof event === 'object' &&
   event !== null &&
   validateEvent(event as Event) &&
+  Math.abs((event as Event).created_at) <= MAX_DATE_SECONDS &&
   (event as Event).tags.every((tag) => tag.every((value) => typeof value === 'string'));
 
 // A relay can answer with any event under any ID. Keeps each event that matches the request's

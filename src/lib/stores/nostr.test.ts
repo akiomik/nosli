@@ -255,6 +255,27 @@ describe('noteStore', () => {
   });
 });
 
+describe('profileStore', () => {
+  const key = generatePrivateKey();
+  const profile = (content: string, createdAt: number) =>
+    finishEvent({ kind: Kind.Metadata, content, created_at: createdAt, tags: [] }, key);
+  const names = async (events: Event[]) => {
+    const client = fakeClient(['wss://shared.example.com'], events);
+    const profiles = profileStore({ client, pubkey: getPublicKey(key) }).pipe(toArray());
+    return (await lastValueFrom(profiles)).map(({ name }) => name);
+  };
+
+  it('does not let a newer profile that cannot be read hide an older one', async () => {
+    const older = profile(JSON.stringify({ name: 'older' }), 1);
+
+    expect(await names([older, profile('not JSON', 2), profile('null', 3)])).toEqual(['older']);
+  });
+
+  it('shows no profile when none can be read', async () => {
+    expect(await names([profile('not JSON', 1), profile('[]', 2)])).toEqual([]);
+  });
+});
+
 const author = generatePrivateKey();
 const attacker = generatePrivateKey();
 const nosliTag = ['t', NostrClient.TAG];
