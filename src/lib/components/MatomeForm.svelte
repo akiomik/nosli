@@ -219,6 +219,11 @@
     </div>
   {/if}
 
+  {#if matome?.hasContentBesidesNotes()}
+    <!-- The warning above the form has scrolled away on a long list. -->
+    <p>{$_('alert.content-replaced-on-save')}</p>
+  {/if}
+
   <div aria-live="polite">
     {#if submitting}
       <p class="mb-6">{$_('publication.waiting')}</p>

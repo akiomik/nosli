@@ -17,6 +17,19 @@ const MAX_NOTE_RELAY_HINTS = 3;
 const isNosliTag = ([typ, value]: string[]): boolean =>
   typ === nosliTag.typ && value === nosliTag.value;
 
+// The note that a nostr:note1… or nostr:nevent1… word refers to, with the relays of an nevent.
+const referencedNote = (word: string): NoteReference | undefined => {
+  if (!/^nostr:(note|nevent)1/.test(word)) return undefined;
+  try {
+    const { data } = nip19.decode(word.slice('nostr:'.length));
+    if (typeof data === 'string') return { id: data };
+    return 'id' in data ? { id: data.id, relays: data.relays } : undefined;
+  } catch {
+    // Words that only look like a reference refer to nothing.
+    return undefined;
+  }
+};
+
 // NIP-23 gives published_at as a string of seconds.
 const parseTimestamp = (value: string | undefined): Date | undefined => {
   if (value === undefined || !/^\d+$/.test(value)) return undefined;
@@ -147,6 +160,23 @@ export default class LongFormContent {
     });
   }
 
+  // Whether the content holds anything that an update would lose, since compose rebuilds it from
+  // the notes: text, or a reference to anything but a note of the list. Before nostr: references,
+  // Nosli wrote #[n] mentions of its e tags, which came after its d, title and summary tags.
+  hasContentBesidesNotes(): boolean {
+    const notes = new Set(this.eventIds());
+    const mentions = this.tags.filter(({ typ }) => typ === 'e').length;
+    return this.content
+      .split(/\s+/)
+      .filter((word) => word !== '')
+      .some((word) => {
+        const mention = word.match(/^#\[(\d+)\]$/);
+        if (mention) return Number(mention[1]) < 3 || Number(mention[1]) >= 3 + mentions;
+        const note = referencedNote(word);
+        return note === undefined || !notes.has(note.id);
+      });
+  }
+
   // Skips e tags that do not hold an event ID, which no relay can return a note for.
   eventIds(): string[] {
     return this.tags
@@ -159,14 +189,9 @@ export default class LongFormContent {
   noteReferences(): NoteReference[] {
     const contentRelays = new Map<string, string[]>();
     for (const word of this.content.split(/\s+/)) {
-      if (!word.startsWith('nostr:nevent1')) continue;
-      try {
-        const { data } = nip19.decode(word.slice('nostr:'.length));
-        if (typeof data === 'string' || !('id' in data)) continue;
-        contentRelays.set(data.id, [...(contentRelays.get(data.id) ?? []), ...(data.relays ?? [])]);
-      } catch {
-        // Words that only look like an nevent hint at nothing.
-      }
+      const note = referencedNote(word);
+      if (!note?.relays) continue;
+      contentRelays.set(note.id, [...(contentRelays.get(note.id) ?? []), ...note.relays]);
     }
     return this.tags
       .filter((tag: Tag) => tag.typ === 'e' && isEventId(tag.value))
