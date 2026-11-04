@@ -91,9 +91,10 @@ export default class Profile {
       return false;
     }
 
+    // NIP-05 has the identifier point to the profile's pubkey, not just exist.
     try {
       const res = await nip05.queryProfile(this.nip05);
-      return res !== null;
+      return res?.pubkey === this.pubkey;
     } catch {
       return false;
     }
