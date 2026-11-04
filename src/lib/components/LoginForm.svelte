@@ -56,6 +56,8 @@
       $nip07 = true;
       goto(location);
     } catch (e) {
+      // Dropped without a word once the user has logged in otherwise or left.
+      if (keyLookup !== attempt) return;
       // A key that the extension gives after the wait stopped is dropped, so the login is left as
       // it was.
       if (e instanceof Nip07CanceledError) {
@@ -65,13 +67,20 @@
         nip07Failure = 'failed';
       }
     } finally {
-      keyLookup = undefined;
+      if (keyLookup === attempt) keyLookup = undefined;
     }
+  };
+
+  // Logging in otherwise or leaving the page must not let a key that comes later log in.
+  const dropNip07Login = () => {
+    const lookup = keyLookup;
+    keyLookup = undefined;
+    lookup?.abort();
   };
 
   const onLoginWithKey = () => {
     if (browser && login) {
-      keyLookup?.abort();
+      dropNip07Login();
       // Replaces any login, such as a NIP-07 one whose extension refused, which would be used instead.
       KeyManager.logout();
       if (login.seckey !== undefined) $seckey = login.seckey;
@@ -81,8 +90,7 @@
     }
   };
 
-  // Leaving the page or logging in otherwise must not let a key that comes later log in.
-  onDestroy(() => keyLookup?.abort());
+  onDestroy(dropNip07Login);
 </script>
 
 <h2 class="text-2xl md:text-3xl font-heading-token">{$_('login-with-nip07')}</h2>

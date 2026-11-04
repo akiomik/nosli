@@ -26,9 +26,16 @@
   const isUsed = (noteId: string | undefined): boolean =>
     !!$editor.notes.find((note) => note.id === noteId) ||
     (noteId !== undefined && $editor.adding.includes(noteId));
+
+  let retried = false;
+  const retry = () => {
+    retried = true;
+    editor.retrySearch();
+  };
 </script>
 
-<div class="flex flex-col space-y-8">
+<!-- Takes the focus from the retry button once a retry has found the reactions. -->
+<div class="flex flex-col space-y-8" tabindex="-1" use:focusWhen={retried && !$editor.searchFailed}>
   {#if $editor.searchFailed}
     <div role="alert">
       <Alert variant="warning">
@@ -43,7 +50,7 @@
           class="btn preset-filled-surface-200-800 mt-2 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
           aria-disabled={$editor.searchRetrying}
           use:focusWhen={$editor.searchCanceled && !$editor.searchRetrying}
-          on:click={editor.retrySearch}
+          on:click={retry}
         >
           {$editor.searchRetrying ? $_('retrying') : $_('retry')}
         </button>

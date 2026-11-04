@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getContext } from 'svelte';
+  import { getContext, onDestroy } from 'svelte';
   import type { nip19 } from 'nostr-tools';
   import type { RxNostr } from 'rx-nostr';
   import { _ } from 'svelte-i18n';
@@ -37,6 +37,8 @@
     retried = true;
     keyLookup = new AbortController();
   };
+  // An extension that is still loading is then not asked.
+  onDestroy(() => keyLookup.abort());
 </script>
 
 <svelte:head>
@@ -53,7 +55,12 @@
     </LoadingSpinner>
   {:then loggedInAs}
     {#if loggedInAs}
-      <h1 class="text-3xl md:text-5xl font-heading-token wrap-anywhere">
+      <!-- Takes the focus from the Cancel button of a retry, which has left the page. -->
+      <h1
+        class="text-3xl md:text-5xl font-heading-token wrap-anywhere"
+        tabindex="-1"
+        use:focusWhen={retried}
+      >
         {$_('edit-identifier', { values: { identifier: $matome.identifier } })}
       </h1>
 

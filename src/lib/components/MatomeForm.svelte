@@ -154,6 +154,8 @@
 
   onDestroy(async () => {
     inactive = true;
+    // An extension that is still loading is then not asked for the key.
+    editor.cancelSearch();
     await client.close();
   });
 </script>
@@ -254,8 +256,10 @@
   <div aria-live="polite">
     {#if signing && $loginMethod === 'nip07'}
       <div class="mb-6">
+        <!-- Takes the focus from the save or delete button, which is disabled meanwhile. -->
         <Nip07Waiting
           live={false}
+          focus
           cancelLabel={$_('cancel-signing')}
           on:cancel={() => signing?.abort()}
         />

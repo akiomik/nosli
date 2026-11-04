@@ -10,6 +10,7 @@
   import Alert from '#lib/components/Alert.svelte';
   import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
   import Nip07Waiting from '#lib/components/Nip07Waiting.svelte';
+  import { focusWhen } from '#lib/actions/focusWhen.js';
 
   export let data: PageData;
 
@@ -61,7 +62,10 @@
   {#if path}
     <LoadingSpinner />
   {:else}
-    <h1 class="text-3xl md:text-5xl font-heading-token">{$_('login')}</h1>
+    <!-- Takes the focus from the Cancel button that the user pressed, which has left the page. -->
+    <h1 class="text-3xl md:text-5xl font-heading-token" tabindex="-1" use:focusWhen={canceled}>
+      {$_('login')}
+    </h1>
 
     <Alert>
       <div slot="icon">
