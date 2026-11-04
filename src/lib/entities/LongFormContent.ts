@@ -4,10 +4,15 @@ import Tag from '$lib/entities/Tag';
 
 const nosliTag = new Tag('t', 'nosli');
 
-// Nosli reads these tags into fields or rebuilds them from the editor.
-const isOwnTag = ([typ, value]: string[]): boolean =>
-  ['d', 'title', 'summary', 'image', 'published_at', 'e'].includes(typ) ||
-  (typ === nosliTag.typ && value === nosliTag.value);
+const isNosliTag = ([typ, value]: string[]): boolean =>
+  typ === nosliTag.typ && value === nosliTag.value;
+
+// NIP-23 gives published_at as a string of seconds.
+const parseTimestamp = (value: string | undefined): Date | undefined => {
+  if (value === undefined || !/^\d+$/.test(value)) return undefined;
+  const date = new Date(Number(value) * 1000);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+};
 
 export default class LongFormContent {
   constructor(
@@ -21,13 +26,19 @@ export default class LongFormContent {
     public image: string | undefined,
     public publishedAt: Date | undefined,
     public tags: Tag[],
-    // Tags from other clients, written back unchanged so that an update does not drop them.
+    // Tags that Nosli neither reads nor rebuilds, written back after its own tags on an update.
     public otherTags: string[][] = []
   ) {}
 
   static fromEvent(event: Event): LongFormContent {
     const value = (typ: string) => event.tags.find((tag) => tag[0] === typ)?.[1];
-    const publishedAt = value('published_at');
+    const publishedAt = parseTimestamp(value('published_at'));
+    // Nosli reads these tags into fields or rebuilds them, except a published_at that it cannot
+    // read. A client tag names the app that published the event, which Nosli replaces on update.
+    const ownTypes = ['d', 'title', 'summary', 'image', 'e', 'client'];
+    if (publishedAt) ownTypes.push('published_at');
+    const isOwnTag = (tag: string[]) => ownTypes.includes(tag[0]) || isNosliTag(tag);
+
     return new LongFormContent(
       event.id,
       value('d') ?? '',
@@ -37,16 +48,18 @@ export default class LongFormContent {
       value('title') || '',
       value('summary') || '',
       value('image'),
-      publishedAt === undefined ? undefined : new Date(Number.parseInt(publishedAt, 10) * 1000),
+      publishedAt,
       event.tags
-        .filter((tag) => isOwnTag(tag) && ['e', 't'].includes(tag[0]))
+        .filter((tag) => tag[0] === 'e' || isNosliTag(tag))
         .map((tag) => Tag.fromEvent(tag))
         .filter((tag: Tag | undefined): tag is Tag => tag !== undefined),
-      event.tags.filter((tag) => !isOwnTag(tag))
+      // A tag with a value that is not a string would make the update impossible to sign.
+      event.tags.filter((tag) => !isOwnTag(tag) && tag.every((v) => typeof v === 'string'))
     );
   }
 
-  // Builds a new list, or an update of `previous` that keeps what the editor does not change.
+  // Builds a new list, or an update of `previous` that keeps its image, published_at, and other
+  // tags. The content is always rebuilt from the notes.
   static compose(params: {
     identifier: string;
     title: string;
@@ -110,11 +123,5 @@ export default class LongFormContent {
 
   eventIds(): string[] {
     return this.tags.filter((tag: Tag) => tag.typ === 'e').map((tag) => tag.value);
-  }
-
-  includesTag(tag: Tag): boolean {
-    return this.tags.some((t) => {
-      return t.equals(tag);
-    });
   }
 }

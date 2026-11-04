@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Kind, type Event } from 'nostr-tools';
+import { Kind, nip19, type Event } from 'nostr-tools';
 
 import LongFormContent from './LongFormContent';
 
@@ -37,9 +37,21 @@ describe('LongFormContent.fromEvent', () => {
   it('keeps the tags that Nosli does not read or rebuild as they are', () => {
     expect(LongFormContent.fromEvent(otherClientEvent).otherTags).toEqual([
       ['t', 'nostr'],
-      ['p', author, 'wss://relay.example.com'],
-      ['client', 'other-client']
+      ['p', author, 'wss://relay.example.com']
     ]);
+  });
+
+  it.each(['', 'abc', '99999999999999'])('keeps an unreadable published_at %j as it is', (raw) => {
+    const lfc = LongFormContent.fromEvent({ ...otherClientEvent, tags: [['published_at', raw]] });
+
+    expect(lfc.publishedAt).toBeUndefined();
+    expect(lfc.otherTags).toEqual([['published_at', raw]]);
+  });
+
+  it('drops a tag with a value that is not a string', () => {
+    const tags = [['p', author, null]] as unknown as string[][];
+
+    expect(LongFormContent.fromEvent({ ...otherClientEvent, tags }).otherTags).toEqual([]);
   });
 });
 
@@ -70,16 +82,16 @@ describe('LongFormContent.compose', () => {
       ['t', 'nosli'],
       ['t', 'nostr'],
       ['p', author, 'wss://relay.example.com'],
-      ['client', 'other-client'],
       ['image', 'https://example.com/cover.png'],
       ['published_at', '1600000000']
     ]);
   });
 
-  it('builds the content from the notes', () => {
+  it('builds the content from the notes in order', () => {
     const lfc = LongFormContent.compose({ ...form, noteIds: [newNote, oldNote] });
 
-    expect(lfc.content.split('\n')).toHaveLength(2);
-    expect(lfc.content).toMatch(/^nostr:nevent1\w+\nnostr:nevent1\w+$/);
+    expect(lfc.content).toBe(
+      [newNote, oldNote].map((id) => `nostr:${nip19.neventEncode({ id })}`).join('\n')
+    );
   });
 });
