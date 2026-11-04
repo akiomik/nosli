@@ -47,9 +47,18 @@
 
   const notifySuccess = (action: PublicationAction, publication: PublicationResult) => {
     const { key, values } = publicationSuccessMessage(action, publication);
-    toaster.success({
-      title: $_(key, { values }),
-      ...(values && { duration: PARTIAL_SUCCESS_TOAST_TIMEOUT_MS })
+    const title = $_(key, { values });
+    if (!values) {
+      toaster.success({ title });
+      return;
+    }
+
+    // A relay that missed a deletion can still serve the list, while a partially published list is
+    // still available.
+    toaster.create({
+      type: action === 'deleted' ? 'warning' : 'info',
+      title,
+      duration: PARTIAL_SUCCESS_TOAST_TIMEOUT_MS
     });
   };
 
