@@ -10,8 +10,8 @@ export const load = async () => {
   try {
     location = `/p/${nip19.npubEncode(await KeyManager.getPublicKey())}`;
   } catch {
-    // The NIP-07 extension can be missing, refuse, or return a key that is not hex, so show the
-    // login form instead.
+    // The NIP-07 extension can be missing or refuse, and the key from it or the cookie may not be
+    // hex, so show the login form instead.
     return;
   }
   throw redirect(302, location);
