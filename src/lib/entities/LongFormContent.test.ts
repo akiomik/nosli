@@ -91,15 +91,6 @@ describe('LongFormContent.compose', () => {
     ]);
   });
 
-  it('keeps the author of the previous version when updating', () => {
-    const previous = LongFormContent.fromEvent(otherClientEvent);
-
-    expect(LongFormContent.compose({ ...form, notes: [{ id: newNote }] }).pubkey).toBe('');
-    expect(LongFormContent.compose({ ...form, notes: [{ id: newNote }], previous }).pubkey).toBe(
-      otherClientEvent.pubkey
-    );
-  });
-
   it('keeps the metadata and tags of the previous version when updating', () => {
     const previous = LongFormContent.fromEvent(otherClientEvent);
     const event = LongFormContent.compose({

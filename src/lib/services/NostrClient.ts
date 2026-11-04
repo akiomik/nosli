@@ -191,16 +191,19 @@ export default class NostrClient {
     };
   }
 
-  // A list with an author is an update, which only its author can sign.
+  // An update gives the author of the list, the only account that can sign it. The author is not
+  // in the event to sign, since some NIP-07 extensions keep a given pubkey that is not theirs, and
+  // others refuse to sign it.
   public async postLongFormContent(
-    lfc: LongFormContent
+    lfc: LongFormContent,
+    author?: string
   ): Promise<{ content: LongFormContent; publication: PublicationResult }> {
     await this.waitForRelayBeforeSigning();
     const event = await KeyManager.signEvent(lfc.toEvent());
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
-    if (lfc.pubkey && event.pubkey !== lfc.pubkey) throw new SignedByAnotherAccountError();
+    if (author !== undefined && event.pubkey !== author) throw new SignedByAnotherAccountError();
 
     const { available, unavailable } = await this.relaysAfterSigning();
     const publication = await publishToRelays(this.pool, available, event, undefined, unavailable);

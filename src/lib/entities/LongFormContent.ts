@@ -67,8 +67,8 @@ export default class LongFormContent {
     );
   }
 
-  // Builds a new list, or an update of `previous` that keeps its author, image, published_at, and
-  // other tags. The content is always rebuilt from the notes. An e tag holds one relay hint, and the
+  // Builds a new list, or an update of `previous` that keeps its image, published_at, and other
+  // tags. The content is always rebuilt from the notes. An e tag holds one relay hint, and the
   // nevent in the content holds up to MAX_NOTE_RELAY_HINTS.
   static compose(params: {
     identifier: string;
@@ -81,7 +81,7 @@ export default class LongFormContent {
     return new LongFormContent(
       undefined,
       identifier,
-      previous?.pubkey ?? '',
+      '',
       notes
         .map(
           ({ id, relays }) =>

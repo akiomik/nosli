@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  finishEvent,
   getPublicKey,
   Kind,
   nip19,
@@ -10,6 +11,7 @@ import {
 } from 'nostr-tools';
 
 import LongFormContent from '$lib/entities/LongFormContent';
+import { nip07 } from '$lib/stores/cookie';
 import NostrClient, { decodeNoteId } from './NostrClient';
 import KeyManager from './KeyManager';
 import { PublicationFailedError, SignedByAnotherAccountError } from './publishToRelays';
@@ -200,6 +202,11 @@ describe('NostrClient.postLongFormContent', () => {
       previous
     });
 
+  afterEach(() => {
+    nip07.set(false);
+    vi.unstubAllGlobals();
+  });
+
   it('publishes an update that its author signed', async () => {
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
     const publish = vi
@@ -207,7 +214,7 @@ describe('NostrClient.postLongFormContent', () => {
       .mockImplementation(() => acceptingPublication());
     const client = new NostrClient(['wss://one']);
 
-    await client.postLongFormContent(update(publishedArticle));
+    await client.postLongFormContent(update(publishedArticle), publishedArticle.pubkey);
 
     expect(publish.mock.calls[0][1]).toMatchObject({ pubkey: publishedArticle.pubkey });
   });
@@ -218,9 +225,31 @@ describe('NostrClient.postLongFormContent', () => {
     const client = new NostrClient(['wss://one']);
     const othersArticle = listVersion('f'.repeat(64), getPublicKey('2'.repeat(64)));
 
-    await expect(client.postLongFormContent(update(othersArticle))).rejects.toBeInstanceOf(
-      SignedByAnotherAccountError
-    );
+    await expect(
+      client.postLongFormContent(update(othersArticle), othersArticle.pubkey)
+    ).rejects.toBeInstanceOf(SignedByAnotherAccountError);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('does not give the author to a NIP-07 extension, which can keep a pubkey it is given', async () => {
+    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+    const publish = vi.spyOn(SimplePool.prototype, 'publish');
+    // Signs with another account, and keeps the pubkey of the event when it has one, as Alby does.
+    const other = '2'.repeat(64);
+    const signEvent = vi.fn(async (event: Event) => {
+      const signed = finishEvent({ ...event }, other);
+      return event.pubkey ? { ...signed, pubkey: event.pubkey } : signed;
+    });
+    vi.stubGlobal('window', {
+      nostr: { getPublicKey: async () => getPublicKey(other), signEvent }
+    });
+    nip07.set(true);
+    const client = new NostrClient(['wss://one']);
+
+    await expect(
+      client.postLongFormContent(update(publishedArticle), publishedArticle.pubkey)
+    ).rejects.toBeInstanceOf(SignedByAnotherAccountError);
+    expect(signEvent).toHaveBeenCalledWith(expect.objectContaining({ pubkey: '' }));
     expect(publish).not.toHaveBeenCalled();
   });
 
