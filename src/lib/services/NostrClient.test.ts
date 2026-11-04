@@ -109,9 +109,15 @@ describe('nip19ToHex', () => {
     expect(nip19ToHex(nip19.neventEncode({ id, relays: ['wss://relay.example.com'] }))).toBe(id);
   });
 
-  it('rejects a note whose event ID is not 32 bytes', () => {
+  it('returns the event ID in lowercase hex for an identifier in uppercase', () => {
+    expect(nip19ToHex(nip19.noteEncode(id).toUpperCase())).toBe(id);
+    expect(nip19ToHex(nip19.neventEncode({ id }).toUpperCase())).toBe(id);
+  });
+
+  it('rejects a note or an nevent whose event ID is not 32 bytes', () => {
     expect(() => nip19ToHex(nip19.noteEncode(id.slice(2)))).toThrow();
     expect(() => nip19ToHex(nip19.noteEncode(id + '07'))).toThrow();
+    expect(() => nip19ToHex(nip19.neventEncode({ id: id.slice(2) }))).toThrow();
   });
 
   it('rejects an identifier that is not a note or an nevent', () => {

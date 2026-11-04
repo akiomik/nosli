@@ -75,7 +75,7 @@
     class="ig-btn preset-filled-surface-300-700 disabled:opacity-50 disabled:cursor-not-allowed"
     disabled={!canAddNewNote}
     on:click|preventDefault={() => {
-      editor.appendNote(newNoteId.trim());
+      if (newNoteHex) editor.appendNote(newNoteHex);
       newNoteId = '';
     }}
   >

@@ -1,5 +1,6 @@
 import { nip19, Kind } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
+import { isEventId } from '$lib/entities/EventId';
 import Tag from '$lib/entities/Tag';
 
 const nosliTag = new Tag('t', 'nosli');
@@ -126,7 +127,10 @@ export default class LongFormContent {
     });
   }
 
+  // Skips e tags that do not hold an event ID, which no relay can return a note for.
   eventIds(): string[] {
-    return this.tags.filter((tag: Tag) => tag.typ === 'e').map((tag) => tag.value);
+    return this.tags
+      .filter((tag: Tag) => tag.typ === 'e' && isEventId(tag.value))
+      .map((tag) => tag.value);
   }
 }

@@ -1,9 +1,11 @@
 import { derived, get, writable } from 'svelte/store';
+import { catchError, defaultIfEmpty, of, take } from 'rxjs';
+import type { Subscription } from 'rxjs';
 import type { RxNostr } from 'rx-nostr';
 
+import { isEventId } from '$lib/entities/EventId';
 import type { LoadingNote } from '$lib/entities/LoadingNote';
 import type LongFormContent from '$lib/entities/LongFormContent';
-import type Note from '$lib/entities/Note';
 import { nip19ToHex } from '$lib/services/NostrClient';
 import KeyManager from '$lib/services/KeyManager';
 import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/nostr';
@@ -18,7 +20,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   const searchRetrying = writable(false);
   // Notes that no relay returns stay in the list, shown as not found, so that saving keeps them.
   const notes = writable<LoadingNote[]>(initNoteIds.map((id) => ({ id, note: undefined })));
-  // IDs of notes being added, which join `notes` once their request completes.
+  // IDs of notes being added, which join `notes` once the note arrives or the request ends.
   const adding = writable<string[]>([]);
   const searchedNotes = writable<LoadingNote[]>([]);
 
@@ -84,28 +86,42 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
     loadSearch();
   };
 
+  // Accepts a hex event ID, or a note or nevent ID in either case.
+  const toHex = (noteId: string) => (isEventId(noteId) ? noteId : nip19ToHex(noteId));
+
+  // Requests for the notes being added, so that removing a note cancels its request.
+  const requests = new Map<string, Subscription>();
+  const stopAdding = (id: string) => {
+    requests.get(id)?.unsubscribe();
+    requests.delete(id);
+    adding.update((ids) => ids.filter((x) => x !== id));
+  };
+
   const appendNote = (noteId: string) => {
-    const hex =
-      noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
+    const hex = toHex(noteId);
     if (isListed(hex)) return;
 
     adding.update((ids) => [...ids, hex]);
-    let found: Note | undefined;
-    noteStore({ client, id: hex }).subscribe({
-      next: (note) => (found ??= note),
-      complete: () => {
-        // The note was removed while it was being added.
-        if (!get(adding).includes(hex)) return;
-        adding.update((ids) => ids.filter((id) => id !== hex));
-        notes.update((prev) => [...prev, { id: hex, note: found }]);
-      }
-    });
+    // The note joins the list as soon as it arrives, or as not found once no relay returns it.
+    const request = noteStore({ client, id: hex })
+      .pipe(
+        take(1),
+        defaultIfEmpty(undefined),
+        catchError((error) => {
+          console.error(error);
+          return of(undefined);
+        })
+      )
+      .subscribe((note) => {
+        stopAdding(hex);
+        notes.update((prev) => [...prev, { id: hex, note }]);
+      });
+    if (!request.closed) requests.set(hex, request);
   };
 
   const removeNote = (noteId: string) => {
-    const hex =
-      noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
-    adding.update((ids) => ids.filter((id) => id !== hex));
+    const hex = toHex(noteId);
+    stopAdding(hex);
     notes.update((prev) => prev.filter((note) => note.id !== hex));
   };
 

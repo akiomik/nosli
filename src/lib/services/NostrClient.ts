@@ -8,6 +8,7 @@ import {
   type Relay
 } from 'nostr-tools';
 
+import { isEventId } from '$lib/entities/EventId';
 import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
 import {
@@ -27,7 +28,7 @@ export const nip19ToHex = (b32: string): string => {
     id = data.data.id;
   }
   // A note decodes to however many bytes it holds, so check that it is a 32-byte event ID.
-  if (id === undefined || !/^[0-9a-f]{64}$/.test(id)) {
+  if (id === undefined || !isEventId(id)) {
     throw new Error('Expected a note or nevent identifier.');
   }
   return id;
