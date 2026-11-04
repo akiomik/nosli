@@ -3,11 +3,11 @@ import 'linkify-plugin-hashtag';
 import 'linkify-plugin-mention';
 import { locale, waitLocale } from 'svelte-i18n';
 
-import '#lib/i18n/index.js';
+import { appLocale } from '#lib/i18n/index.js';
 
 export const ssr = false;
 
 export const load = async () => {
-  locale.set(window.navigator.language);
+  locale.set(appLocale(window.navigator.language));
   await waitLocale();
 };

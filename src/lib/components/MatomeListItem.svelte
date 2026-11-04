@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getContext } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
+  import { date } from 'svelte-i18n';
   import { profileStore } from '#lib/stores/nostr.js';
   import type LongFormContent from '#lib/entities/LongFormContent.js';
   import ProfileLine from '#lib/components/ProfileLine.svelte';
@@ -21,9 +22,7 @@
     <div class="flex flex-row flex-wrap items-center mt-4 gap-x-2 gap-y-1">
       <ProfileLine profile={$profile} />
       <p class="text-surface-900/50 whitespace-nowrap shrink-0">
-        {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
-          matome.createdAt
-        )}
+        {$date(matome.createdAt, { dateStyle: 'medium', timeStyle: 'medium' })}
       </p>
     </div>
   </div>

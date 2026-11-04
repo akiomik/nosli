@@ -24,12 +24,27 @@
     "delete-list-confirmation": "このまとめを削除してもよろしいですか？",
     "quit-editing-confirmation": "編集をキャンセルしますか？"
   },
+  "dismiss-notification": "通知を閉じる",
   "edit": "編集",
   "edit-identifier": "{identifier} を編集",
+  "error": {
+    "internal": "エラーが発生しました",
+    "not-found": "見つかりません 💔",
+    "unauthorized": "権限がありません 🙅"
+  },
+  "home": {
+    "description": "Nosli で Nostr の投稿まとめを作成できます",
+    "list-is": "まとめとは、",
+    "list-is-end": " タグを付けたものです。",
+    "stored-in-relays": "まとめはリレーに保存され、NIP-23 に対応した他のクライアントでも閲覧や編集ができます。",
+    "tagged-with": "に",
+    "title": "Nosli | Nostr の投稿まとめ作成ツール"
+  },
   "how-it-works": "仕組み",
   "identifier-required": "ID (必須、作成後は変更できません)",
   "key": "鍵",
   "last-updated": "最新更新:",
+  "list-title-with-author": "{title} (作者: {name})",
   "loading-note": "投稿を読み込み中…",
   "logged-in-with-nip07": "NIP-07 でログイン中",
   "logged-in-with-npub": "npub でログイン中 (閲覧のみ)",
@@ -39,10 +54,18 @@
   "login-with-key": "npub/nsec を利用",
   "login-with-nip07": "NIP-07 を使用 (推奨)",
   "logout": "ログアウト",
+  "menu": "メニュー",
+  "move-down": "下へ移動",
+  "move-up": "上へ移動",
   "mypage": "マイページ",
   "nosli-description": "Nosli (ノスリ) は、分散SNSのためのオープンプロトコルである Nostr 上の投稿まとめ作成ツールです",
   "notes-required": "投稿 (必須)",
   "nip07-implementations": "NIP-07 の実装一覧 (英語)",
+  "notifications": "通知 (Alt+T)",
+  "open-github-repository": "GitHub リポジトリを開く",
+  "open-lightning-address": "Lightning アドレスを開く",
+  "open-menu": "メニューを開く",
+  "profile-description": "{name} のプロフィールと作成したまとめ",
   "publication": {
     "created-partially": "作成しました ({total} 件中 {accepted} 件のリレーが受理)",
     "deleted-partially": "{total} 件中 {accepted} 件のリレーが削除を受理しました。他のリレーには残っている場合があります。",
@@ -58,6 +81,14 @@
   },
   "recent-lists": "新着まとめ",
   "recent-your-reactions": "最近リアクションした投稿",
+  "relay-connections": "リレーの接続状況",
+  "relay-status": {
+    "error": "エラー",
+    "not-started": "未接続",
+    "ongoing": "接続済み",
+    "reconnecting": "再接続中",
+    "starting": "接続中"
+  },
   "remove": "削除",
   "reorder-by-least-recently-created": "投稿が古い順に並び替え",
   "reorder-notes": "投稿の並び替え:",
@@ -71,5 +102,6 @@
   "title-placeholder": "いい感じの投稿まとめ",
   "update": "更新",
   "updated": "更新しました",
+  "valid-nip05-identifier": "有効な NIP-05 ID",
   ".": "。"
 }

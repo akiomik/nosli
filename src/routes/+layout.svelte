@@ -45,14 +45,15 @@
   });
 </script>
 
-<Toast.Group {toaster}>
+<!-- Replaces Zag's English label, which also names the placement. -->
+<Toast.Group {toaster} aria-label={$_('notifications')}>
   {#snippet children(toast)}
     <Toast {toast}>
       <Toast.Message>
         <Toast.Title>{toast.title}</Toast.Title>
         <Toast.Description>{toast.description}</Toast.Description>
       </Toast.Message>
-      <Toast.CloseTrigger />
+      <Toast.CloseTrigger aria-label={$_('dismiss-notification')} />
     </Toast>
   {/snippet}
 </Toast.Group>
