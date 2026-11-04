@@ -4,12 +4,15 @@ import { browser } from '$app/environment';
 import KeyManager from '$lib/services/KeyManager';
 
 export const load = async () => {
-  if (browser && KeyManager.isLoggedIn()) {
-    try {
-      const pubkey = await KeyManager.getPublicKey();
-      throw redirect(302, `/p/${nip19.npubEncode(pubkey)}`);
-    } catch {
-      // noop
-    }
+  if (!browser || !KeyManager.isLoggedIn()) return;
+
+  let location: string;
+  try {
+    location = `/p/${nip19.npubEncode(await KeyManager.getPublicKey())}`;
+  } catch {
+    // The NIP-07 extension can be missing or refuse, and the key from it or the cookie may not be
+    // hex, so show the login form instead.
+    return;
   }
+  throw redirect(302, location);
 };
