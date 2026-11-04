@@ -4,6 +4,7 @@
   "add-note": "投稿を追加",
   "alert": {
     "failed-to-get-note": "投稿の取得に失敗しました。",
+    "failed-to-get-public-key": "NIP-07 拡張から公開鍵を取得できなかったため、最近リアクションした投稿を表示できません。",
     "nip07-unavailable": "NIP-07 が利用できないようです。",
     "npub-limitation": "npub でログインしているため、まとめの作成や編集はできません。",
     "nsec-and-nip07-info": "NIP-07 (ブラウザ拡張) または nsec でログインすることで、まとめの作成や編集を行うことができます。"
@@ -52,6 +53,7 @@
   "remove": "削除",
   "reorder-by-least-recently-created": "投稿が古い順に並び替え",
   "reorder-notes": "投稿の並び替え:",
+  "retry": "再試行",
   "see-other": "こちらご確認ください:",
   "show-less": "折りたたむ",
   "show-more": "もっと見る",

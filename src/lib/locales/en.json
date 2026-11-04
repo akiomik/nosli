@@ -4,6 +4,7 @@
   "add-note": "Add note",
   "alert": {
     "failed-to-get-note": "Failed to get a note.",
+    "failed-to-get-public-key": "Could not get your public key from the NIP-07 extension, so your recent reactions cannot be shown.",
     "nip07-unavailable": "It seems that NIP-07 is not available.",
     "npub-limitation": "You are logged in with npub and unable to create or edit a list.",
     "nsec-and-nip07-info": "You can create or edit your lists by logging in with NIP-07 (browser extension) or nsec."
@@ -52,6 +53,7 @@
   "remove": "Remove",
   "reorder-by-least-recently-created": "Reorder by least recently created",
   "reorder-notes": "Reorder notes:",
+  "retry": "Try again",
   "see-other": "See",
   "show-less": "Show less",
   "show-more": "Show more",

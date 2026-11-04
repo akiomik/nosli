@@ -12,6 +12,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   const initNoteIds = matome?.eventIds() ?? [];
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
+  const searchFailed = writable(false);
   const notes = writable<LoadingNote[]>([]);
   const searchedNotes = writable<LoadingNote[]>([]);
 
@@ -26,17 +27,30 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   }
 
   // Initialize Search tab
-  KeyManager.getPublicKey().then((pubkey) => {
-    const limit = 100;
-    recentUserReactedNotesStore({
-      client,
-      pubkey,
-      limit
-    }).subscribe({
-      next: searchedNotes.set,
-      complete: () => searchInitialized.set(true)
-    });
-  });
+  const loadSearch = () => {
+    searchInitialized.set(false);
+    searchFailed.set(false);
+    KeyManager.getPublicKey().then(
+      (pubkey) => {
+        const limit = 100;
+        recentUserReactedNotesStore({
+          client,
+          pubkey,
+          limit
+        }).subscribe({
+          next: searchedNotes.set,
+          complete: () => searchInitialized.set(true)
+        });
+      },
+      (error) => {
+        // A missing or refusing NIP-07 extension rejects the lookup.
+        console.error(error);
+        searchFailed.set(true);
+        searchInitialized.set(true);
+      }
+    );
+  };
+  loadSearch();
 
   const appendNote = (noteId: string) => {
     const hex =
@@ -111,15 +125,24 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   };
 
   const { subscribe } = derived(
-    [editorInitialized, searchInitialized, notes, searchedNotes],
-    ([editorInitialized, searchInitialized, notes, searchedNotes]) => ({
+    [editorInitialized, searchInitialized, searchFailed, notes, searchedNotes],
+    ([editorInitialized, searchInitialized, searchFailed, notes, searchedNotes]) => ({
       editorInitialized,
       searchInitialized,
+      searchFailed,
       notes,
       searchedNotes
     })
   );
-  return { subscribe, appendNote, removeNote, moveUp, moveDown, sortByLeaastRecentlyCreated };
+  return {
+    subscribe,
+    appendNote,
+    removeNote,
+    moveUp,
+    moveDown,
+    sortByLeaastRecentlyCreated,
+    retrySearch: loadSearch
+  };
 }
 
 export type NoteEditorStore = ReturnType<typeof createNoteEditorStore>;
