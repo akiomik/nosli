@@ -21,6 +21,7 @@ import {
   requestedEvents,
   sortedBy,
   takeTimeout,
+  hasNaddr,
   latestEachNaddr,
   latestConnectionState
 } from '$lib/stores/operators';
@@ -112,6 +113,7 @@ export function recentGlobalMatomesStore({
 
   return client.use(createRxOneshotReq({ filters })).pipe(
     requestedEvents(filters),
+    filter(hasNaddr),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
@@ -139,6 +141,7 @@ export function recentUserMatomesStore({
 
   return client.use(createRxOneshotReq({ filters })).pipe(
     requestedEvents(filters),
+    filter(hasNaddr),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
@@ -196,9 +199,13 @@ export function profileStore({
 
   return client.use(createRxOneshotReq({ filters })).pipe(
     requestedEvents(filters),
+    // A profile that cannot be read is left out, as if it had not been sent, so it does not hide an
+    // older one.
+    filter(({ event }) => Profile.fromEvent(event) !== undefined),
     latest(),
     takeTimeout(timeout),
-    map(({ event }) => Profile.fromEvent(event))
+    map(({ event }) => Profile.fromEvent(event)),
+    filter((profile): profile is Profile => profile !== undefined)
   );
 }
 

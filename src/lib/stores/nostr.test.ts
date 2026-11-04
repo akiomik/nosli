@@ -255,6 +255,65 @@ describe('noteStore', () => {
   });
 });
 
+describe.each([
+  {
+    name: 'recentGlobalMatomesStore',
+    read: (client: RxNostr) => recentGlobalMatomesStore({ client, limit: 10 })
+  },
+  {
+    name: 'recentUserMatomesStore',
+    read: (client: RxNostr, pubkey: string) => recentUserMatomesStore({ client, pubkey })
+  }
+])('$name', ({ read }) => {
+  it('leaves out a list whose identifier is too long for an naddr', async () => {
+    const key = generatePrivateKey();
+    // 'あ' is 3 bytes in UTF-8.
+    const list = (identifier: string) =>
+      finishEvent(
+        {
+          kind: Kind.Article,
+          content: '',
+          created_at: 1,
+          tags: [
+            ['d', identifier],
+            ['title', `${identifier.length}`],
+            ['t', NostrClient.TAG]
+          ]
+        },
+        key
+      );
+    const client = fakeClient(
+      ['wss://shared.example.com'],
+      [list('あ'.repeat(85)), list('あ'.repeat(86))]
+    );
+    const lists = await lastValueFrom(read(client, getPublicKey(key)));
+
+    expect(lists.map(({ title }) => title)).toEqual(['85']);
+    expect(lists[0].nip19Id()).toMatch(/^naddr1/);
+  });
+});
+
+describe('profileStore', () => {
+  const key = generatePrivateKey();
+  const profile = (content: string, createdAt: number) =>
+    finishEvent({ kind: Kind.Metadata, content, created_at: createdAt, tags: [] }, key);
+  const names = async (events: Event[]) => {
+    const client = fakeClient(['wss://shared.example.com'], events);
+    const profiles = profileStore({ client, pubkey: getPublicKey(key) }).pipe(toArray());
+    return (await lastValueFrom(profiles)).map(({ name }) => name);
+  };
+
+  it('does not let a newer profile that cannot be read hide an older one', async () => {
+    const older = profile(JSON.stringify({ name: 'older' }), 1);
+
+    expect(await names([older, profile('not JSON', 2), profile('null', 3)])).toEqual(['older']);
+  });
+
+  it('shows no profile when none can be read', async () => {
+    expect(await names([profile('not JSON', 1), profile('[]', 2)])).toEqual([]);
+  });
+});
+
 const author = generatePrivateKey();
 const attacker = generatePrivateKey();
 const nosliTag = ['t', NostrClient.TAG];

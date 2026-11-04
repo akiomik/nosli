@@ -30,12 +30,17 @@ const matchesFilters = (filters: Filter[], event: Event): boolean =>
       (identifiers === undefined || identifiers.includes(identifierOf(event)))
   );
 
+// A Date holds at most this many seconds either side of 1970, and showing one beyond them throws.
+const MAX_DATE_SECONDS = 8.64e12;
+
 // A relay can send anything as the event, and reading a field of null throws. NIP-01 tags hold only
-// strings, which validateEvent of nostr-tools does not check.
+// strings, which validateEvent of nostr-tools does not check, and neither does it check that
+// created_at fits in a Date.
 const isEvent = (event: unknown): event is Event =>
   typeof event === 'object' &&
   event !== null &&
   validateEvent(event as Event) &&
+  Math.abs((event as Event).created_at) <= MAX_DATE_SECONDS &&
   (event as Event).tags.every((tag) => tag.every((value) => typeof value === 'string'));
 
 // A relay can answer with any event under any ID. Keeps each event that matches the request's
@@ -75,6 +80,13 @@ export function sortedBy<A>(f: (a: A) => number): MonoTypeOperatorFunction<A> {
 export function takeTimeout<A>(timeout: number | Date): MonoTypeOperatorFunction<A> {
   return takeUntil(timer(timeout));
 }
+
+// NIP-19 holds each TLV value in at most 255 bytes, so an addressable event whose identifier is
+// longer has no naddr, and no link can open it.
+const MAX_TLV_BYTES = 255;
+
+export const hasNaddr = ({ event }: EventPacket): boolean =>
+  new TextEncoder().encode(identifierOf(event)).length <= MAX_TLV_BYTES;
 
 export function latestEachNaddr(): MonoTypeOperatorFunction<EventPacket> {
   return latestEach(({ event }) => `${event.kind}:${event.pubkey}:${identifierOf(event)}`);
