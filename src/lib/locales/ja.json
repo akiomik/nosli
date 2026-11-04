@@ -5,6 +5,8 @@
   "alert": {
     "failed-to-get-note": "投稿の取得に失敗しました。",
     "failed-to-get-public-key": "NIP-07 拡張から公開鍵を取得できなかったため、最近リアクションした投稿を表示できません。",
+    "failed-to-get-public-key-for-edit": "NIP-07 拡張から公開鍵を取得できなかったため、このまとめを編集できません。",
+    "nip07-logged-out": "NIP-07 拡張が見つからないため、ログアウトしました。",
     "nip07-unavailable": "NIP-07 が利用できないようです。",
     "note-already-added": "この投稿はすでにまとめに追加されています。",
     "npub-limitation": "npub でログインしているため、まとめの作成や編集はできません。",

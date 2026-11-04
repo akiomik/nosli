@@ -8,6 +8,7 @@
   import { matomeStore, profileStore, notesStore } from '$lib/stores/nostr';
   import { linkify, linkifyOpts } from '$lib/actions/linkify';
   import KeyManager from '$lib/services/KeyManager';
+  import { loginMethod } from '$lib/stores/login';
   import NoteList from '$lib/components/NoteList.svelte';
   import ProfileLink from '$lib/components/ProfileLink.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
@@ -25,6 +26,9 @@
   });
   $: profile = profileStore({ client, pubkey: data.params.pubkey });
   $: notes = $matome ? notesStore({ client, ids: $matome.eventIds() }) : undefined;
+  // Checked again for each login, and when the author changes rather than for each version.
+  $: author = $matome?.pubkey;
+  $: isMine = author && $loginMethod ? KeyManager.isLoggedInAs(author) : false;
 </script>
 
 <svelte:head>
@@ -42,14 +46,16 @@
   <div class="flex items-center justify-between space-x-2">
     <h1 class="text-3xl md:text-5xl font-heading-token">{$matome.title}</h1>
 
-    {#await KeyManager.isLoggedInAs($matome.pubkey)}
+    {#await isMine}
       <!-- noop -->
     {:then isMine}
-      {#if isMine && KeyManager.isWritableLoggedIn()}
+      {#if isMine && $loginMethod !== 'npub'}
         <div>
           <a href="/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">{$_('edit')}</a>
         </div>
       {/if}
+    {:catch}
+      <!-- Without the public key from the NIP-07 extension, the list is shown as someone else's. -->
     {/await}
   </div>
 

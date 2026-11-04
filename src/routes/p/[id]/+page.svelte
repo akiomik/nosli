@@ -8,6 +8,7 @@
   import { recentUserMatomesStore, profileStore } from '$lib/stores/nostr';
   import { linkify, linkifyOpts } from '$lib/actions/linkify';
   import KeyManager from '$lib/services/KeyManager';
+  import { loginMethod } from '$lib/stores/login';
   import MatomeList from '$lib/components/MatomeList.svelte';
   import Alert from '$lib/components/Alert.svelte';
   import ProfileNip05 from '$lib/components/ProfileNip05.svelte';
@@ -51,7 +52,7 @@
   <p use:linkify={linkifyOpts}>{$profile.about}</p>
 {/if}
 
-{#if $profile && KeyManager.isLoggedInWithPublicKey()}
+{#if $profile && $loginMethod === 'npub'}
   {#await KeyManager.isLoggedInAs($profile.pubkey)}
     <!-- noop -->
   {:then isLoggedIn}

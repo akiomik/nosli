@@ -14,6 +14,7 @@ afterEach(() => {
   nip07.set(false);
   pubkey.set('');
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe('login page load', () => {
@@ -36,10 +37,14 @@ describe('login page load', () => {
   });
 
   it('shows the login form when the NIP-07 extension is missing', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'performance'] });
     nip07.set(true);
     vi.stubGlobal('window', {});
 
-    await expect(load()).resolves.toBeUndefined();
+    const loaded = load();
+    await vi.advanceTimersByTimeAsync(3000);
+
+    await expect(loaded).resolves.toBeUndefined();
   });
 
   it('shows the login form when the NIP-07 extension refuses', async () => {

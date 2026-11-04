@@ -7,6 +7,7 @@
   import type { PageData } from './$types';
   import { matomeStore } from '$lib/stores/nostr';
   import KeyManager from '$lib/services/KeyManager';
+  import { loginMethod } from '$lib/stores/login';
   import MatomeForm from '$lib/components/MatomeForm.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import Alert from '$lib/components/Alert.svelte';
@@ -22,6 +23,9 @@
     pubkey: data.params.pubkey,
     identifier: data.params.identifier
   });
+  // Checked again for each login, and when the author changes rather than for each version.
+  $: author = $matome?.pubkey;
+  $: loggedInAs = author && $loginMethod ? KeyManager.isLoggedInAs(author) : false;
 </script>
 
 <svelte:head>
@@ -31,7 +35,7 @@
 </svelte:head>
 
 {#if $matome}
-  {#await KeyManager.isLoggedInAs($matome.pubkey)}
+  {#await loggedInAs}
     <LoadingSpinner />
   {:then loggedInAs}
     {#if loggedInAs}
@@ -45,6 +49,10 @@
         <p>Unauthorized &#128581;</p>
       </Alert>
     {/if}
+  {:catch}
+    <Alert variant="error">
+      <p>{$_('alert.failed-to-get-public-key-for-edit')}</p>
+    </Alert>
   {/await}
 {:else}
   <LoadingSpinner />

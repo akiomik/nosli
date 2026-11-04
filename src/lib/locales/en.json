@@ -5,6 +5,8 @@
   "alert": {
     "failed-to-get-note": "Failed to get a note.",
     "failed-to-get-public-key": "Could not get your public key from the NIP-07 extension, so your recent reactions cannot be shown.",
+    "failed-to-get-public-key-for-edit": "Could not get your public key from the NIP-07 extension, so this list cannot be edited.",
+    "nip07-logged-out": "You were logged out because no NIP-07 extension was found.",
     "nip07-unavailable": "It seems that NIP-07 is not available.",
     "note-already-added": "This note is already in the list.",
     "npub-limitation": "You are logged in with npub and unable to create or edit a list.",
