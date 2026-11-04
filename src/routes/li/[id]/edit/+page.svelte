@@ -7,8 +7,8 @@
   import type { PageData } from './$types';
   import { focusWhen } from '#lib/actions/focusWhen.js';
   import LongFormContent from '#lib/entities/LongFormContent.js';
-  import { matomeStore } from '#lib/stores/nostr.js';
-  import { orMissing, retries, retryable } from '#lib/stores/missing.js';
+  import { matomeStore, matomeDeletionRequestsStore } from '#lib/stores/nostr.js';
+  import { orMissing, retries, retryable, withEnd } from '#lib/stores/missing.js';
   import KeyManager, { Nip07CanceledError, Nip07MissingError } from '#lib/services/KeyManager.js';
   import { loginMethod } from '#lib/stores/login.js';
   import MatomeForm from '#lib/components/MatomeForm.svelte';
@@ -23,18 +23,45 @@
 
   const client: RxNostr = getContext('nostr-client');
   // The list, or why there is none once the request has ended. It can be asked for again, since
-  // the relays may only have been slow.
+  // the relays may only have been slow, and so are the deletion requests for its address. Its end
+  // is marked too, since a newer version can still come until then.
+  const listRetries = retries(client);
   $: request = retryable(
     () =>
       matomeStore({
         client,
         pubkey: data.params.pubkey,
         identifier: data.params.identifier
-      }).pipe(orMissing(client)),
-    retries(client)
+      }).pipe(orMissing(client), withEnd(client)),
+    listRetries
   );
-  $: matome = $request instanceof LongFormContent ? $request : undefined;
-  $: missing = typeof $request === 'string' ? $request : undefined;
+  $: matome = $request?.value instanceof LongFormContent ? $request.value : undefined;
+  $: missing = typeof $request?.value === 'string' ? $request.value : undefined;
+  // A list that its author deleted is shown as deleted, as on the list page, since saving it would
+  // publish it again. The deletion requests are asked for in the same way, and saving waits for
+  // them to end, so that one that comes late cannot be missed.
+  $: addressDeletions = listRetries.again(() =>
+    matomeDeletionRequestsStore({
+      client,
+      author: data.params.pubkey,
+      addresses: [LongFormContent.addressOf(data.params.pubkey, data.params.identifier)]
+    }).pipe(withEnd(client))
+  );
+  // Asked for once for each version, which the end of the list request gives again.
+  $: versionId = matome?.id;
+  $: versionDeletions =
+    versionId && author
+      ? matomeDeletionRequestsStore({ client, author, ids: [versionId] }).pipe(withEnd(client))
+      : undefined;
+  $: deleted = matome
+    ? matome.isDeletedBy([...($addressDeletions?.value ?? []), ...($versionDeletions?.value ?? [])])
+    : // A list that no relay has any more, but whose deletion request one has, was deleted.
+      missing !== undefined && ($addressDeletions?.value.length ?? 0) > 0;
+  $: checkingDeletion =
+    !$request?.ended || !$addressDeletions?.ended || !($versionDeletions?.ended ?? true);
+  // A notice that replaces the list takes the focus that was in it, which then leaves the page.
+  let focusedInList = false;
+  $: if (request) focusedInList = false;
   // After a retry, what it found takes the focus from its button, which has left the page.
   let requestRetried = false;
   const retryRequest = () => {
@@ -64,70 +91,85 @@
 </script>
 
 <svelte:head>
-  <title>{$_('edit-identifier', { values: { identifier: data.params.identifier } })} | Nosli</title>
+  {#if deleted}
+    <title>Nosli</title>
+  {:else}
+    <title
+      >{$_('edit-identifier', { values: { identifier: data.params.identifier } })} | Nosli</title
+    >
+  {/if}
 </svelte:head>
 
 <!-- After a logout, the load answers with a 401. -->
-{#if matome && $loginMethod}
-  {#await loggedInAs}
-    <LoadingSpinner>
-      {#if $loginMethod === 'nip07'}
-        <Nip07Waiting centered focus={retried} on:cancel={() => keyLookup.abort()} />
-      {/if}
-    </LoadingSpinner>
-  {:then loggedInAs}
-    {#if loggedInAs}
-      <!-- Takes the focus from the Cancel button of a retry, which has left the page. -->
-      <h1
-        class="text-3xl md:text-5xl font-heading-token wrap-anywhere"
-        tabindex="-1"
-        use:focusWhen={retried || requestRetried}
-      >
-        {$_('edit-identifier', { values: { identifier: matome.identifier } })}
-      </h1>
+{#if deleted && $loginMethod}
+  <!-- It can replace the form, which then leaves the page. -->
+  <div role="alert" tabindex="-1" use:focusWhen={focusedInList || requestRetried}>
+    <Alert variant="warning">
+      <p>{$_('alert.list-deleted')}</p>
+    </Alert>
+  </div>
+{:else if matome && $loginMethod}
+  <div class="space-y-8" on:focusin={() => (focusedInList = true)}>
+    {#await loggedInAs}
+      <LoadingSpinner>
+        {#if $loginMethod === 'nip07'}
+          <Nip07Waiting centered focus={retried} on:cancel={() => keyLookup.abort()} />
+        {/if}
+      </LoadingSpinner>
+    {:then loggedInAs}
+      {#if loggedInAs}
+        <!-- Takes the focus from the Cancel button of a retry, which has left the page. -->
+        <h1
+          class="text-3xl md:text-5xl font-heading-token wrap-anywhere"
+          tabindex="-1"
+          use:focusWhen={retried || requestRetried}
+        >
+          {$_('edit-identifier', { values: { identifier: matome.identifier } })}
+        </h1>
 
-      {#if matome.hasContentBesidesNotes()}
-        <!-- Shown when editing starts, and again by the save button, so that the author can decide
-             before doing any work. -->
-        <Alert variant="warning">
-          <p>{$_('alert.content-replaced-on-edit')}</p>
-          <details class="mt-2">
-            <summary class="cursor-pointer">{$_('show-current-content')}</summary>
-            <p class="mt-2 whitespace-pre-wrap wrap-anywhere">{matome.content}</p>
-          </details>
+        {#if matome.hasContentBesidesNotes()}
+          <!-- Shown when editing starts, and again by the save button, so that the author can decide
+               before doing any work. -->
+          <Alert variant="warning">
+            <p>{$_('alert.content-replaced-on-edit')}</p>
+            <details class="mt-2">
+              <summary class="cursor-pointer">{$_('show-current-content')}</summary>
+              <p class="mt-2 whitespace-pre-wrap wrap-anywhere">{matome.content}</p>
+            </details>
+          </Alert>
+        {/if}
+
+        <MatomeForm {matome} {checkingDeletion} />
+      {:else}
+        <Alert variant="error">
+          <p>{$_('error.unauthorized')}</p>
         </Alert>
       {/if}
-
-      <MatomeForm {matome} />
-    {:else}
-      <Alert variant="error">
-        <p>{$_('error.unauthorized')}</p>
-      </Alert>
-    {/if}
-  {:catch error}
-    {#if error instanceof Nip07MissingError}
-      <!-- The layout logs out a NIP-07 login without its extension. -->
-      <LoadingSpinner />
-    {:else if error instanceof Nip07CanceledError}
-      <div role="alert">
-        <Alert variant="warning">
-          <p>{$_('alert.nip07-canceled')}</p>
-          <button
-            type="button"
-            class="btn preset-filled-surface-200-800 mt-2"
-            use:focusWhen={true}
-            on:click={retry}
-          >
-            {$_('retry')}
-          </button>
+    {:catch error}
+      {#if error instanceof Nip07MissingError}
+        <!-- The layout logs out a NIP-07 login without its extension. -->
+        <LoadingSpinner />
+      {:else if error instanceof Nip07CanceledError}
+        <div role="alert">
+          <Alert variant="warning">
+            <p>{$_('alert.nip07-canceled')}</p>
+            <button
+              type="button"
+              class="btn preset-filled-surface-200-800 mt-2"
+              use:focusWhen={true}
+              on:click={retry}
+            >
+              {$_('retry')}
+            </button>
+          </Alert>
+        </div>
+      {:else}
+        <Alert variant="error">
+          <p>{$_('alert.failed-to-get-public-key-for-edit')}</p>
         </Alert>
-      </div>
-    {:else}
-      <Alert variant="error">
-        <p>{$_('alert.failed-to-get-public-key-for-edit')}</p>
-      </Alert>
-    {/if}
-  {/await}
+      {/if}
+    {/await}
+  </div>
 {:else if missing && $loginMethod}
   <MissingAlert
     {missing}

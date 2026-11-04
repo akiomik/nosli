@@ -30,6 +30,9 @@
   const PARTIAL_SUCCESS_TOAST_TIMEOUT_MS = 8000;
 
   export let matome: LongFormContent | undefined = undefined;
+  // Until the requests for the list and for its deletion requests have ended, saving could publish
+  // a version that its author deleted.
+  export let checkingDeletion = false;
 
   const rxClient: RxNostr = getContext('nostr-client');
   const client = new NostrClient(settings.defaultRelays);
@@ -105,6 +108,7 @@
   };
 
   const onCreate = async () => {
+    if (checkingDeletion) return;
     if (title === undefined || $editor.notes.length <= 0) {
       throw new Error('Unexpected error: the title or the notes are missing');
     }
@@ -268,6 +272,8 @@
       <p class="mb-6">{$_('publication.waiting')}</p>
     {:else if canceled}
       <p class="mb-6">{$_('publication.canceled')}</p>
+    {:else if checkingDeletion}
+      <p class="mb-6">{$_('checking-deletion')}</p>
     {/if}
 
     <button on:click|preventDefault={onCancel} class="btn bg-surface-300">
@@ -276,6 +282,7 @@
     <button
       on:click|preventDefault={onCreate}
       disabled={submitting ||
+        checkingDeletion ||
         !isIdentifierValid ||
         !isTitleValid ||
         !isSummaryValid ||
