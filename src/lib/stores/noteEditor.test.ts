@@ -163,6 +163,24 @@ describe('createNoteEditorStore', () => {
     await vi.waitFor(() => expect(get(editor).searchInitialized).toBe(true));
     expect(get(editor).searchedNotes.map(({ id }) => id)).toEqual([liked.id]);
   });
+
+  it('skips a recent reaction that does not point to an event ID', async () => {
+    vi.spyOn(KeyManager, 'getPublicKey').mockResolvedValue(user);
+    const liked = note('liked');
+    const withoutTag = finishEvent(
+      { kind: Kind.Reaction, content: '+', created_at: 4, tags: [] },
+      key
+    );
+    const withBadTag = finishEvent(
+      { kind: Kind.Reaction, content: '+', created_at: 5, tags: [['e', 'abc']] },
+      key
+    );
+    const events = [liked, reaction(liked, 2), withoutTag, withBadTag];
+    const editor = createNoteEditorStore({ client: fakeClient(events) });
+
+    await vi.waitFor(() => expect(get(editor).searchInitialized).toBe(true));
+    expect(get(editor).searchedNotes.map(({ id }) => id)).toEqual([liked.id]);
+  });
 });
 
 describe('createNoteEditorStore notes', () => {

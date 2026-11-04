@@ -25,7 +25,8 @@ export default class Reaction {
     );
   }
 
-  eventId(): string {
-    return this.tags.filter((tag: Tag) => tag.typ === 'e').slice(-1)[0].value;
+  // NIP-25 gives the reacted event in the last e tag. A reaction without one has no event ID.
+  eventId(): string | undefined {
+    return this.tags.filter((tag: Tag) => tag.typ === 'e').at(-1)?.value;
   }
 }

@@ -257,8 +257,9 @@ export function recentUserReactedNotesStore({
 }): Observable<LoadingNote[]> {
   return recentUserReactionsStore({ client, pubkey, limit, timeout }).pipe(
     flatMap((reactions) => {
-      // Lists each note once, however many reactions point to it, and skips tags without an event ID.
-      const ids = [...new Set(reactions.map((reaction) => reaction.eventId()))].filter(isEventId);
+      // Lists each note once, however many reactions point to it, and skips reactions that do not
+      // point to an event ID.
+      const ids = [...new Set(reactions.flatMap((r) => r.eventId() ?? []))].filter(isEventId);
       return notesStore({ client, ids, timeout });
     })
   );
