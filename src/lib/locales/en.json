@@ -61,6 +61,8 @@
   "nosli-description": "Nosli helps you create a curated list of posts on Nostr that is a open protocol for a decentralized global social network",
   "notes-required": "Notes (required)",
   "nip07-implementations": "NIP-07 implementations",
+  "no-lists-found": "No lists found 🤔",
+  "no-notes-found": "No data found 👀",
   "notifications": "Notifications (Alt+T)",
   "open-github-repository": "Open our GitHub repository",
   "open-lightning-address": "Open our Lightning Address",

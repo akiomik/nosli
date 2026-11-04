@@ -9,13 +9,15 @@
     500: 'error.internal'
   };
 
-  $: key = messages[page.status];
-  $: message = key ? $_(key) : page.error?.message;
+  // Called from the markup, since a $: statement would not follow page.status and page.error from
+  // one error to the next.
+  const messageFor = (t: (id: string) => string, status: number, error: typeof page.error) =>
+    status in messages ? t(messages[status]) : error?.message;
 </script>
 
 <svelte:head>
-  <title>{page.status} {message} | Nosli</title>
+  <title>{page.status} {messageFor($_, page.status, page.error)} | Nosli</title>
 </svelte:head>
 
 <h1 class="text-3xl md:text-5xl font-heading-token">{page.status}</h1>
-<p>{message}</p>
+<p>{messageFor($_, page.status, page.error)}</p>

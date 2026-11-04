@@ -34,7 +34,7 @@
   },
   "home": {
     "description": "Nosli で Nostr の投稿まとめを作成できます",
-    "list-is": "まとめとは、",
+    "list-is": "まとめとは",
     "list-is-end": " タグを付けたものです。",
     "stored-in-relays": "まとめはリレーに保存され、NIP-23 に対応した他のクライアントでも閲覧や編集ができます。",
     "tagged-with": "に",
@@ -61,6 +61,8 @@
   "nosli-description": "Nosli (ノスリ) は、分散SNSのためのオープンプロトコルである Nostr 上の投稿まとめ作成ツールです",
   "notes-required": "投稿 (必須)",
   "nip07-implementations": "NIP-07 の実装一覧 (英語)",
+  "no-lists-found": "まとめが見つかりません 🤔",
+  "no-notes-found": "投稿が見つかりません 👀",
   "notifications": "通知 (Alt+T)",
   "open-github-repository": "GitHub リポジトリを開く",
   "open-lightning-address": "Lightning アドレスを開く",

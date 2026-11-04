@@ -45,7 +45,7 @@
       <MatomeForm matome={$matome} />
     {:else}
       <Alert variant="error">
-        <p>Unauthorized &#128581;</p>
+        <p>{$_('error.unauthorized')}</p>
       </Alert>
     {/if}
   {:catch error}
