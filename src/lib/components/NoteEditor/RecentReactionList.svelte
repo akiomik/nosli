@@ -25,6 +25,22 @@
 </script>
 
 <div class="flex flex-col space-y-8">
+  {#if $editor.searchFailed}
+    <div role="alert">
+      <Alert variant="warning">
+        <p>{$_('alert.failed-to-get-public-key')}</p>
+        <!-- Unlike disabled, aria-disabled keeps the focus on the button while the retry runs. -->
+        <button
+          type="button"
+          class="btn preset-filled-surface-200-800 mt-2 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
+          aria-disabled={$editor.searchRetrying}
+          on:click={editor.retrySearch}
+        >
+          {$editor.searchRetrying ? $_('retrying') : $_('retry')}
+        </button>
+      </Alert>
+    </div>
+  {/if}
   {#each $editor.searchedNotes as { id, note } (id)}
     {#if note}
       <NoteListItem {note}>

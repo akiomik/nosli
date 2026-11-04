@@ -12,6 +12,8 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   const initNoteIds = matome?.eventIds() ?? [];
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
+  const searchFailed = writable(false);
+  const searchRetrying = writable(false);
   const notes = writable<LoadingNote[]>([]);
   const searchedNotes = writable<LoadingNote[]>([]);
 
@@ -26,17 +28,47 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   }
 
   // Initialize Search tab
-  KeyManager.getPublicKey().then((pubkey) => {
-    const limit = 100;
-    recentUserReactedNotesStore({
-      client,
-      pubkey,
-      limit
-    }).subscribe({
-      next: searchedNotes.set,
-      complete: () => searchInitialized.set(true)
-    });
-  });
+  let searching = false;
+  const settleSearch = (failed: boolean) => {
+    searching = false;
+    searchFailed.set(failed);
+    searchRetrying.set(false);
+    searchInitialized.set(true);
+  };
+  const loadSearch = () => {
+    searching = true;
+    KeyManager.getPublicKey().then(
+      (pubkey) => {
+        const limit = 100;
+        // Show the notes at once, so a retry does not fill them in under the failure message.
+        let found: LoadingNote[] = [];
+        recentUserReactedNotesStore({
+          client,
+          pubkey,
+          limit
+        }).subscribe({
+          next: (notes) => (found = notes),
+          complete: () => {
+            settleSearch(false);
+            searchedNotes.set(found);
+          }
+        });
+      },
+      (error) => {
+        // A missing or refusing NIP-07 extension rejects the lookup.
+        console.error(error);
+        settleSearch(true);
+      }
+    );
+  };
+  loadSearch();
+
+  // The failure message stays until the retry settles, so the focused retry button is not removed.
+  const retrySearch = () => {
+    if (searching) return;
+    searchRetrying.set(true);
+    loadSearch();
+  };
 
   const appendNote = (noteId: string) => {
     const hex =
@@ -111,15 +143,32 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   };
 
   const { subscribe } = derived(
-    [editorInitialized, searchInitialized, notes, searchedNotes],
-    ([editorInitialized, searchInitialized, notes, searchedNotes]) => ({
+    [editorInitialized, searchInitialized, searchFailed, searchRetrying, notes, searchedNotes],
+    ([
       editorInitialized,
       searchInitialized,
+      searchFailed,
+      searchRetrying,
+      notes,
+      searchedNotes
+    ]) => ({
+      editorInitialized,
+      searchInitialized,
+      searchFailed,
+      searchRetrying,
       notes,
       searchedNotes
     })
   );
-  return { subscribe, appendNote, removeNote, moveUp, moveDown, sortByLeaastRecentlyCreated };
+  return {
+    subscribe,
+    appendNote,
+    removeNote,
+    moveUp,
+    moveDown,
+    sortByLeaastRecentlyCreated,
+    retrySearch
+  };
 }
 
 export type NoteEditorStore = ReturnType<typeof createNoteEditorStore>;
