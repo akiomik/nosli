@@ -118,6 +118,22 @@ export default class LongFormContent {
     return `${Kind.Article}:${this.pubkey}:${this.identifier}`;
   }
 
+  // NIP-09: only the author's requests count, and an `a` tag covers the versions up to the request,
+  // so a list published again after its deletion is not deleted.
+  isDeletedBy(requests: Event[]): boolean {
+    const createdAt = Math.round(this.createdAt.getTime() / 1000);
+    return requests.some(
+      (request) =>
+        request.kind === Kind.EventDeletion &&
+        request.pubkey === this.pubkey &&
+        request.tags.some(
+          ([typ, value]) =>
+            (typ === 'e' && value === this.id) ||
+            (typ === 'a' && value === this.address() && createdAt <= request.created_at)
+        )
+    );
+  }
+
   nip19Id(): string {
     return nip19.naddrEncode({
       kind: Kind.Article,

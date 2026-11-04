@@ -1,4 +1,15 @@
-import { map, take, toArray, flatMap, startWith } from 'rxjs';
+import {
+  map,
+  take,
+  toArray,
+  flatMap,
+  startWith,
+  mergeMap,
+  of,
+  takeLast,
+  from,
+  firstValueFrom
+} from 'rxjs';
 import type { Observable } from 'rxjs';
 import { uniq, verify, latest, createRxOneshotReq } from 'rx-nostr';
 import type { RxNostr, ConnectionStatePacket } from 'rx-nostr';
@@ -28,6 +39,40 @@ export function relayConnectionsStore(client: RxNostr): Observable<ConnectionSta
   return client.createConnectionStateObservable().pipe(startWith(...init), latestConnectionState());
 }
 
+// Relays that missed a deletion request, or ignore it, still serve the list, so check for one.
+function withoutDeleted(
+  client: RxNostr,
+  matomes: LongFormContent[],
+  timeout: number
+): Observable<LongFormContent[]> {
+  if (matomes.length === 0) return of(matomes);
+
+  const authors = [...new Set(matomes.map(({ pubkey }) => pubkey))];
+  const req = createRxOneshotReq({
+    filters: [
+      {
+        kinds: [Kind.EventDeletion],
+        authors,
+        '#e': matomes.flatMap(({ id }) => (id ? [id] : []))
+      },
+      {
+        kinds: [Kind.EventDeletion],
+        authors,
+        '#a': matomes.map((matome) => matome.address())
+      }
+    ]
+  });
+
+  return client.use(req).pipe(
+    uniq(),
+    verify(),
+    takeTimeout(timeout),
+    map(({ event }) => event),
+    toArray(),
+    map((requests) => matomes.filter((matome) => !matome.isDeletedBy(requests)))
+  );
+}
+
 export function recentGlobalMatomesStore({
   client,
   limit,
@@ -54,7 +99,8 @@ export function recentGlobalMatomesStore({
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
     map(({ event }) => LongFormContent.fromEvent(event)),
-    toArray()
+    toArray(),
+    mergeMap((matomes) => withoutDeleted(client, matomes, timeout))
   );
 }
 
@@ -84,10 +130,12 @@ export function recentUserMatomesStore({
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
     map(({ event }) => LongFormContent.fromEvent(event)),
-    toArray()
+    toArray(),
+    mergeMap((matomes) => withoutDeleted(client, matomes, timeout))
   );
 }
 
+// Emits nothing for a list that is deleted or not found.
 export function matomeStore({
   client,
   pubkey,
@@ -115,7 +163,13 @@ export function matomeStore({
     verify(),
     latest(),
     takeTimeout(timeout),
-    map(({ event }) => LongFormContent.fromEvent(event))
+    map(({ event }) => LongFormContent.fromEvent(event)),
+    // Check each newer version as it arrives, so that the check overlaps the wait for the other
+    // relays, and show the newest version only if it is not deleted.
+    map((matome) => firstValueFrom(withoutDeleted(client, [matome], timeout))),
+    takeLast(1),
+    mergeMap((check) => from(check)),
+    mergeMap(from)
   );
 }
 

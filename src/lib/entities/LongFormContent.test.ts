@@ -37,6 +37,30 @@ describe('LongFormContent.fromEvent', () => {
   it('gives the address shared by every version of the list', () => {
     expect(LongFormContent.fromEvent(otherClientEvent).address()).toBe(`30023:${author}:my-list`);
   });
+});
+
+describe('LongFormContent.isDeletedBy', () => {
+  const lfc = LongFormContent.fromEvent(otherClientEvent);
+  const request = (tags: string[][], createdAt: number): Event => ({
+    id: 'e'.repeat(64),
+    sig: '',
+    kind: Kind.EventDeletion,
+    pubkey: author,
+    content: '',
+    created_at: createdAt,
+    tags
+  });
+
+  it('counts an address request made in the same second as the version', () => {
+    const createdAt = otherClientEvent.created_at;
+
+    expect(lfc.isDeletedBy([request([['a', lfc.address()]], createdAt)])).toBe(true);
+    expect(lfc.isDeletedBy([request([['a', lfc.address()]], createdAt - 1)])).toBe(false);
+  });
+
+  it('ignores an event that is not a deletion request', () => {
+    expect(lfc.isDeletedBy([{ ...request([['e', otherClientEvent.id]], 0), kind: 1 }])).toBe(false);
+  });
 
   it('keeps the tags that Nosli does not read or rebuild as they are', () => {
     expect(LongFormContent.fromEvent(otherClientEvent).otherTags).toEqual([
