@@ -9,7 +9,7 @@ export type NoteReference = { id: string; relays?: string[] };
 
 const nosliTag = new Tag('t', 'nosli');
 
-// The relay hints that the nevent of each note holds. A nevent of nostr-tools is at most 5000
+// The relay hints that the nevent of each note holds. An nevent of nostr-tools is at most 5000
 // characters, and the first hints are those that returned the note.
 const MAX_NOTE_RELAY_HINTS = 3;
 
