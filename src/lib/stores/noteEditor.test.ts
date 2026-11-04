@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EMPTY } from 'rxjs';
+import { EMPTY, first, from, map, mergeMap } from 'rxjs';
 import { get } from 'svelte/store';
-import type { RxNostr } from 'rx-nostr';
+import {
+  finishEvent,
+  getPublicKey,
+  Kind,
+  matchFilters,
+  type Event,
+  type Filter
+} from 'nostr-tools';
+import type { RxNostr, RxReq } from 'rx-nostr';
 
 import KeyManager from '$lib/services/KeyManager';
 import { createNoteEditorStore } from './noteEditor';
@@ -11,8 +19,31 @@ vi.mock('$lib/stores/cookie', async () => {
   return { nip07: writable(true), pubkey: writable(''), seckey: writable('') };
 });
 
+const key = '1'.repeat(64);
+const user = getPublicKey(key);
+const note = finishEvent({ kind: Kind.Text, content: 'note', created_at: 1, tags: [] }, key);
+const reaction = finishEvent(
+  { kind: Kind.Reaction, content: '+', created_at: 2, tags: [['e', note.id]] },
+  key
+);
+
+// Serves the events that match each request once, like a relay that answers and sends EOSE.
+const fakeClient = (events: Event[]) =>
+  ({
+    use: (req: RxReq) =>
+      req.getReqObservable().pipe(
+        first((filters) => filters !== null),
+        mergeMap((filters) =>
+          from(events.filter((event) => matchFilters(filters as Filter[], event)))
+        ),
+        map((event) => ({ from: 'wss://relay.example.com', subId: 'sub', event }))
+      )
+  }) as unknown as RxNostr;
+
 // A client whose relays have nothing, so every request completes empty.
-const client = { use: vi.fn(() => EMPTY) } as unknown as RxNostr;
+const emptyClient = { use: () => EMPTY } as unknown as RxNostr;
+
+const lookupError = new Error('Failed to resolve NIP-07');
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -21,28 +52,52 @@ afterEach(() => {
 describe('createNoteEditorStore', () => {
   it('ends loading recent reactions when the public key cannot be looked up', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(KeyManager, 'getPublicKey').mockRejectedValue(new Error('Failed to resolve NIP-07'));
+    vi.spyOn(KeyManager, 'getPublicKey').mockRejectedValue(lookupError);
 
-    const editor = createNoteEditorStore({ client });
+    const editor = createNoteEditorStore({ client: emptyClient });
 
     await vi.waitFor(() => expect(get(editor).searchInitialized).toBe(true));
-    expect(get(editor)).toMatchObject({ searchFailed: true, editorInitialized: true });
+    expect(get(editor)).toMatchObject({ searchFailed: true, searchRetrying: false });
+  });
+
+  it('keeps the failure message while a retry runs, and ignores another retry', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    let rejectRetry: (error: Error) => void = () => {};
+    const getPublicKey = vi
+      .spyOn(KeyManager, 'getPublicKey')
+      .mockRejectedValueOnce(lookupError)
+      .mockReturnValueOnce(new Promise((_, reject) => (rejectRetry = reject)));
+    const editor = createNoteEditorStore({ client: emptyClient });
+    await vi.waitFor(() => expect(get(editor).searchFailed).toBe(true));
+
+    editor.retrySearch();
+    editor.retrySearch();
+
+    expect(get(editor)).toMatchObject({
+      searchInitialized: true,
+      searchFailed: true,
+      searchRetrying: true
+    });
+    expect(getPublicKey).toHaveBeenCalledTimes(2);
+
+    rejectRetry(lookupError);
+
+    await vi.waitFor(() => expect(get(editor).searchRetrying).toBe(false));
+    expect(get(editor)).toMatchObject({ searchInitialized: true, searchFailed: true });
   });
 
   it('loads recent reactions when a retry finds the public key', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    const getPublicKey = vi
-      .spyOn(KeyManager, 'getPublicKey')
-      .mockRejectedValueOnce(new Error('Failed to resolve NIP-07'))
-      .mockResolvedValue('a'.repeat(64));
-    const editor = createNoteEditorStore({ client });
+    vi.spyOn(KeyManager, 'getPublicKey').mockRejectedValueOnce(lookupError).mockResolvedValue(user);
+    const editor = createNoteEditorStore({ client: fakeClient([note, reaction]) });
     await vi.waitFor(() => expect(get(editor).searchFailed).toBe(true));
 
     editor.retrySearch();
 
-    expect(get(editor)).toMatchObject({ searchInitialized: false, searchFailed: false });
-    await vi.waitFor(() => expect(get(editor).searchInitialized).toBe(true));
+    await vi.waitFor(() => expect(get(editor).searchRetrying).toBe(false));
     expect(get(editor).searchFailed).toBe(false);
-    expect(getPublicKey).toHaveBeenCalledTimes(2);
+    expect(get(editor).searchedNotes).toEqual([
+      { id: note.id, note: expect.objectContaining({ id: note.id, content: 'note' }) }
+    ]);
   });
 });

@@ -13,6 +13,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const searchFailed = writable(false);
+  const searchRetrying = writable(false);
   const notes = writable<LoadingNote[]>([]);
   const searchedNotes = writable<LoadingNote[]>([]);
 
@@ -27,9 +28,15 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   }
 
   // Initialize Search tab
+  let searching = false;
+  const settleSearch = (failed: boolean) => {
+    searching = false;
+    searchFailed.set(failed);
+    searchRetrying.set(false);
+    searchInitialized.set(true);
+  };
   const loadSearch = () => {
-    searchInitialized.set(false);
-    searchFailed.set(false);
+    searching = true;
     KeyManager.getPublicKey().then(
       (pubkey) => {
         const limit = 100;
@@ -39,18 +46,24 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
           limit
         }).subscribe({
           next: searchedNotes.set,
-          complete: () => searchInitialized.set(true)
+          complete: () => settleSearch(false)
         });
       },
       (error) => {
         // A missing or refusing NIP-07 extension rejects the lookup.
         console.error(error);
-        searchFailed.set(true);
-        searchInitialized.set(true);
+        settleSearch(true);
       }
     );
   };
   loadSearch();
+
+  // The failure message stays until the retry settles, so the focused retry button is not removed.
+  const retrySearch = () => {
+    if (searching) return;
+    searchRetrying.set(true);
+    loadSearch();
+  };
 
   const appendNote = (noteId: string) => {
     const hex =
@@ -125,11 +138,19 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   };
 
   const { subscribe } = derived(
-    [editorInitialized, searchInitialized, searchFailed, notes, searchedNotes],
-    ([editorInitialized, searchInitialized, searchFailed, notes, searchedNotes]) => ({
+    [editorInitialized, searchInitialized, searchFailed, searchRetrying, notes, searchedNotes],
+    ([
       editorInitialized,
       searchInitialized,
       searchFailed,
+      searchRetrying,
+      notes,
+      searchedNotes
+    ]) => ({
+      editorInitialized,
+      searchInitialized,
+      searchFailed,
+      searchRetrying,
       notes,
       searchedNotes
     })
@@ -141,7 +162,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
     moveUp,
     moveDown,
     sortByLeaastRecentlyCreated,
-    retrySearch: loadSearch
+    retrySearch
   };
 }
 
