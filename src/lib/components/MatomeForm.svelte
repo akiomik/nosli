@@ -12,6 +12,7 @@
   import RecentReactionList from '$lib/components/NoteEditor/RecentReactionList.svelte';
   import LongFormContent from '$lib/entities/LongFormContent';
   import NostrClient from '$lib/services/NostrClient';
+  import { initialIdentifier, isValidIdentifier } from '$lib/services/listIdentifier';
   import {
     publicationFailureKey,
     publicationSuccessMessage,
@@ -32,14 +33,13 @@
 
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
-  let identifier: string | undefined = matome?.identifier || `nosli-${new Date().getTime()}`;
+  let identifier: string | undefined = initialIdentifier(matome);
   let tabActive = 'edit';
   let inactive = false;
   let submission: 'saving' | 'deleting' | undefined = undefined;
   let failureKey: string | undefined = undefined;
 
-  $: isIdentifierValid =
-    identifier !== undefined && identifier.length > 0 && identifier.length <= 40;
+  $: isIdentifierValid = isValidIdentifier(identifier, matome);
   $: isTitleValid = title !== undefined && title.length > 0 && title.length <= 150;
   $: isSummaryValid = summary === undefined || summary.length <= 300;
   $: submitting = submission !== undefined;
