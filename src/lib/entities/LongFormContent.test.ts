@@ -80,7 +80,7 @@ describe('LongFormContent.compose', () => {
   const form = { identifier: 'my-list', title: 'New title', summary: 'New summary' };
 
   it('creates a list with only the tags that Nosli writes', () => {
-    const event = LongFormContent.compose({ ...form, noteIds: [newNote] }).toEvent();
+    const event = LongFormContent.compose({ ...form, notes: [{ id: newNote }] }).toEvent();
 
     expect(event.tags).toEqual([
       ['d', 'my-list'],
@@ -93,7 +93,11 @@ describe('LongFormContent.compose', () => {
 
   it('keeps the metadata and tags of the previous version when updating', () => {
     const previous = LongFormContent.fromEvent(otherClientEvent);
-    const event = LongFormContent.compose({ ...form, noteIds: [newNote], previous }).toEvent();
+    const event = LongFormContent.compose({
+      ...form,
+      notes: [{ id: newNote }],
+      previous
+    }).toEvent();
 
     expect(event.tags).toEqual([
       ['d', 'my-list'],
@@ -109,10 +113,83 @@ describe('LongFormContent.compose', () => {
   });
 
   it('builds the content from the notes in order', () => {
-    const lfc = LongFormContent.compose({ ...form, noteIds: [newNote, oldNote] });
+    const lfc = LongFormContent.compose({ ...form, notes: [{ id: newNote }, { id: oldNote }] });
 
     expect(lfc.content).toBe(
       [newNote, oldNote].map((id) => `nostr:${nip19.neventEncode({ id })}`).join('\n')
     );
+  });
+
+  it('keeps a relay hint in the e tag and every hint in the content', () => {
+    const relays = ['wss://a.example.com', 'wss://b.example.com'];
+    const lfc = LongFormContent.compose({ ...form, notes: [{ id: newNote, relays }] });
+
+    expect(lfc.toEvent().tags).toContainEqual(['e', newNote, 'wss://a.example.com']);
+    expect(lfc.content).toBe(`nostr:${nip19.neventEncode({ id: newNote, relays })}`);
+  });
+});
+
+describe('LongFormContent.noteReferences', () => {
+  it('reads the relay hint of each e tag, keeping only wss:// URLs', () => {
+    const tags = [
+      ['e', newNote, 'wss://Relay.Example.com/'],
+      ['e', oldNote, 'ws://insecure.example.com'],
+      ['e', 'c'.repeat(64)]
+    ];
+    const lfc = LongFormContent.fromEvent({ ...otherClientEvent, tags });
+
+    expect(lfc.noteReferences()).toEqual([
+      { id: newNote, relays: ['wss://relay.example.com'] },
+      { id: oldNote, relays: [] },
+      { id: 'c'.repeat(64), relays: [] }
+    ]);
+    expect(lfc.noteRelays()).toEqual(['wss://relay.example.com']);
+  });
+
+  it('adds the relays of the nevents in the content, after the relay of the e tag', () => {
+    const relays = ['wss://a.example.com', 'wss://b.example.com', 'wss://c.example.com'];
+    const lfc = LongFormContent.fromEvent({
+      ...otherClientEvent,
+      content: `Some prose nostr:${nip19.neventEncode({ id: newNote, relays })}\nnostr:nevent1bad`,
+      tags: [
+        ['e', newNote, 'wss://b.example.com'],
+        ['e', oldNote]
+      ]
+    });
+
+    expect(lfc.noteReferences()).toEqual([
+      {
+        id: newNote,
+        relays: ['wss://b.example.com', 'wss://a.example.com', 'wss://c.example.com']
+      },
+      { id: oldNote, relays: [] }
+    ]);
+  });
+
+  it('keeps every hint of a note through compose and back', () => {
+    const relays = ['wss://a.example.com', 'wss://b.example.com', 'wss://c.example.com'];
+    const lfc = LongFormContent.compose({
+      identifier: 'my-list',
+      title: 'Title',
+      summary: '',
+      notes: [{ id: newNote, relays }]
+    });
+
+    expect(
+      LongFormContent.fromEvent({ ...lfc.toEvent(), pubkey: author }).noteReferences()
+    ).toEqual([{ id: newNote, relays }]);
+  });
+
+  it('gives the relays that more notes hint at first', () => {
+    const lfc = LongFormContent.fromEvent({
+      ...otherClientEvent,
+      tags: [
+        ['e', newNote, 'wss://once.example.com'],
+        ['e', oldNote, 'wss://twice.example.com'],
+        ['e', 'c'.repeat(64), 'wss://twice.example.com']
+      ]
+    });
+
+    expect(lfc.noteRelays()).toEqual(['wss://twice.example.com', 'wss://once.example.com']);
   });
 });

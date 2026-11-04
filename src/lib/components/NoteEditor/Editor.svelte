@@ -4,7 +4,7 @@
 
   import NoteListItem from '$lib/components/NoteListItem.svelte';
   import NoteActions from '$lib/components/NoteEditor/NoteActions.svelte';
-  import { nip19ToHex } from '$lib/services/NostrClient';
+  import { decodeNoteId } from '$lib/services/NostrClient';
   import type { NoteEditorStore } from '$lib/stores/noteEditor';
 
   export let editor: NoteEditorStore;
@@ -13,7 +13,7 @@
 
   $: newNoteHex = (() => {
     try {
-      return nip19ToHex(newNoteId.trim());
+      return decodeNoteId(newNoteId.trim()).id;
     } catch {
       return undefined;
     }
@@ -75,7 +75,8 @@
     class="ig-btn preset-filled-surface-300-700 disabled:opacity-50 disabled:cursor-not-allowed"
     disabled={!canAddNewNote}
     on:click|preventDefault={() => {
-      if (newNoteHex) editor.appendNote(newNoteHex);
+      // The ID itself is added, so that the relays an nevent hints at are kept.
+      if (newNoteHex) editor.appendNote(newNoteId.trim());
       newNoteId = '';
     }}
   >

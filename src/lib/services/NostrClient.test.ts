@@ -10,7 +10,7 @@ import {
 } from 'nostr-tools';
 
 import LongFormContent from '$lib/entities/LongFormContent';
-import NostrClient, { nip19ToHex } from './NostrClient';
+import NostrClient, { decodeNoteId } from './NostrClient';
 import KeyManager from './KeyManager';
 import { PublicationFailedError } from './publishToRelays';
 
@@ -101,17 +101,37 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('nip19ToHex', () => {
+describe('decodeNoteId', () => {
   const id = '07'.repeat(32);
+  const nip19ToHex = (b32: string) => decodeNoteId(b32).id;
 
   it('returns the event ID of a note or an nevent', () => {
-    expect(nip19ToHex(nip19.noteEncode(id))).toBe(id);
+    expect(decodeNoteId(nip19.noteEncode(id))).toEqual({ id, relays: [] });
     expect(nip19ToHex(nip19.neventEncode({ id, relays: ['wss://relay.example.com'] }))).toBe(id);
   });
 
   it('returns the event ID in lowercase hex for an identifier in uppercase', () => {
     expect(nip19ToHex(nip19.noteEncode(id).toUpperCase())).toBe(id);
     expect(nip19ToHex(nip19.neventEncode({ id }).toUpperCase())).toBe(id);
+  });
+
+  // From #99 by koteitan: a note that only these relays had.
+  it('returns the relays that an nevent hints at', () => {
+    const nevent =
+      'nevent1qvzqqqqqqypzqwyu5j2hjyd3ycyn7s4q4yrcv52mtyc3m3dfg26qf4lpdutjs7pgqyxhwumn8ghj77tpvf6jumt9qys8wumn8ghj7un9d3shjtt2wqhxummnw3ezuamfwfjkgmn9wshx5uqpz9mhxue69uhhytntda4xjunp9e5k7qpql36sphgcnnjv4dcyfjy627gw5fsf5y5n2rrqnh5f8m2hgxavcr0s80yhul';
+
+    expect(decodeNoteId(nevent)).toEqual({
+      id: 'fc7500dd189ce4cab7044c89a5790ea2609a129350c609de893ed5741bacc0df',
+      relays: ['wss://yabu.me', 'wss://relay-jp.nostr.wirednet.jp', 'wss://r.kojira.io']
+    });
+  });
+
+  it('keeps only the wss:// relay hints of an nevent', () => {
+    const relays = ['wss://Relay.Example.com/', 'ws://insecure.example.com', 'not a url'];
+
+    expect(decodeNoteId(nip19.neventEncode({ id, relays })).relays).toEqual([
+      'wss://relay.example.com'
+    ]);
   });
 
   it('rejects a note or an nevent whose event ID is not 32 bytes', () => {

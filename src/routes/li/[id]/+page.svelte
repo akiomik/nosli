@@ -24,7 +24,9 @@
     identifier: data.params.identifier
   });
   $: profile = profileStore({ client, pubkey: data.params.pubkey });
-  $: notes = $matome ? notesStore({ client, ids: $matome.eventIds() }) : undefined;
+  $: notes = $matome
+    ? notesStore({ client, ids: $matome.eventIds(), relays: $matome.noteRelays() })
+    : undefined;
 </script>
 
 <svelte:head>
