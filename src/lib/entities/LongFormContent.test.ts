@@ -36,6 +36,7 @@ describe('LongFormContent.fromEvent', () => {
 
   it('gives the address shared by every version of the list', () => {
     expect(LongFormContent.fromEvent(otherClientEvent).address()).toBe(`30023:${author}:my-list`);
+    expect(LongFormContent.addressOf(author, 'my-list')).toBe(`30023:${author}:my-list`);
   });
 
   it('keeps the tags that Nosli does not read or rebuild as they are', () => {
@@ -59,6 +60,38 @@ describe('LongFormContent.fromEvent', () => {
   });
 });
 
+describe('LongFormContent.isDeletedBy', () => {
+  const list = LongFormContent.fromEvent(otherClientEvent);
+  const request = (tags: string[][], createdAt: number, pubkey = author): Event => ({
+    id: 'e'.repeat(64),
+    sig: '',
+    kind: Kind.EventDeletion,
+    pubkey,
+    content: '',
+    created_at: createdAt,
+    tags
+  });
+
+  it('counts a request by the author for this version', () => {
+    expect(list.isDeletedBy([request([['e', otherClientEvent.id]], 0)])).toBe(true);
+    expect(list.isDeletedBy([request([['e', oldNote]], 0)])).toBe(false);
+    expect(list.isDeletedBy([request([['e', otherClientEvent.id]], 0, oldNote)])).toBe(false);
+  });
+
+  it('counts an address request made no earlier than the version', () => {
+    const createdAt = otherClientEvent.created_at;
+
+    expect(list.isDeletedBy([request([['a', list.address()]], createdAt)])).toBe(true);
+    expect(list.isDeletedBy([request([['a', list.address()]], createdAt - 1)])).toBe(false);
+  });
+
+  it('ignores an event that is not a deletion request', () => {
+    expect(list.isDeletedBy([{ ...request([['e', otherClientEvent.id]], 0), kind: 1 }])).toBe(
+      false
+    );
+  });
+});
+
 describe('LongFormContent.eventIds', () => {
   it('gives the event IDs of the e tags in order, skipping values that are not event IDs', () => {
     const list = LongFormContent.fromEvent({
@@ -73,6 +106,76 @@ describe('LongFormContent.eventIds', () => {
     });
 
     expect(list.eventIds()).toEqual([newNote, oldNote]);
+  });
+});
+
+describe('LongFormContent.hasContentBesidesNotes', () => {
+  const withContent = (content: string) =>
+    LongFormContent.fromEvent({
+      ...otherClientEvent,
+      content,
+      tags: [
+        ['d', 'my-list'],
+        ['title', 'Title'],
+        ['summary', ''],
+        ['e', oldNote],
+        ['e', newNote]
+      ]
+    });
+
+  it('is false for a list that Nosli composed', () => {
+    const list = LongFormContent.compose({
+      identifier: 'my-list',
+      title: 'Title',
+      summary: '',
+      notes: [{ id: oldNote, relays: ['wss://relay.example.com'] }, { id: newNote }]
+    });
+
+    expect(
+      LongFormContent.fromEvent({ ...list.toEvent(), pubkey: author }).hasContentBesidesNotes()
+    ).toBe(false);
+  });
+
+  it.each([
+    ['empty content', ''],
+    [
+      'note1 references to its notes',
+      `nostr:${nip19.noteEncode(oldNote)} nostr:${nip19.noteEncode(newNote)}`
+    ],
+    ['#[n] mentions, which Nosli wrote before nostr: references', '#[3]\n#[4]\n']
+  ])('is false for %s', (_name, content) => {
+    expect(withContent(content).hasContentBesidesNotes()).toBe(false);
+  });
+
+  it('is false for a list as Nosli published it before nostr: references', () => {
+    const list = LongFormContent.fromEvent({
+      ...otherClientEvent,
+      content: '#[3]\n#[4]',
+      tags: [
+        ['d', 'my-list'],
+        ['title', 'Title'],
+        ['summary', ''],
+        ['e', oldNote],
+        ['e', newNote],
+        ['t', 'nosli']
+      ]
+    });
+
+    expect(list.hasContentBesidesNotes()).toBe(false);
+  });
+
+  it.each([
+    ['text', `Some prose\nnostr:${nip19.neventEncode({ id: oldNote })}`],
+    [
+      'a reference to a note outside the list',
+      `nostr:${nip19.neventEncode({ id: 'f'.repeat(64) })}`
+    ],
+    ['a reference to a profile', `nostr:${nip19.npubEncode(author)}`],
+    ['a malformed reference', 'nostr:nevent1bad'],
+    ['a #[n] mention of a tag after its e tags', '#[3]\n#[4]\n#[5]'],
+    ['a #[n] mention of a tag before its e tags', '#[2]\n#[3]']
+  ])('is true for %s', (_name, content) => {
+    expect(withContent(content).hasContentBesidesNotes()).toBe(true);
   });
 });
 

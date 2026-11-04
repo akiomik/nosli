@@ -2,28 +2,32 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
 import { getPublicKey } from 'nostr-tools';
 
-vi.mock('$lib/stores/cookie', async () => {
+vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
   return { nip07: writable(false), pubkey: writable(''), seckey: writable('') };
 });
 
 const hex = getPublicKey('1'.repeat(64));
-const extension = { getPublicKey: async () => hex, signEvent: vi.fn() };
+const extension = {
+  getPublicKey: async () => hex,
+  signEvent: vi.fn(),
+  getRelays: async () => ({})
+};
 
 let KeyManager: typeof import('./KeyManager').default;
 let Nip07MissingError: typeof import('./KeyManager').Nip07MissingError;
-let nip07: typeof import('$lib/stores/cookie').nip07;
-let pubkey: typeof import('$lib/stores/cookie').pubkey;
-let seckey: typeof import('$lib/stores/cookie').seckey;
-let loginMethod: typeof import('$lib/stores/login').loginMethod;
+let nip07: typeof import('#lib/stores/cookie.js').nip07;
+let pubkey: typeof import('#lib/stores/cookie.js').pubkey;
+let seckey: typeof import('#lib/stores/cookie.js').seckey;
+let loginMethod: typeof import('#lib/stores/login.js').loginMethod;
 
 beforeEach(async () => {
   // The app starts now: KeyManager is loaded again under fake timers, so it waits from now.
   vi.useFakeTimers({ toFake: ['setTimeout', 'performance'] });
   vi.resetModules();
   ({ default: KeyManager, Nip07MissingError } = await import('./KeyManager'));
-  ({ nip07, pubkey, seckey } = await import('$lib/stores/cookie'));
-  ({ loginMethod } = await import('$lib/stores/login'));
+  ({ nip07, pubkey, seckey } = await import('#lib/stores/cookie.js'));
+  ({ loginMethod } = await import('#lib/stores/login.js'));
   vi.stubGlobal('window', {});
 });
 
@@ -75,7 +79,7 @@ describe('KeyManager.getPublicKey with NIP-07, when the page arrived late', () =
     vi.advanceTimersByTime(5000);
     vi.resetModules();
     const LateKeyManager = (await import('./KeyManager')).default;
-    (await import('$lib/stores/cookie')).nip07.set(true);
+    (await import('#lib/stores/cookie.js')).nip07.set(true);
 
     const key = LateKeyManager.getPublicKey();
     await vi.advanceTimersByTimeAsync(2000);
@@ -89,7 +93,11 @@ describe('KeyManager.getPublicKey with NIP-07, when the page arrived late', () =
 describe('KeyManager.getPublicKey with an extension that gives an invalid key', () => {
   it.each([['not hex'], ['A'.repeat(64)], [undefined]])('rejects %s', async (key) => {
     nip07.set(true);
-    window.nostr = { getPublicKey: async () => key as string, signEvent: vi.fn() };
+    window.nostr = {
+      getPublicKey: async () => key as string,
+      signEvent: vi.fn(),
+      getRelays: async () => ({})
+    };
 
     await expect(KeyManager.getPublicKey()).rejects.toThrow('invalid public key');
     await expect(KeyManager.getNip07PublicKey()).rejects.toThrow('invalid public key');

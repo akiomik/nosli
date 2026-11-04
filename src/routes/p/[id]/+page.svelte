@@ -5,14 +5,14 @@
   import { _ } from 'svelte-i18n';
 
   import type { PageData } from './$types';
-  import { recentUserMatomesStore, profileStore } from '$lib/stores/nostr';
-  import { linkify, linkifyOpts } from '$lib/actions/linkify';
-  import KeyManager from '$lib/services/KeyManager';
-  import { loginMethod } from '$lib/stores/login';
-  import MatomeList from '$lib/components/MatomeList.svelte';
-  import Alert from '$lib/components/Alert.svelte';
-  import ProfileNip05 from '$lib/components/ProfileNip05.svelte';
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import { recentUserMatomesStore, profileStore } from '#lib/stores/nostr.js';
+  import { linkify, linkifyOpts } from '#lib/actions/linkify.js';
+  import KeyManager from '#lib/services/KeyManager.js';
+  import { loginMethod } from '#lib/stores/login.js';
+  import MatomeList from '#lib/components/MatomeList.svelte';
+  import Alert from '#lib/components/Alert.svelte';
+  import ProfileNip05 from '#lib/components/ProfileNip05.svelte';
+  import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
 
   export let data: PageData & {
     pubkey: string;
@@ -23,14 +23,15 @@
   const profile = profileStore({ client, pubkey: data.pubkey });
 
   $: name = $profile?.formattedName() || 'nostrich';
+  $: desc = $_('profile-description', { values: { name } });
 </script>
 
 <svelte:head>
   <title>{name} | Nosli</title>
-  <meta name="description" content="View {name}'s profile and lists" />
+  <meta name="description" content={desc} />
   <meta property="og:url" content="https://nosli.vercel.app/p/{data.pubkey}" />
   <meta property="og:title" content="{name} | Nosli" />
-  <meta property="og:description" content="View {name}'s profile and lists" />
+  <meta property="og:description" content={desc} />
 </svelte:head>
 
 <div class="flex space-x-4 items-center">

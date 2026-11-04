@@ -130,6 +130,20 @@ describe('requestedEvents', () => {
     expect(await contents([event])).toEqual([]);
   });
 
+  it('drops an event dated beyond what a Date can hold', async () => {
+    const dated = (content: string, createdAt: number) =>
+      finishEvent({ kind: Kind.Text, content, created_at: createdAt, tags: [] }, key);
+
+    const events = [
+      dated('earliest', -8.64e12),
+      dated('too early', -8.64e12 - 1),
+      dated('latest', 8.64e12),
+      dated('too late', 8.64e12 + 1)
+    ];
+
+    expect(await contents(events)).toEqual(['earliest', 'latest']);
+  });
+
   it('drops an event without the fields of an event', async () => {
     const { content, ...noContent } = note('no content');
 

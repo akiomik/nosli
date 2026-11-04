@@ -6,22 +6,22 @@
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
-  import Alert from '$lib/components/Alert.svelte';
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
-  import Editor from '$lib/components/NoteEditor/Editor.svelte';
-  import RecentReactionList from '$lib/components/NoteEditor/RecentReactionList.svelte';
-  import LongFormContent from '$lib/entities/LongFormContent';
-  import NostrClient from '$lib/services/NostrClient';
-  import { initialIdentifier, isValidIdentifier } from '$lib/services/listIdentifier';
+  import Alert from '#lib/components/Alert.svelte';
+  import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
+  import Editor from '#lib/components/NoteEditor/Editor.svelte';
+  import RecentReactionList from '#lib/components/NoteEditor/RecentReactionList.svelte';
+  import LongFormContent from '#lib/entities/LongFormContent.js';
+  import NostrClient from '#lib/services/NostrClient.js';
+  import { initialIdentifier, isValidIdentifier } from '#lib/services/listIdentifier.js';
   import {
     publicationFailureKey,
     publicationSuccessMessage,
     type PublicationAction
-  } from '$lib/services/publicationFeedback';
-  import type { PublicationResult } from '$lib/services/publishToRelays';
-  import * as settings from '$lib/services/settings';
-  import { createNoteEditorStore } from '$lib/stores/noteEditor';
-  import { toaster } from '$lib/stores/toaster';
+  } from '#lib/services/publicationFeedback.js';
+  import type { PublicationResult } from '#lib/services/publishToRelays.js';
+  import * as settings from '#lib/services/settings.js';
+  import { createNoteEditorStore } from '#lib/stores/noteEditor.js';
+  import { toaster } from '#lib/stores/toaster.js';
 
   const PARTIAL_SUCCESS_TOAST_TIMEOUT_MS = 8000;
 
@@ -217,6 +217,11 @@
         <p>{$_(failureKey)}</p>
       </Alert>
     </div>
+  {/if}
+
+  {#if matome?.hasContentBesidesNotes()}
+    <!-- The warning above the form has scrolled away on a long list. -->
+    <p>{$_('alert.content-replaced-on-save')}</p>
   {/if}
 
   <div aria-live="polite">

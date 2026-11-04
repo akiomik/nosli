@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Avatar } from '@skeletonlabs/skeleton-svelte';
-  import type Profile from '$lib/entities/Profile';
-  import ProfileNip05 from '$lib/components/ProfileNip05.svelte';
+  import type Profile from '#lib/entities/Profile.js';
+  import ProfileNip05 from '#lib/components/ProfileNip05.svelte';
 
   export let profile: Profile | undefined;
   $: name = profile?.formattedName() || 'nostrich';

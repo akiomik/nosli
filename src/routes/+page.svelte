@@ -1,12 +1,12 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
 
-  import NostrClient from '$lib/services/NostrClient';
-  import ExternalLink from '$lib/components/ExternalLink.svelte';
-  import GlobalMatomeList from '$lib/components/GlobalMatomeList.svelte';
+  import NostrClient from '#lib/services/NostrClient.js';
+  import ExternalLink from '#lib/components/ExternalLink.svelte';
+  import GlobalMatomeList from '#lib/components/GlobalMatomeList.svelte';
 
-  const title = 'Nosli | Create curated lists of posts on nostr';
-  const desc = 'Nosli helps you create a curated list of posts on nostr';
+  $: title = $_('home.title');
+  $: desc = $_('home.description');
 </script>
 
 <svelte:head>
@@ -34,14 +34,14 @@
 
 <div>
   <p>
-    A curated list is simply
+    {$_('home.list-is')}
     <ExternalLink href="https://github.com/nostr-protocol/nips/blob/master/23.md" class="anchor">
       NIP-23 Long Form Content
     </ExternalLink>
-    tagged with
-    <code class="code">"{NostrClient.TAG}"</code>.
+    {$_('home.tagged-with')}
+    <code class="code">"{NostrClient.TAG}"</code>{$_('home.list-is-end')}
   </p>
-  <p>It is stored in relays and can be viewed and edited by other NIP-23 supported clients.</p>
+  <p>{$_('home.stored-in-relays')}</p>
 </div>
 
 <h2 class="text-2xl md:text-3xl font-heading-token">{$_('recent-lists')}</h2>

@@ -29,9 +29,9 @@ import {
 } from 'nostr-tools';
 import { createRxNostr, type RxNostr, type RxReq } from 'rx-nostr';
 
-import type { LoadingNote } from '$lib/entities/LoadingNote';
-import LongFormContent from '$lib/entities/LongFormContent';
-import KeyManager from '$lib/services/KeyManager';
+import type { LoadingNote } from '#lib/entities/LoadingNote.js';
+import LongFormContent from '#lib/entities/LongFormContent.js';
+import KeyManager from '#lib/services/KeyManager.js';
 import { createNoteEditorStore } from './noteEditor';
 
 vi.mock('rx-nostr', async (importOriginal) => ({
@@ -39,7 +39,7 @@ vi.mock('rx-nostr', async (importOriginal) => ({
   createRxNostr: vi.fn()
 }));
 
-vi.mock('$lib/stores/cookie', async () => {
+vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
   return { nip07: writable(true), pubkey: writable(''), seckey: writable('') };
 });

@@ -5,12 +5,12 @@
   import { _ } from 'svelte-i18n';
 
   import type { PageData } from './$types';
-  import { matomeStore } from '$lib/stores/nostr';
-  import KeyManager, { Nip07MissingError } from '$lib/services/KeyManager';
-  import { loginMethod } from '$lib/stores/login';
-  import MatomeForm from '$lib/components/MatomeForm.svelte';
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
-  import Alert from '$lib/components/Alert.svelte';
+  import { matomeStore } from '#lib/stores/nostr.js';
+  import KeyManager, { Nip07MissingError } from '#lib/services/KeyManager.js';
+  import { loginMethod } from '#lib/stores/login.js';
+  import MatomeForm from '#lib/components/MatomeForm.svelte';
+  import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
+  import Alert from '#lib/components/Alert.svelte';
 
   export let data: PageData & {
     params: nip19.AddressPointer;
@@ -42,10 +42,22 @@
         {$_('edit-identifier', { values: { identifier: $matome.identifier } })}
       </h1>
 
+      {#if $matome.hasContentBesidesNotes()}
+        <!-- Shown when editing starts, and again by the save button, so that the author can decide
+             before doing any work. -->
+        <Alert variant="warning">
+          <p>{$_('alert.content-replaced-on-edit')}</p>
+          <details class="mt-2">
+            <summary class="cursor-pointer">{$_('show-current-content')}</summary>
+            <p class="mt-2 whitespace-pre-wrap wrap-anywhere">{$matome.content}</p>
+          </details>
+        </Alert>
+      {/if}
+
       <MatomeForm matome={$matome} />
     {:else}
       <Alert variant="error">
-        <p>Unauthorized &#128581;</p>
+        <p>{$_('error.unauthorized')}</p>
       </Alert>
     {/if}
   {:catch error}

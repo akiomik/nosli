@@ -1,9 +1,9 @@
 import { nip19, Kind } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
-import { isEventId } from '$lib/entities/EventId';
-import Tag from '$lib/entities/Tag';
-import { toSeconds } from '$lib/helper';
-import { relayHints } from '$lib/services/relayHints';
+import { isEventId } from '#lib/entities/EventId.js';
+import Tag from '#lib/entities/Tag.js';
+import { toSeconds } from '#lib/helper.js';
+import { relayHints } from '#lib/services/relayHints.js';
 
 // A note in a list, with the relays that hint where it can be found.
 export type NoteReference = { id: string; relays?: string[] };
@@ -16,6 +16,19 @@ const MAX_NOTE_RELAY_HINTS = 3;
 
 const isNosliTag = ([typ, value]: string[]): boolean =>
   typ === nosliTag.typ && value === nosliTag.value;
+
+// The note that a nostr:note1… or nostr:nevent1… word refers to, with the relays of an nevent.
+const referencedNote = (word: string): NoteReference | undefined => {
+  if (!/^nostr:(note|nevent)1/.test(word)) return undefined;
+  try {
+    const { data } = nip19.decode(word.slice('nostr:'.length));
+    if (typeof data === 'string') return { id: data };
+    return 'id' in data ? { id: data.id, relays: data.relays } : undefined;
+  } catch {
+    // Words that only look like a reference refer to nothing.
+    return undefined;
+  }
+};
 
 // NIP-23 gives published_at as a string of seconds.
 const parseTimestamp = (value: string | undefined): Date | undefined => {
@@ -134,9 +147,31 @@ export default class LongFormContent {
     return event;
   }
 
-  // The address of every version of this list, as NIP-01 defines it for addressable events.
+  // The address of every version of the list with this author and identifier, as NIP-01 defines it
+  // for addressable events.
+  static addressOf(pubkey: string, identifier: string): string {
+    return `${Kind.Article}:${pubkey}:${identifier}`;
+  }
+
+  // The address of every version of this list.
   address(): string {
-    return `${Kind.Article}:${this.pubkey}:${this.identifier}`;
+    return LongFormContent.addressOf(this.pubkey, this.identifier);
+  }
+
+  // NIP-09: only the author's requests count, and an `a` tag covers the versions up to the request,
+  // so a list published again after its deletion is not deleted.
+  isDeletedBy(requests: Event[]): boolean {
+    const createdAt = toSeconds(this.createdAt);
+    return requests.some(
+      (request) =>
+        request.kind === Kind.EventDeletion &&
+        request.pubkey === this.pubkey &&
+        request.tags.some(
+          ([typ, value]) =>
+            (typ === 'e' && value === this.id) ||
+            (typ === 'a' && value === this.address() && createdAt <= request.created_at)
+        )
+    );
   }
 
   nip19Id(): string {
@@ -145,6 +180,23 @@ export default class LongFormContent {
       pubkey: this.pubkey,
       identifier: this.identifier
     });
+  }
+
+  // Whether the content holds anything that an update would lose, since compose rebuilds it from
+  // the notes: text, or a reference to anything but a note of the list. Before nostr: references,
+  // Nosli wrote #[n] mentions of its e tags, which came after its d, title and summary tags.
+  hasContentBesidesNotes(): boolean {
+    const notes = new Set(this.eventIds());
+    const mentions = this.tags.filter(({ typ }) => typ === 'e').length;
+    return this.content
+      .split(/\s+/)
+      .filter((word) => word !== '')
+      .some((word) => {
+        const mention = word.match(/^#\[(\d+)\]$/);
+        if (mention) return Number(mention[1]) < 3 || Number(mention[1]) >= 3 + mentions;
+        const note = referencedNote(word);
+        return note === undefined || !notes.has(note.id);
+      });
   }
 
   // Skips e tags that do not hold an event ID, which no relay can return a note for.
@@ -159,14 +211,9 @@ export default class LongFormContent {
   noteReferences(): NoteReference[] {
     const contentRelays = new Map<string, string[]>();
     for (const word of this.content.split(/\s+/)) {
-      if (!word.startsWith('nostr:nevent1')) continue;
-      try {
-        const { data } = nip19.decode(word.slice('nostr:'.length));
-        if (typeof data === 'string' || !('id' in data)) continue;
-        contentRelays.set(data.id, [...(contentRelays.get(data.id) ?? []), ...(data.relays ?? [])]);
-      } catch {
-        // Words that only look like an nevent hint at nothing.
-      }
+      const note = referencedNote(word);
+      if (!note?.relays) continue;
+      contentRelays.set(note.id, [...(contentRelays.get(note.id) ?? []), ...note.relays]);
     }
     return this.tags
       .filter((tag: Tag) => tag.typ === 'e' && isEventId(tag.value))

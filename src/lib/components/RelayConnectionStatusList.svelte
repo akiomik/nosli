@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { ConnectionStatePacket } from 'rx-nostr';
 
-  import RelayConnectionStatusIcon from '$lib/components/RelayConnectionStatusIcon.svelte';
+  import RelayConnectionStatusIcon from '#lib/components/RelayConnectionStatusIcon.svelte';
 
   export let connections: ConnectionStatePacket[];
 </script>
@@ -10,7 +10,7 @@
   {#each connections as { state, from } (from)}
     <li class="flex space-x-2 items-center">
       <RelayConnectionStatusIcon status={state} />
-      <p>{from}</p>
+      <p class="min-w-0 wrap-anywhere">{from}</p>
     </li>
   {/each}
 </ul>

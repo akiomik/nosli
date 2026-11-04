@@ -1,4 +1,4 @@
-import type LongFormContent from '$lib/entities/LongFormContent';
+import type LongFormContent from '#lib/entities/LongFormContent.js';
 
 const MAX_IDENTIFIER_LENGTH = 40;
 

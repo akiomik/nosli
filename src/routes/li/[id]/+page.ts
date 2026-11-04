@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { Kind, nip19 } from 'nostr-tools';
 import type { PageLoad } from './$types';
-import { ensureAddressPointer } from '$lib/helper';
+import { ensureAddressPointer } from '#lib/helper.js';
 
 export const load = (({ params }) => {
   let data;

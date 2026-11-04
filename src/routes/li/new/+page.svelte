@@ -1,7 +1,7 @@
 <script lang="ts">
   import { _ } from 'svelte-i18n';
 
-  import MatomeForm from '$lib/components/MatomeForm.svelte';
+  import MatomeForm from '#lib/components/MatomeForm.svelte';
 </script>
 
 <svelte:head>

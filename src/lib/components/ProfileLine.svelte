@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Avatar } from '@skeletonlabs/skeleton-svelte';
-  import type Profile from '$lib/entities/Profile';
+  import type Profile from '#lib/entities/Profile.js';
 
   export let profile: Profile | undefined;
 </script>

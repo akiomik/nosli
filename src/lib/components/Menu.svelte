@@ -4,9 +4,9 @@
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
-  import KeyManager from '$lib/services/KeyManager';
-  import { loginMethod, type LoginMethod } from '$lib/stores/login';
-  import MenuProfile from '$lib/components/MenuProfile.svelte';
+  import KeyManager from '#lib/services/KeyManager.js';
+  import { loginMethod, type LoginMethod } from '#lib/stores/login.js';
+  import MenuProfile from '#lib/components/MenuProfile.svelte';
 
   export let open = false;
 
@@ -33,14 +33,12 @@
 </script>
 
 {#if $loginMethod}
-  <!-- The menu is as wide as its widest line, so this sets a width that fits most names on one line,
-       and a longer name wraps instead of widening the menu. -->
-  <div class="min-w-56 space-y-2">
+  <!-- This width fits most names on one line, and a longer name wraps instead of widening the menu.
+       On a narrow screen, it shrinks with the menu. -->
+  <div class="w-56 max-w-full space-y-2">
     {#await pubkey then pubkey}
       {#if pubkey && opened}
-        <div class="whitespace-normal">
-          <MenuProfile {pubkey} />
-        </div>
+        <MenuProfile {pubkey} />
       {/if}
     {:catch}
       <!-- The NIP-07 extension is missing or refused the public key, so there is no profile. -->

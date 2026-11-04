@@ -1,6 +1,24 @@
 import { nip19, nip05 } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 
+// NIP-01 has the content as a JSON object, but a relay can send anything.
+const parseContent = (content: string): Record<string, unknown> | undefined => {
+  try {
+    const value: unknown = JSON.parse(content);
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// A field that is not a string is read as missing.
+const stringField = (content: Record<string, unknown>, key: string): string | undefined => {
+  const value = content[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
 export default class Profile {
   constructor(
     public id: string | undefined,
@@ -13,18 +31,20 @@ export default class Profile {
     public about: string
   ) {}
 
-  // TODO: use Result/Either type
-  public static fromEvent(event: Event): Profile {
-    const content = JSON.parse(event.content);
+  // Returns undefined when the content is not a JSON object.
+  public static fromEvent(event: Event): Profile | undefined {
+    const content = parseContent(event.content);
+    if (content === undefined) return undefined;
+
     return new Profile(
       event.id,
-      content.name,
-      content.display_name,
-      content.picture,
-      content.nip05 ?? undefined,
+      stringField(content, 'name') ?? '',
+      stringField(content, 'display_name') ?? '',
+      stringField(content, 'picture'),
+      stringField(content, 'nip05'),
       event.pubkey,
       new Date(event.created_at * 1000),
-      content.about
+      stringField(content, 'about') ?? ''
     );
   }
 
@@ -71,9 +91,10 @@ export default class Profile {
       return false;
     }
 
+    // NIP-05 has the identifier point to the profile's pubkey, not just exist.
     try {
       const res = await nip05.queryProfile(this.nip05);
-      return res !== null;
+      return res?.pubkey === this.pubkey;
     } catch {
       return false;
     }

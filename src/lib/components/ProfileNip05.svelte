@@ -1,7 +1,8 @@
 <script lang="ts">
   import { FontAwesomeIcon } from '@fortawesome/svelte-fontawesome';
   import { faCheck } from '@fortawesome/free-solid-svg-icons';
-  import type Profile from '$lib/entities/Profile';
+  import { _ } from 'svelte-i18n';
+  import type Profile from '#lib/entities/Profile.js';
 
   export let profile: Profile;
 </script>
@@ -17,7 +18,7 @@
         {profile.formattedNip05()}
       </span>
       <span class="badge-icon preset-tonal-primary flex-none">
-        <FontAwesomeIcon icon={faCheck} title="Valid NIP-05 identifier" />
+        <FontAwesomeIcon icon={faCheck} title={$_('valid-nip05-identifier')} />
       </span>
     </p>
   {:else}

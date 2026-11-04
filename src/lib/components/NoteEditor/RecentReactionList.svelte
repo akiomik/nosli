@@ -2,9 +2,9 @@
   import { nip19 } from 'nostr-tools';
   import { _ } from 'svelte-i18n';
 
-  import NoteListItem from '$lib/components/NoteListItem.svelte';
-  import type { NoteEditorStore } from '$lib/stores/noteEditor';
-  import Alert from '$lib/components/Alert.svelte';
+  import NoteListItem from '#lib/components/NoteListItem.svelte';
+  import type { NoteEditorStore } from '#lib/stores/noteEditor.js';
+  import Alert from '#lib/components/Alert.svelte';
 
   export let editor: NoteEditorStore;
 

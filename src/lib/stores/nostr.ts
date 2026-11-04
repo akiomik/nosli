@@ -1,40 +1,46 @@
 import {
   defaultIfEmpty,
   defer,
+  distinctUntilChanged,
   filter,
   finalize,
   flatMap,
   map,
   merge,
   of,
+  scan,
   startWith,
+  switchMap,
   take,
   toArray
 } from 'rxjs';
-import type { Observable } from 'rxjs';
+import type { Observable, OperatorFunction } from 'rxjs';
 import { latest, createRxNostr, createRxOneshotReq } from 'rx-nostr';
 import type { RxNostr, RxReq, ConnectionStatePacket, EventPacket } from 'rx-nostr';
 import { Kind } from 'nostr-tools';
-import type { Filter } from 'nostr-tools';
+import type { Event, Filter } from 'nostr-tools';
 
 import {
   requestedEvents,
   sortedBy,
   takeTimeout,
+  hasNaddr,
   latestEachNaddr,
   latestConnectionState
-} from '$lib/stores/operators';
-import NostrClient from '$lib/services/NostrClient';
-import { normalizeRelayHint, relayHints } from '$lib/services/relayHints';
-import { isEventId } from '$lib/entities/EventId';
-import LongFormContent from '$lib/entities/LongFormContent';
-import Profile from '$lib/entities/Profile';
-import Note from '$lib/entities/Note';
-import Reaction from '$lib/entities/Reaction';
-import type { LoadingNote } from '$lib/entities/LoadingNote';
+} from '#lib/stores/operators.js';
+import NostrClient from '#lib/services/NostrClient.js';
+import { normalizeRelayHint, relayHints } from '#lib/services/relayHints.js';
+import { isEventId } from '#lib/entities/EventId.js';
+import LongFormContent from '#lib/entities/LongFormContent.js';
+import Profile from '#lib/entities/Profile.js';
+import Note from '#lib/entities/Note.js';
+import Reaction from '#lib/entities/Reaction.js';
+import type { LoadingNote } from '#lib/entities/LoadingNote.js';
 
 const DEFAULT_TIMEOUT_WITHOUT_SORT = 1000;
 const DEFAULT_TIMEOUT_WITH_SORT = 750;
+// Lists are shown before their deletion requests arrive, so waiting longer for them delays nothing.
+const DEFAULT_DELETION_TIMEOUT = 5000;
 
 // At most this many hinted relays are asked, so that a list cannot make a viewer open many sockets.
 const MAX_HINTED_RELAYS = 8;
@@ -85,6 +91,48 @@ function closeHintedClient(hinted: RxNostr) {
     .subscribe(() => setTimeout(() => hinted.dispose()));
 }
 
+// The deletion requests that the authors send for the versions with these IDs, or for the lists at
+// these addresses, starting with none and growing as they arrive.
+function deletionRequests(
+  client: RxNostr,
+  { authors, ids, addresses }: { authors: string[]; ids: string[]; addresses: string[] },
+  timeout: number
+): Observable<Event[]> {
+  const filters: Filter[] = [
+    ...(ids.length > 0 ? [{ kinds: [Kind.EventDeletion], authors, '#e': ids }] : []),
+    ...(addresses.length > 0 ? [{ kinds: [Kind.EventDeletion], authors, '#a': addresses }] : [])
+  ];
+  if (filters.length === 0) return of([]);
+
+  return client.use(createRxOneshotReq({ filters })).pipe(
+    requestedEvents(filters),
+    takeTimeout(timeout),
+    scan((requests: Event[], { event }) => [...requests, event], []),
+    startWith([])
+  );
+}
+
+// Shows the lists at once, and then hides each list whose author asks to delete it. A relay that
+// missed the request, or ignores it, still serves the list, and NIP-09 asks clients to hide it.
+function hidingDeleted(client: RxNostr): OperatorFunction<LongFormContent[], LongFormContent[]> {
+  return switchMap((matomes) =>
+    matomes.length === 0
+      ? of(matomes)
+      : deletionRequests(
+          client,
+          {
+            authors: [...new Set(matomes.map(({ pubkey }) => pubkey))],
+            ids: matomes.flatMap(({ id }) => (id ? [id] : [])),
+            addresses: matomes.map((matome) => matome.address())
+          },
+          DEFAULT_DELETION_TIMEOUT
+        ).pipe(
+          map((requests) => matomes.filter((matome) => !matome.isDeletedBy(requests))),
+          distinctUntilChanged((a, b) => a.length === b.length)
+        )
+  );
+}
+
 export function relayConnectionsStore(client: RxNostr): Observable<ConnectionStatePacket[]> {
   const init: ConnectionStatePacket[] = client
     .getRelays()
@@ -112,11 +160,13 @@ export function recentGlobalMatomesStore({
 
   return client.use(createRxOneshotReq({ filters })).pipe(
     requestedEvents(filters),
+    filter(hasNaddr),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
     map(({ event }) => LongFormContent.fromEvent(event)),
-    toArray()
+    toArray(),
+    hidingDeleted(client)
   );
 }
 
@@ -139,11 +189,13 @@ export function recentUserMatomesStore({
 
   return client.use(createRxOneshotReq({ filters })).pipe(
     requestedEvents(filters),
+    filter(hasNaddr),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
     map(({ event }) => LongFormContent.fromEvent(event)),
-    toArray()
+    toArray(),
+    hidingDeleted(client)
   );
 }
 
@@ -176,6 +228,24 @@ export function matomeStore({
   );
 }
 
+// The deletion requests that the author of a list sends for the versions with these IDs, or for
+// the list at these addresses, starting with none and growing as they arrive.
+export function matomeDeletionRequestsStore({
+  client,
+  author,
+  ids = [],
+  addresses = [],
+  timeout = DEFAULT_DELETION_TIMEOUT
+}: {
+  client: RxNostr;
+  author: string;
+  ids?: string[];
+  addresses?: string[];
+  timeout?: number;
+}): Observable<Event[]> {
+  return deletionRequests(client, { authors: [author], ids, addresses }, timeout);
+}
+
 // TODO: Return Readable or Observable
 export function profileStore({
   client,
@@ -196,9 +266,13 @@ export function profileStore({
 
   return client.use(createRxOneshotReq({ filters })).pipe(
     requestedEvents(filters),
+    // A profile that cannot be read is left out, as if it had not been sent, so it does not hide an
+    // older one.
+    filter(({ event }) => Profile.fromEvent(event) !== undefined),
     latest(),
     takeTimeout(timeout),
-    map(({ event }) => Profile.fromEvent(event))
+    map(({ event }) => Profile.fromEvent(event)),
+    filter((profile): profile is Profile => profile !== undefined)
   );
 }
 
