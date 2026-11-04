@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { nip07 } from '$lib/stores/cookie';
-import { LOGIN_DEPENDENCY } from '$lib/stores/login';
+import { nip07 } from '#lib/stores/cookie.js';
+import { LOGIN_DEPENDENCY } from '#lib/stores/login.js';
 import { load } from './+page';
 
-vi.mock('$lib/stores/cookie', async () => {
+vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
   return { nip07: writable(false), pubkey: writable(''), seckey: writable('') };
 });

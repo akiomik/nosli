@@ -8,18 +8,18 @@ import {
   type Relay
 } from 'nostr-tools';
 
-import { isEventId } from '$lib/entities/EventId';
-import LongFormContent from '$lib/entities/LongFormContent';
-import { toSeconds } from '$lib/helper';
-import KeyManager from '$lib/services/KeyManager';
-import { relayHints } from '$lib/services/relayHints';
+import { isEventId } from '#lib/entities/EventId.js';
+import LongFormContent from '#lib/entities/LongFormContent.js';
+import { toSeconds } from '#lib/helper.js';
+import KeyManager from '#lib/services/KeyManager.js';
+import { relayHints } from '#lib/services/relayHints.js';
 import {
   PublicationFailedError,
   SignedByAnotherAccountError,
   emptyPublicationResult,
   publishToRelays,
   type PublicationResult
-} from '$lib/services/publishToRelays';
+} from '#lib/services/publishToRelays.js';
 
 const PUBLICATION_CONNECTION_GRACE_MS = 1000;
 

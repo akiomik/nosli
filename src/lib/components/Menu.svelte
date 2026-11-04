@@ -4,9 +4,9 @@
   import { _ } from 'svelte-i18n';
 
   import { goto } from '$app/navigation';
-  import KeyManager from '$lib/services/KeyManager';
-  import { loginMethod, type LoginMethod } from '$lib/stores/login';
-  import MenuProfile from '$lib/components/MenuProfile.svelte';
+  import KeyManager from '#lib/services/KeyManager.js';
+  import { loginMethod, type LoginMethod } from '#lib/stores/login.js';
+  import MenuProfile from '#lib/components/MenuProfile.svelte';
 
   export let open = false;
 

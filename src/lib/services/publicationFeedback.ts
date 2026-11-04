@@ -2,7 +2,7 @@ import {
   PublicationFailedError,
   SignedByAnotherAccountError,
   type PublicationResult
-} from '$lib/services/publishToRelays';
+} from '#lib/services/publishToRelays.js';
 
 export type PublicationAction = 'created' | 'updated' | 'deleted';
 

@@ -2,10 +2,10 @@
   import { nip19 } from 'nostr-tools';
   import { _ } from 'svelte-i18n';
 
-  import NoteListItem from '$lib/components/NoteListItem.svelte';
-  import NoteActions from '$lib/components/NoteEditor/NoteActions.svelte';
-  import { decodeNoteId } from '$lib/services/NostrClient';
-  import type { NoteEditorStore } from '$lib/stores/noteEditor';
+  import NoteListItem from '#lib/components/NoteListItem.svelte';
+  import NoteActions from '#lib/components/NoteEditor/NoteActions.svelte';
+  import { decodeNoteId } from '#lib/services/NostrClient.js';
+  import type { NoteEditorStore } from '#lib/stores/noteEditor.js';
 
   export let editor: NoteEditorStore;
 

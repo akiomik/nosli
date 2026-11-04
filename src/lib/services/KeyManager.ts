@@ -1,18 +1,14 @@
 import { get } from 'svelte/store';
 import type { Event } from 'nostr-tools';
 import { signEvent, getEventHash } from 'nostr-tools';
-import { nip07, pubkey, seckey } from '$lib/stores/cookie';
+import { nip07, pubkey, seckey } from '#lib/stores/cookie.js';
 
+// The part of a NIP-07 extension that this app uses. rx-nostr declares window.nostr for the whole
+// app, and a second declaration would have to match it exactly.
 type Nip07 = {
   getPublicKey: () => Promise<string>;
   signEvent: (event: Event) => Promise<Event>;
 };
-
-declare global {
-  interface Window {
-    nostr?: Nip07;
-  }
-}
 
 // NIP-07 extensions add window.nostr while the page loads, which can be after the app starts, so a
 // missing one is waited for until this long after the app started.

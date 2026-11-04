@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type LongFormContent from '$lib/entities/LongFormContent';
-  import MatomeListItem from '$lib/components/MatomeListItem.svelte';
-  import Alert from '$lib/components/Alert.svelte';
+  import type LongFormContent from '#lib/entities/LongFormContent.js';
+  import MatomeListItem from '#lib/components/MatomeListItem.svelte';
+  import Alert from '#lib/components/Alert.svelte';
 
   export let matomes: LongFormContent[];
 </script>

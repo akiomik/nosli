@@ -2,8 +2,8 @@
   import { FontAwesomeIcon } from '@fortawesome/svelte-fontawesome';
   import { faGithub } from '@fortawesome/free-brands-svg-icons';
   import { faBolt } from '@fortawesome/free-solid-svg-icons';
-  import ExternalLink from '$lib/components/ExternalLink.svelte';
-  import FooterItem from '$lib/components/FooterItem.svelte';
+  import ExternalLink from '#lib/components/ExternalLink.svelte';
+  import FooterItem from '#lib/components/FooterItem.svelte';
 </script>
 
 <div class="p-8 flex justify-center">

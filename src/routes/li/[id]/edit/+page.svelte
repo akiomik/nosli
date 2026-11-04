@@ -5,12 +5,12 @@
   import { _ } from 'svelte-i18n';
 
   import type { PageData } from './$types';
-  import { matomeStore } from '$lib/stores/nostr';
-  import KeyManager, { Nip07MissingError } from '$lib/services/KeyManager';
-  import { loginMethod } from '$lib/stores/login';
-  import MatomeForm from '$lib/components/MatomeForm.svelte';
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
-  import Alert from '$lib/components/Alert.svelte';
+  import { matomeStore } from '#lib/stores/nostr.js';
+  import KeyManager, { Nip07MissingError } from '#lib/services/KeyManager.js';
+  import { loginMethod } from '#lib/stores/login.js';
+  import MatomeForm from '#lib/components/MatomeForm.svelte';
+  import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
+  import Alert from '#lib/components/Alert.svelte';
 
   export let data: PageData & {
     params: nip19.AddressPointer;

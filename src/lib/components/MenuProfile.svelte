@@ -2,8 +2,8 @@
   import { getContext } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
 
-  import { profileStore } from '$lib/stores/nostr';
-  import ProfileLine from '$lib/components/ProfileLine.svelte';
+  import { profileStore } from '#lib/stores/nostr.js';
+  import ProfileLine from '#lib/components/ProfileLine.svelte';
 
   export let pubkey: string;
 

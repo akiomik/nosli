@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type Profile from '$lib/entities/Profile';
-  import ExternalLink from '$lib/components/ExternalLink.svelte';
+  import type Profile from '#lib/entities/Profile.js';
+  import ExternalLink from '#lib/components/ExternalLink.svelte';
 
   export let profile: Profile;
   export let local = false;

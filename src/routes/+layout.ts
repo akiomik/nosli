@@ -3,7 +3,7 @@ import 'linkify-plugin-hashtag';
 import 'linkify-plugin-mention';
 import { locale, waitLocale } from 'svelte-i18n';
 
-import '$lib/i18n';
+import '#lib/i18n/index.js';
 
 export const ssr = false;
 

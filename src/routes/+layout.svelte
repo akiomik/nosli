@@ -8,13 +8,13 @@
 
   import { beforeNavigate, afterNavigate, invalidate } from '$app/navigation';
   import '../app.css';
-  import * as settings from '$lib/services/settings';
-  import KeyManager from '$lib/services/KeyManager';
-  import Header from '$lib/components/Header.svelte';
-  import Footer from '$lib/components/Footer.svelte';
-  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
-  import { LOGIN_DEPENDENCY } from '$lib/stores/login';
-  import { toaster } from '$lib/stores/toaster';
+  import * as settings from '#lib/services/settings.js';
+  import KeyManager from '#lib/services/KeyManager.js';
+  import Header from '#lib/components/Header.svelte';
+  import Footer from '#lib/components/Footer.svelte';
+  import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
+  import { LOGIN_DEPENDENCY } from '#lib/stores/login.js';
+  import { toaster } from '#lib/stores/toaster.js';
 
   config.autoAddCss = false;
 

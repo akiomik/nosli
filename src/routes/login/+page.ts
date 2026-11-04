@@ -1,9 +1,9 @@
 import { redirect } from '@sveltejs/kit';
 import { nip19 } from 'nostr-tools';
-import { browser } from '$app/environment';
+import { browser } from '$app/env';
 import type { PageLoad } from './$types';
-import KeyManager from '$lib/services/KeyManager';
-import { LOGIN_DEPENDENCY } from '$lib/stores/login';
+import KeyManager from '#lib/services/KeyManager.js';
+import { LOGIN_DEPENDENCY } from '#lib/stores/login.js';
 
 // The profile page of the logged-in user, or undefined to show the login form instead. The NIP-07
 // extension can be missing or refuse, and the key from it or the cookie may not be hex.

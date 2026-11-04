@@ -3,13 +3,13 @@ import { catchError, defaultIfEmpty, map, of, take } from 'rxjs';
 import type { Subscription } from 'rxjs';
 import type { RxNostr } from 'rx-nostr';
 
-import { isEventId } from '$lib/entities/EventId';
-import type { LoadingNote } from '$lib/entities/LoadingNote';
-import type LongFormContent from '$lib/entities/LongFormContent';
-import { decodeNoteId } from '$lib/services/NostrClient';
-import { relayHints } from '$lib/services/relayHints';
-import KeyManager from '$lib/services/KeyManager';
-import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/nostr';
+import { isEventId } from '#lib/entities/EventId.js';
+import type { LoadingNote } from '#lib/entities/LoadingNote.js';
+import type LongFormContent from '#lib/entities/LongFormContent.js';
+import { decodeNoteId } from '#lib/services/NostrClient.js';
+import { relayHints } from '#lib/services/relayHints.js';
+import KeyManager from '#lib/services/KeyManager.js';
+import { notesStore, noteStore, recentUserReactedNotesStore } from '#lib/stores/nostr.js';
 
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
   const { matome, client } = params;

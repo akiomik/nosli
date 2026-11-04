@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import en from '$lib/locales/en.json';
-import ja from '$lib/locales/ja.json';
+import en from '#lib/locales/en.json';
+import ja from '#lib/locales/ja.json';
 import { publicationFailureKey, publicationSuccessMessage } from './publicationFeedback';
 import {
   PublicationFailedError,

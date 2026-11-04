@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPublicKey, type Event } from 'nostr-tools';
 
-import LongFormContent from '$lib/entities/LongFormContent';
+import LongFormContent from '#lib/entities/LongFormContent.js';
 import KeyManager from './KeyManager';
 import NostrClient from './NostrClient';
 
-vi.mock('$lib/stores/cookie', async () => {
+vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
   const { getPublicKey } = await import('nostr-tools');
   const secret = '1'.repeat(64);
