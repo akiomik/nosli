@@ -8,13 +8,9 @@ export function initialIdentifier(list: LongFormContent | undefined, now = new D
   return list ? list.identifier : `nosli-${now.getTime()}`;
 }
 
-// An update cannot change its identifier, so only that of a new list is checked.
-export function isValidIdentifier(
-  identifier: string | undefined,
-  list: LongFormContent | undefined
-): boolean {
+// Only the identifier of a new list is checked: an update cannot change its identifier, and that of
+// a list from another client can be outside these limits.
+export function isValidIdentifier(identifier: string, list: LongFormContent | undefined): boolean {
   if (list) return true;
-  return (
-    identifier !== undefined && identifier.length > 0 && identifier.length <= MAX_IDENTIFIER_LENGTH
-  );
+  return identifier.length > 0 && identifier.length <= MAX_IDENTIFIER_LENGTH;
 }

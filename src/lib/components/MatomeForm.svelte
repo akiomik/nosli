@@ -33,7 +33,7 @@
 
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
-  let identifier: string | undefined = initialIdentifier(matome);
+  let identifier = initialIdentifier(matome);
   let tabActive = 'edit';
   let inactive = false;
   let submission: 'saving' | 'deleting' | undefined = undefined;
@@ -86,12 +86,13 @@
   };
 
   const onCreate = async () => {
-    if (identifier === undefined || title === undefined || $editor.notes.length <= 0) {
-      throw new Error('Unexpected error: identifier or title is undefined');
+    if (title === undefined || $editor.notes.length <= 0) {
+      throw new Error('Unexpected error: title is undefined');
     }
 
     const lfc = LongFormContent.compose({
-      identifier,
+      // An update is always at the address of the list.
+      identifier: matome ? matome.identifier : identifier,
       title,
       summary: summary || '',
       notes: $editor.notes,
@@ -146,7 +147,7 @@
       bind:value={identifier}
       required
       class="input"
-      class:input-error={identifier !== undefined && !isIdentifierValid}
+      class:input-error={!isIdentifierValid}
       maxlength="40"
       disabled={typeof matome !== 'undefined' || submitting}
     />
