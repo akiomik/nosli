@@ -12,11 +12,13 @@ import {
   toArray
 } from 'rxjs';
 import type { Observable } from 'rxjs';
-import { uniq, verify, latest, createRxNostr, createRxOneshotReq } from 'rx-nostr';
+import { uniq, latest, createRxNostr, createRxOneshotReq } from 'rx-nostr';
 import type { RxNostr, RxReq, ConnectionStatePacket, EventPacket } from 'rx-nostr';
-import { Kind, getEventHash, validateEvent } from 'nostr-tools';
+import { Kind } from 'nostr-tools';
+import type { Filter } from 'nostr-tools';
 
 import {
+  requestedEvents,
   sortedBy,
   takeTimeout,
   latestEachNaddr,
@@ -83,23 +85,6 @@ function closeHintedClient(hinted: RxNostr) {
     .subscribe(() => setTimeout(() => hinted.dispose()));
 }
 
-// A relay can answer with any event under any ID. Only the requested notes whose ID is their hash
-// are kept, and they are verified before duplicates are dropped, so that a bad copy that arrives
-// first does not hide the real note.
-const requestedNotes = (ids: string[]) => {
-  const requested = new Set(ids);
-  return filter(
-    ({ event }: EventPacket) =>
-      // A relay can send anything as the event, and reading a field of null throws.
-      typeof event === 'object' &&
-      event !== null &&
-      event.kind === Kind.Text &&
-      requested.has(event.id) &&
-      validateEvent(event) &&
-      getEventHash(event) === event.id
-  );
-};
-
 export function relayConnectionsStore(client: RxNostr): Observable<ConnectionStatePacket[]> {
   const init: ConnectionStatePacket[] = client
     .getRelays()
@@ -117,19 +102,17 @@ export function recentGlobalMatomesStore({
   limit: number;
   timeout?: number;
 }): Observable<LongFormContent[]> {
-  const req = createRxOneshotReq({
-    filters: [
-      {
-        kinds: [Kind.Article],
-        '#t': [NostrClient.TAG],
-        limit
-      }
-    ]
-  });
+  const filters: Filter[] = [
+    {
+      kinds: [Kind.Article],
+      '#t': [NostrClient.TAG],
+      limit
+    }
+  ];
 
-  return client.use(req).pipe(
+  return client.use(createRxOneshotReq({ filters })).pipe(
+    requestedEvents(filters),
     uniq(),
-    verify(),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
@@ -147,19 +130,17 @@ export function recentUserMatomesStore({
   pubkey: string;
   timeout?: number;
 }): Observable<LongFormContent[]> {
-  const req = createRxOneshotReq({
-    filters: [
-      {
-        kinds: [Kind.Article],
-        authors: [pubkey],
-        '#t': [NostrClient.TAG]
-      }
-    ]
-  });
+  const filters: Filter[] = [
+    {
+      kinds: [Kind.Article],
+      authors: [pubkey],
+      '#t': [NostrClient.TAG]
+    }
+  ];
 
-  return client.use(req).pipe(
+  return client.use(createRxOneshotReq({ filters })).pipe(
+    requestedEvents(filters),
     uniq(),
-    verify(),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     latestEachNaddr(),
@@ -179,20 +160,18 @@ export function matomeStore({
   identifier: string;
   timeout?: number;
 }): Observable<LongFormContent> {
-  const req = createRxOneshotReq({
-    filters: [
-      {
-        kinds: [Kind.Article],
-        authors: [pubkey],
-        '#d': [identifier],
-        '#t': [NostrClient.TAG],
-        limit: 1
-      }
-    ]
-  });
+  const filters: Filter[] = [
+    {
+      kinds: [Kind.Article],
+      authors: [pubkey],
+      '#d': [identifier],
+      '#t': [NostrClient.TAG],
+      limit: 1
+    }
+  ];
 
-  return client.use(req).pipe(
-    verify(),
+  return client.use(createRxOneshotReq({ filters })).pipe(
+    requestedEvents(filters),
     latest(),
     takeTimeout(timeout),
     map(({ event }) => LongFormContent.fromEvent(event))
@@ -209,18 +188,16 @@ export function profileStore({
   pubkey: string;
   timeout?: number;
 }): Observable<Profile> {
-  const req = createRxOneshotReq({
-    filters: [
-      {
-        kinds: [Kind.Metadata],
-        authors: [pubkey],
-        limit: 1
-      }
-    ]
-  });
+  const filters: Filter[] = [
+    {
+      kinds: [Kind.Metadata],
+      authors: [pubkey],
+      limit: 1
+    }
+  ];
 
-  return client.use(req).pipe(
-    verify(),
+  return client.use(createRxOneshotReq({ filters })).pipe(
+    requestedEvents(filters),
     latest(),
     takeTimeout(timeout),
     map(({ event }) => Profile.fromEvent(event))
@@ -243,20 +220,16 @@ export function notesStore({
 
   const found: Record<string, LoadingNote> = {};
 
-  const createReq = () =>
-    createRxOneshotReq({
-      filters: [
-        {
-          kinds: [Kind.Text],
-          ids: ids
-        }
-      ]
-    });
+  const filters: Filter[] = [
+    {
+      kinds: [Kind.Text],
+      ids: ids
+    }
+  ];
 
   // A found note comes with the relay that returned it.
-  return useWithRelayHints(client, createReq, relays).pipe(
-    requestedNotes(ids),
-    verify(),
+  return useWithRelayHints(client, () => createRxOneshotReq({ filters }), relays).pipe(
+    requestedEvents(filters),
     uniq(),
     takeTimeout(timeout),
     map(({ event, from }) => {
@@ -280,20 +253,16 @@ export function noteStore({
   relays?: string[];
   timeout?: number;
 }): Observable<{ note: Note; relay: string }> {
-  const createReq = () =>
-    createRxOneshotReq({
-      filters: [
-        {
-          kinds: [Kind.Text],
-          ids: [id],
-          limit: 1
-        }
-      ]
-    });
+  const filters: Filter[] = [
+    {
+      kinds: [Kind.Text],
+      ids: [id],
+      limit: 1
+    }
+  ];
 
-  return useWithRelayHints(client, createReq, relays).pipe(
-    requestedNotes([id]),
-    verify(),
+  return useWithRelayHints(client, () => createRxOneshotReq({ filters }), relays).pipe(
+    requestedEvents(filters),
     uniq(),
     takeTimeout(timeout),
     map(({ event, from }) => ({ note: Note.fromEvent(event), relay: from }))
@@ -311,19 +280,17 @@ export function recentUserReactionsStore({
   limit: number;
   timeout?: number;
 }): Observable<Reaction[]> {
-  const req = createRxOneshotReq({
-    filters: [
-      {
-        kinds: [Kind.Reaction],
-        authors: [pubkey],
-        limit
-      }
-    ]
-  });
+  const filters: Filter[] = [
+    {
+      kinds: [Kind.Reaction],
+      authors: [pubkey],
+      limit
+    }
+  ];
 
-  return client.use(req).pipe(
+  return client.use(createRxOneshotReq({ filters })).pipe(
+    requestedEvents(filters),
     uniq(),
-    verify(),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
     take(limit),

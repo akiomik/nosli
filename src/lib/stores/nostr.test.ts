@@ -18,7 +18,16 @@ import {
   type Filter
 } from 'nostr-tools';
 
-import { notesStore, noteStore } from './nostr';
+import NostrClient from '$lib/services/NostrClient';
+import {
+  matomeStore,
+  notesStore,
+  noteStore,
+  profileStore,
+  recentGlobalMatomesStore,
+  recentUserMatomesStore,
+  recentUserReactionsStore
+} from './nostr';
 
 vi.mock('rx-nostr', async (importOriginal) => ({
   ...(await importOriginal<typeof import('rx-nostr')>()),
@@ -198,44 +207,6 @@ describe('notesStore', () => {
 
     expect(emitted.map(contents)).toEqual([['genuine']]);
   });
-
-  it('skips events that are not objects', async () => {
-    const genuine = note('genuine');
-    const client = fakeClient(['wss://shared.example.com'], []);
-    client.use.mockImplementation(() =>
-      from(
-        [null, 'not an event', genuine].map((event) => ({
-          from: 'wss://shared.example.com',
-          subId: 'sub',
-          event: event as Event
-        }))
-      )
-    );
-
-    const notes = await lastValueFrom(notesStore({ client, ids: [genuine.id] }));
-
-    expect(contents(notes)).toEqual(['genuine']);
-  });
-
-  it('does not let a bad copy that arrives first hide the real note', async () => {
-    const genuine = note('genuine');
-    const tampered = { ...genuine, content: 'tampered' };
-    const badSignature = { ...genuine, sig: '0'.repeat(128) };
-    const client = fakeClient(['wss://shared.example.com'], []);
-    client.use.mockImplementation(() =>
-      from(
-        [tampered, badSignature, genuine].map((event) => ({
-          from: 'wss://shared.example.com',
-          subId: 'sub',
-          event
-        }))
-      )
-    );
-
-    const notes = await lastValueFrom(notesStore({ client, ids: [genuine.id] }));
-
-    expect(contents(notes)).toEqual(['genuine']);
-  });
 });
 
 describe('noteStore', () => {
@@ -281,5 +252,220 @@ describe('noteStore', () => {
     await new Promise((resolve) => setTimeout(resolve));
 
     expect(hintedClient.dispose).toHaveBeenCalledOnce();
+  });
+});
+
+const author = generatePrivateKey();
+const attacker = generatePrivateKey();
+const nosliTag = ['t', NostrClient.TAG];
+
+// For each store: how to make an event it asks for, labelled `label`, how to make one it does not
+// ask for, and the labels of what it shows when a relay sends the given events.
+const stores: {
+  name: string;
+  event: (label: string, key?: string, createdAt?: number) => Event;
+  unrequested: () => Event;
+  read: (client: RxNostr, genuine: Event) => Promise<(string | undefined)[]>;
+}[] = [
+  {
+    name: 'recentGlobalMatomesStore',
+    event: (label, key = author, createdAt = 1) =>
+      finishEvent(
+        {
+          kind: Kind.Article,
+          content: '',
+          created_at: createdAt,
+          tags: [['d', label], ['title', label], nosliTag]
+        },
+        key
+      ),
+    // A list that another app published.
+    unrequested: () =>
+      finishEvent(
+        { kind: Kind.Article, content: '', created_at: 2, tags: [['title', 'unrequested']] },
+        author
+      ),
+    read: async (client) =>
+      (await lastValueFrom(recentGlobalMatomesStore({ client, limit: 10 }))).map((l) => l.title)
+  },
+  {
+    name: 'recentUserMatomesStore',
+    event: (label, key = author, createdAt = 1) =>
+      finishEvent(
+        {
+          kind: Kind.Article,
+          content: '',
+          created_at: createdAt,
+          tags: [['d', label], ['title', label], nosliTag]
+        },
+        key
+      ),
+    // Another author's list.
+    unrequested: () =>
+      finishEvent(
+        {
+          kind: Kind.Article,
+          content: '',
+          created_at: 2,
+          tags: [['d', 'unrequested'], ['title', 'unrequested'], nosliTag]
+        },
+        attacker
+      ),
+    read: async (client) =>
+      (await lastValueFrom(recentUserMatomesStore({ client, pubkey: getPublicKey(author) }))).map(
+        (l) => l.title
+      )
+  },
+  {
+    name: 'matomeStore',
+    event: (label, key = author, createdAt = 1) =>
+      finishEvent(
+        {
+          kind: Kind.Article,
+          content: '',
+          created_at: createdAt,
+          tags: [['d', 'my-list'], ['title', label], nosliTag]
+        },
+        key
+      ),
+    // A newer list at the same identifier, by another author.
+    unrequested: () =>
+      finishEvent(
+        {
+          kind: Kind.Article,
+          content: '',
+          created_at: 2,
+          tags: [['d', 'my-list'], ['title', 'unrequested'], nosliTag]
+        },
+        attacker
+      ),
+    read: async (client) => {
+      const list = matomeStore({ client, pubkey: getPublicKey(author), identifier: 'my-list' });
+      return [(await lastValueFrom(list)).title];
+    }
+  },
+  {
+    name: 'profileStore',
+    event: (label, key = author, createdAt = 1) =>
+      finishEvent(
+        {
+          kind: Kind.Metadata,
+          content: JSON.stringify({ name: label }),
+          created_at: createdAt,
+          tags: []
+        },
+        key
+      ),
+    // A newer profile of another author.
+    unrequested: () =>
+      finishEvent(
+        {
+          kind: Kind.Metadata,
+          content: JSON.stringify({ name: 'unrequested' }),
+          created_at: 2,
+          tags: []
+        },
+        attacker
+      ),
+    read: async (client) => [
+      (await lastValueFrom(profileStore({ client, pubkey: getPublicKey(author) }))).name
+    ]
+  },
+  {
+    name: 'notesStore',
+    event: (label, key = author, createdAt = 1) =>
+      finishEvent({ kind: Kind.Text, content: label, created_at: createdAt, tags: [] }, key),
+    unrequested: () =>
+      finishEvent({ kind: Kind.Text, content: 'unrequested', created_at: 2, tags: [] }, author),
+    read: async (client, genuine) =>
+      contents(await lastValueFrom(notesStore({ client, ids: [genuine.id] })))
+  },
+  {
+    name: 'noteStore',
+    event: (label, key = author, createdAt = 1) =>
+      finishEvent({ kind: Kind.Text, content: label, created_at: createdAt, tags: [] }, key),
+    unrequested: () =>
+      finishEvent({ kind: Kind.Text, content: 'unrequested', created_at: 2, tags: [] }, author),
+    read: async (client, genuine) =>
+      (await lastValueFrom(noteStore({ client, id: genuine.id }).pipe(toArray()))).map(
+        ({ note }) => note.content
+      )
+  },
+  {
+    name: 'recentUserReactionsStore',
+    event: (label, key = author, createdAt = 1) =>
+      finishEvent(
+        {
+          kind: Kind.Reaction,
+          content: label,
+          created_at: createdAt,
+          tags: [['e', 'e'.repeat(64)]]
+        },
+        key
+      ),
+    // Another author's reaction.
+    unrequested: () =>
+      finishEvent(
+        {
+          kind: Kind.Reaction,
+          content: 'unrequested',
+          created_at: 2,
+          tags: [['e', 'e'.repeat(64)]]
+        },
+        attacker
+      ),
+    read: async (client) =>
+      (
+        await lastValueFrom(
+          recentUserReactionsStore({ client, pubkey: getPublicKey(author), limit: 10 })
+        )
+      ).map((r) => r.content)
+  }
+];
+
+describe.each(stores)('$name', ({ event, unrequested, read }) => {
+  // A relay sends `before`, and then the genuine event.
+  const show = (genuine: Event, before: unknown[]) => {
+    const client = fakeClient(['wss://shared.example.com'], []);
+    client.use.mockImplementation(() =>
+      from(
+        [...before, genuine].map((event) => ({
+          from: 'wss://shared.example.com',
+          subId: 'sub',
+          event: event as Event
+        }))
+      )
+    );
+    return read(client, genuine);
+  };
+
+  it('skips events that are not objects', async () => {
+    const genuine = event('genuine');
+
+    expect(await show(genuine, [null, 'not an event', 1])).toEqual(['genuine']);
+  });
+
+  it('skips an event that it did not ask for', async () => {
+    const genuine = event('genuine');
+
+    expect(await show(genuine, [unrequested()])).toEqual(['genuine']);
+  });
+
+  it('skips an event that claims the ID of the real one', async () => {
+    const genuine = event('genuine');
+    // A newer event, signed by its own author, under the ID of the genuine one.
+    const forged = { ...event('forged', attacker, 2), id: genuine.id };
+
+    expect(await show(genuine, [forged])).toEqual(['genuine']);
+  });
+
+  it('does not let a bad copy that arrives first hide the real event', async () => {
+    const genuine = event('genuine');
+    // The genuine event with another label, under its ID and signature.
+    const { content, tags } = event('tampered');
+    const tampered = { ...genuine, content, tags };
+    const badSignature = { ...genuine, sig: '0'.repeat(128) };
+
+    expect(await show(genuine, [tampered, badSignature])).toEqual(['genuine']);
   });
 });
