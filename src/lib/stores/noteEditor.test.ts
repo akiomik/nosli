@@ -224,6 +224,17 @@ describe('createNoteEditorStore notes', () => {
     expect(get(editor).notes).toEqual(ids.map((id) => ({ id, note: undefined, relays: [] })));
   });
 
+  it('can still be edited when loading the notes of a list fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const ids = ['e'.repeat(64), 'f'.repeat(64)];
+    const client = { use: () => throwError(() => new Error('relay error')) } as unknown as RxNostr;
+
+    const editor = createNoteEditorStore({ matome: listOf(ids), client });
+
+    await vi.waitFor(() => expect(get(editor).editorInitialized).toBe(true));
+    expect(get(editor).notes).toEqual(ids.map((id) => ({ id, note: undefined, relays: [] })));
+  });
+
   it('lists a note that a list holds twice once', async () => {
     const first = note('first');
     const second = note('second');

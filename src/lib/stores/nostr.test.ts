@@ -199,6 +199,24 @@ describe('notesStore', () => {
     expect(emitted.map(contents)).toEqual([['genuine']]);
   });
 
+  it('skips events that are not objects', async () => {
+    const genuine = note('genuine');
+    const client = fakeClient(['wss://shared.example.com'], []);
+    client.use.mockImplementation(() =>
+      from(
+        [null, 'not an event', genuine].map((event) => ({
+          from: 'wss://shared.example.com',
+          subId: 'sub',
+          event: event as Event
+        }))
+      )
+    );
+
+    const notes = await lastValueFrom(notesStore({ client, ids: [genuine.id] }));
+
+    expect(contents(notes)).toEqual(['genuine']);
+  });
+
   it('does not let a bad copy that arrives first hide the real note', async () => {
     const genuine = note('genuine');
     const tampered = { ...genuine, content: 'tampered' };

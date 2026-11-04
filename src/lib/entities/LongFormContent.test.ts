@@ -127,6 +127,15 @@ describe('LongFormContent.compose', () => {
     expect(lfc.toEvent().tags).toContainEqual(['e', newNote, 'wss://a.example.com']);
     expect(lfc.content).toBe(`nostr:${nip19.neventEncode({ id: newNote, relays })}`);
   });
+
+  it('keeps the first 3 hints of a note in the content, so that one with many hints encodes', () => {
+    const relays = Array.from({ length: 20 }, (_, i) => `wss://${i}.${'r'.repeat(240)}.com`);
+    const lfc = LongFormContent.compose({ ...form, notes: [{ id: newNote, relays }] });
+
+    expect(lfc.content).toBe(
+      `nostr:${nip19.neventEncode({ id: newNote, relays: relays.slice(0, 3) })}`
+    );
+  });
 });
 
 describe('LongFormContent.noteReferences', () => {

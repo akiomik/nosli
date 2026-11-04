@@ -49,6 +49,11 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
           })
         );
       },
+      // The notes that have not loaded stay as not found, so the editor can still be used.
+      error: (error) => {
+        console.error(error);
+        editorInitialized.set(true);
+      },
       complete: () => editorInitialized.set(true)
     });
   } else {

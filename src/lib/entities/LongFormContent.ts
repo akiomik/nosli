@@ -9,6 +9,10 @@ export type NoteReference = { id: string; relays?: string[] };
 
 const nosliTag = new Tag('t', 'nosli');
 
+// The relay hints that the nevent of each note holds. A nevent of nostr-tools is at most 5000
+// characters, and the first hints are those that returned the note.
+const MAX_NOTE_RELAY_HINTS = 3;
+
 const isNosliTag = ([typ, value]: string[]): boolean =>
   typ === nosliTag.typ && value === nosliTag.value;
 
@@ -65,7 +69,7 @@ export default class LongFormContent {
 
   // Builds a new list, or an update of `previous` that keeps its image, published_at, and other
   // tags. The content is always rebuilt from the notes. An e tag holds one relay hint, and the
-  // nevent in the content holds them all.
+  // nevent in the content holds up to MAX_NOTE_RELAY_HINTS.
   static compose(params: {
     identifier: string;
     title: string;
@@ -78,7 +82,12 @@ export default class LongFormContent {
       undefined,
       identifier,
       '',
-      notes.map(({ id, relays }) => `nostr:${nip19.neventEncode({ id, relays })}`).join('\n'),
+      notes
+        .map(
+          ({ id, relays }) =>
+            `nostr:${nip19.neventEncode({ id, relays: relays?.slice(0, MAX_NOTE_RELAY_HINTS) })}`
+        )
+        .join('\n'),
       new Date(),
       title,
       summary,

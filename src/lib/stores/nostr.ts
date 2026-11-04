@@ -90,6 +90,9 @@ const requestedNotes = (ids: string[]) => {
   const requested = new Set(ids);
   return filter(
     ({ event }: EventPacket) =>
+      // A relay can send null or a string as the event, which validateEvent() throws on.
+      typeof event === 'object' &&
+      event !== null &&
       event.kind === Kind.Text &&
       requested.has(event.id) &&
       validateEvent(event) &&
