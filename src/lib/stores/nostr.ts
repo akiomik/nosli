@@ -1,4 +1,4 @@
-import { map, take, toArray, flatMap, startWith } from 'rxjs';
+import { map, take, toArray, flatMap, startWith, defaultIfEmpty, of } from 'rxjs';
 import type { Observable } from 'rxjs';
 import { uniq, verify, latest, createRxOneshotReq } from 'rx-nostr';
 import type { RxNostr, ConnectionStatePacket } from 'rx-nostr';
@@ -11,6 +11,7 @@ import {
   latestConnectionState
 } from '$lib/stores/operators';
 import NostrClient from '$lib/services/NostrClient';
+import { isEventId } from '$lib/entities/EventId';
 import LongFormContent from '$lib/entities/LongFormContent';
 import Profile from '$lib/entities/Profile';
 import Note from '$lib/entities/Note';
@@ -156,6 +157,9 @@ export function notesStore({
   ids: string[];
   timeout?: number;
 }): Observable<LoadingNote[]> {
+  // A filter with no IDs would ask relays for every note.
+  if (ids.length === 0) return of([]);
+
   const noteById: Record<string, Note> = {};
 
   const req = createRxOneshotReq({
@@ -175,7 +179,9 @@ export function notesStore({
       const note = Note.fromEvent(event);
       noteById[event.id] = note;
       return ids.map((id) => ({ id, note: noteById[id] }));
-    })
+    }),
+    // Lists every note as not found when no relay returns any of them.
+    defaultIfEmpty(ids.map((id) => ({ id, note: undefined })))
   );
 }
 
@@ -251,7 +257,9 @@ export function recentUserReactedNotesStore({
 }): Observable<LoadingNote[]> {
   return recentUserReactionsStore({ client, pubkey, limit, timeout }).pipe(
     flatMap((reactions) => {
-      const ids = reactions.map((reaction) => reaction.eventId());
+      // Lists each note once, however many reactions point to it, and skips reactions that do not
+      // point to an event ID.
+      const ids = [...new Set(reactions.flatMap((r) => r.eventId() ?? []))].filter(isEventId);
       return notesStore({ client, ids, timeout });
     })
   );

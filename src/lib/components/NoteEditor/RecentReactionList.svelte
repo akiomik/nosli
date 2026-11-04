@@ -21,7 +21,8 @@
   };
 
   const isUsed = (noteId: string | undefined): boolean =>
-    !!$editor.notes.find((note) => note.id === noteId);
+    !!$editor.notes.find((note) => note.id === noteId) ||
+    (noteId !== undefined && $editor.adding.includes(noteId));
 </script>
 
 <div class="flex flex-col space-y-8">

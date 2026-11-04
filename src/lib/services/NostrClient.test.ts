@@ -1,8 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getPublicKey, Kind, SimplePool, type Event, type Pub, type Relay } from 'nostr-tools';
+import {
+  getPublicKey,
+  Kind,
+  nip19,
+  SimplePool,
+  type Event,
+  type Pub,
+  type Relay
+} from 'nostr-tools';
 
 import LongFormContent from '$lib/entities/LongFormContent';
-import NostrClient from './NostrClient';
+import NostrClient, { nip19ToHex } from './NostrClient';
 import KeyManager from './KeyManager';
 import { PublicationFailedError } from './publishToRelays';
 
@@ -91,6 +99,31 @@ const publishedArticle = listVersion('f'.repeat(64));
 
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe('nip19ToHex', () => {
+  const id = '07'.repeat(32);
+
+  it('returns the event ID of a note or an nevent', () => {
+    expect(nip19ToHex(nip19.noteEncode(id))).toBe(id);
+    expect(nip19ToHex(nip19.neventEncode({ id, relays: ['wss://relay.example.com'] }))).toBe(id);
+  });
+
+  it('returns the event ID in lowercase hex for an identifier in uppercase', () => {
+    expect(nip19ToHex(nip19.noteEncode(id).toUpperCase())).toBe(id);
+    expect(nip19ToHex(nip19.neventEncode({ id }).toUpperCase())).toBe(id);
+  });
+
+  it('rejects a note or an nevent whose event ID is not 32 bytes', () => {
+    expect(() => nip19ToHex(nip19.noteEncode(id.slice(2)))).toThrow();
+    expect(() => nip19ToHex(nip19.noteEncode(id + '07'))).toThrow();
+    expect(() => nip19ToHex(nip19.neventEncode({ id: id.slice(2) }))).toThrow();
+  });
+
+  it('rejects an identifier that is not a note or an nevent', () => {
+    expect(() => nip19ToHex(nip19.npubEncode(id))).toThrow();
+    expect(() => nip19ToHex('note1invalid')).toThrow();
+  });
 });
 
 describe('NostrClient.deleteArticle', () => {

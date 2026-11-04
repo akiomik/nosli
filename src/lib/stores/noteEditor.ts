@@ -1,6 +1,9 @@
-import { derived, writable } from 'svelte/store';
+import { derived, get, writable } from 'svelte/store';
+import { catchError, defaultIfEmpty, of, take } from 'rxjs';
+import type { Subscription } from 'rxjs';
 import type { RxNostr } from 'rx-nostr';
 
+import { isEventId } from '$lib/entities/EventId';
 import type { LoadingNote } from '$lib/entities/LoadingNote';
 import type LongFormContent from '$lib/entities/LongFormContent';
 import { nip19ToHex } from '$lib/services/NostrClient';
@@ -9,18 +12,31 @@ import { notesStore, noteStore, recentUserReactedNotesStore } from '$lib/stores/
 
 export function createNoteEditorStore(params: { matome?: LongFormContent; client: RxNostr }) {
   const { matome, client } = params;
-  const initNoteIds = matome?.eventIds() ?? [];
+  // The editor lists each note once, so a list that holds a note twice keeps the first.
+  const initNoteIds = [...new Set(matome?.eventIds() ?? [])];
   const editorInitialized = writable(false);
   const searchInitialized = writable(false);
   const searchFailed = writable(false);
   const searchRetrying = writable(false);
-  const notes = writable<LoadingNote[]>([]);
+  // Notes that no relay returns stay in the list, shown as not found, so that saving keeps them.
+  const notes = writable<LoadingNote[]>(initNoteIds.map((id) => ({ id, note: undefined })));
+  // IDs of notes being added, which join `notes` once the note arrives or the request ends.
+  const adding = writable<string[]>([]);
   const searchedNotes = writable<LoadingNote[]>([]);
+
+  const isListed = (id: string) =>
+    get(notes).some((note) => note.id === id) || get(adding).includes(id);
 
   // Initialize Editor tab
   if (initNoteIds.length > 0) {
     notesStore({ client, ids: initNoteIds }).subscribe({
-      next: notes.set,
+      // Fills in the loaded notes without undoing changes made in the recent reactions tab.
+      next: (loaded) => {
+        const loadedById = new Map(loaded.map(({ id, note }) => [id, note]));
+        notes.update((prev) =>
+          prev.map(({ id, note }) => ({ id, note: note ?? loadedById.get(id) }))
+        );
+      },
       complete: () => editorInitialized.set(true)
     });
   } else {
@@ -70,23 +86,42 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
     loadSearch();
   };
 
+  // Accepts a hex event ID, or a note or nevent ID in either case.
+  const toHex = (noteId: string) => (isEventId(noteId) ? noteId : nip19ToHex(noteId));
+
+  // Requests for the notes being added, so that removing a note cancels its request.
+  const requests = new Map<string, Subscription>();
+  const stopAdding = (id: string) => {
+    requests.get(id)?.unsubscribe();
+    requests.delete(id);
+    adding.update((ids) => ids.filter((x) => x !== id));
+  };
+
   const appendNote = (noteId: string) => {
-    const hex =
-      noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
-    noteStore({ client, id: hex }).subscribe((note) => {
-      notes.update((prev) => [
-        ...prev,
-        {
-          id: hex,
-          note
-        }
-      ]);
-    });
+    const hex = toHex(noteId);
+    if (isListed(hex)) return;
+
+    adding.update((ids) => [...ids, hex]);
+    // The note joins the list as soon as it arrives, or as not found once no relay returns it.
+    const request = noteStore({ client, id: hex })
+      .pipe(
+        take(1),
+        defaultIfEmpty(undefined),
+        catchError((error) => {
+          console.error(error);
+          return of(undefined);
+        })
+      )
+      .subscribe((note) => {
+        stopAdding(hex);
+        notes.update((prev) => [...prev, { id: hex, note }]);
+      });
+    if (!request.closed) requests.set(hex, request);
   };
 
   const removeNote = (noteId: string) => {
-    const hex =
-      noteId.startsWith('note1') || noteId.startsWith('nevent1') ? nip19ToHex(noteId) : noteId;
+    const hex = toHex(noteId);
+    stopAdding(hex);
     notes.update((prev) => prev.filter((note) => note.id !== hex));
   };
 
@@ -143,13 +178,22 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
   };
 
   const { subscribe } = derived(
-    [editorInitialized, searchInitialized, searchFailed, searchRetrying, notes, searchedNotes],
+    [
+      editorInitialized,
+      searchInitialized,
+      searchFailed,
+      searchRetrying,
+      notes,
+      adding,
+      searchedNotes
+    ],
     ([
       editorInitialized,
       searchInitialized,
       searchFailed,
       searchRetrying,
       notes,
+      adding,
       searchedNotes
     ]) => ({
       editorInitialized,
@@ -157,6 +201,7 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
       searchFailed,
       searchRetrying,
       notes,
+      adding,
       searchedNotes
     })
   );

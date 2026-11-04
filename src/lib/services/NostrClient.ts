@@ -8,6 +8,7 @@ import {
   type Relay
 } from 'nostr-tools';
 
+import { isEventId } from '$lib/entities/EventId';
 import LongFormContent from '$lib/entities/LongFormContent';
 import KeyManager from '$lib/services/KeyManager';
 import {
@@ -21,11 +22,16 @@ const PUBLICATION_CONNECTION_GRACE_MS = 1000;
 
 export const nip19ToHex = (b32: string): string => {
   const data = nip19.decode(b32);
-  if (data.type === 'note' && typeof data.data === 'string') return data.data;
+  let id: string | undefined;
+  if (data.type === 'note' && typeof data.data === 'string') id = data.data;
   if (data.type === 'nevent' && typeof data.data !== 'string' && 'id' in data.data) {
-    return data.data.id;
+    id = data.data.id;
   }
-  throw new Error('Expected a note or nevent identifier.');
+  // A note decodes to however many bytes it holds, so check that it is a 32-byte event ID.
+  if (id === undefined || !isEventId(id)) {
+    throw new Error('Expected a note or nevent identifier.');
+  }
+  return id;
 };
 
 export default class NostrClient {

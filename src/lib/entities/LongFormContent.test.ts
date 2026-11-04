@@ -59,6 +59,23 @@ describe('LongFormContent.fromEvent', () => {
   });
 });
 
+describe('LongFormContent.eventIds', () => {
+  it('gives the event IDs of the e tags in order, skipping values that are not event IDs', () => {
+    const list = LongFormContent.fromEvent({
+      ...otherClientEvent,
+      tags: [
+        ['d', 'my-list'],
+        ['e', newNote],
+        ['e', 'abc'],
+        ['e', oldNote.toUpperCase()],
+        ['e', oldNote]
+      ]
+    });
+
+    expect(list.eventIds()).toEqual([newNote, oldNote]);
+  });
+});
+
 describe('LongFormContent.compose', () => {
   const form = { identifier: 'my-list', title: 'New title', summary: 'New summary' };
 
