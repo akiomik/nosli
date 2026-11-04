@@ -19,7 +19,7 @@
     </p>
     <div class="flex flex-row items-center mt-4 space-x-2">
       <ProfileLine profile={$profile} />
-      <p class="text-surface-900/50 whitespace-nowrap overflow-hidden text-ellipsis">
+      <p class="text-surface-900/50 whitespace-nowrap shrink-0">
         {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
           matome.createdAt
         )}
