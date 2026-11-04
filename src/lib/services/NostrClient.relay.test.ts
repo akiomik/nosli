@@ -1,75 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getPublicKey, type Event } from 'nostr-tools';
 
 import LongFormContent from '#lib/entities/LongFormContent.js';
 import KeyManager from './KeyManager';
 import NostrClient from './NostrClient';
+import { FakeWebSocket, setOpenDelay, setRelayBehavior } from '#lib/testing/FakeWebSocket.js';
+import { publicKeyOf, type Event } from '#lib/testing/nostr.js';
 
 vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
-  const { getPublicKey } = await import('nostr-tools');
+  const { publicKeyOf } = await import('#lib/testing/nostr.js');
   const secret = '1'.repeat(64);
   return {
     nip07: writable(false),
-    pubkey: writable(getPublicKey(secret)),
+    pubkey: writable(publicKeyOf(secret)),
     seckey: writable(secret)
   };
 });
-
-type Behavior = 'ack' | 'refuse' | 'hang';
-const behavior = new Map<string, Behavior>();
-const openDelay = new Map<string, number>();
-
-class FakeWebSocket {
-  static instances: FakeWebSocket[] = [];
-  readyState = 0;
-  onopen?: () => void;
-  onerror?: () => void;
-  onclose?: () => void;
-  onmessage?: (event: { data: string }) => void;
-  sent: string[] = [];
-
-  constructor(public url: string) {
-    FakeWebSocket.instances.push(this);
-    const mode = behavior.get(url) ?? 'ack';
-    if (mode === 'refuse') setTimeout(() => this.fail(), 1);
-    if (mode === 'ack') setTimeout(() => this.open(), openDelay.get(url) ?? 1);
-  }
-
-  open() {
-    if (this.readyState !== 0) return;
-    this.readyState = 1;
-    this.onopen?.();
-  }
-
-  fail() {
-    this.readyState = 3;
-    this.onerror?.();
-    this.onclose?.();
-  }
-
-  send(message: string) {
-    if (this.readyState !== 1) throw new Error('WebSocket is not open');
-    this.sent.push(message);
-    const [type, event] = JSON.parse(message);
-    if (type === 'EVENT' && (behavior.get(this.url) ?? 'ack') === 'ack') {
-      setTimeout(() => {
-        this.onmessage?.({ data: JSON.stringify(['OK', event.id, true, '']) });
-      }, 1);
-    }
-  }
-
-  close() {
-    this.readyState = 3;
-    this.onclose?.();
-  }
-}
 
 function article(id?: string) {
   return new LongFormContent(
     id,
     'test',
-    getPublicKey('1'.repeat(64)),
+    publicKeyOf('1'.repeat(64)),
     'content',
     new Date(),
     'title',
@@ -81,21 +33,16 @@ function article(id?: string) {
 }
 
 beforeEach(() => {
-  behavior.clear();
-  openDelay.clear();
-  FakeWebSocket.instances = [];
-  vi.stubGlobal('WebSocket', FakeWebSocket);
   vi.spyOn(console, 'log').mockImplementation(() => {});
 });
 
 afterEach(() => {
-  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
 describe('NostrClient with real SimplePool and fake WebSocket', () => {
   it('reports the configured URL of a relay that never connected', async () => {
-    behavior.set('wss://down.example/', 'refuse');
+    setRelayBehavior('wss://down.example/', 'refuse');
     const client = new NostrClient(['wss://ok.example', 'wss://down.example'], 30);
     try {
       const result = await client.postLongFormContent(article());
@@ -112,7 +59,7 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
   });
 
   it('starts signing before a silent secondary relay times out', async () => {
-    behavior.set('wss://silent.example/', 'hang');
+    setRelayBehavior('wss://silent.example/', 'hang');
     const signEvent = vi.spyOn(KeyManager, 'signEvent');
     const client = new NostrClient(['wss://ok.example', 'wss://silent.example'], 2000);
     try {
@@ -133,7 +80,7 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
     const client = new NostrClient(['wss://one.example', 'wss://two.example']);
     try {
       await client.connect();
-      openDelay.set('wss://two.example/', 40);
+      setOpenDelay('wss://two.example/', 40);
       FakeWebSocket.instances[1].close();
 
       const result = await client.postLongFormContent(article());
@@ -162,7 +109,7 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
       await client.connect();
       const publication = client.postLongFormContent(article());
       await vi.waitFor(() => expect(signEvent).toHaveBeenCalledOnce());
-      openDelay.set('wss://two.example/', 40);
+      setOpenDelay('wss://two.example/', 40);
       FakeWebSocket.instances[1].close();
       resumeSigning();
 
@@ -181,9 +128,9 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
   });
 
   it('includes slower initial connections opened after the first relay', async () => {
-    openDelay.set('wss://one.example/', 5);
-    openDelay.set('wss://two.example/', 40);
-    openDelay.set('wss://three.example/', 80);
+    setOpenDelay('wss://one.example/', 5);
+    setOpenDelay('wss://two.example/', 40);
+    setOpenDelay('wss://three.example/', 80);
     const client = new NostrClient([
       'wss://one.example',
       'wss://two.example',
@@ -211,8 +158,8 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
     const client = new NostrClient(['wss://one.example', 'wss://two.example'], 2500);
     try {
       await client.connect();
-      openDelay.set('wss://one.example/', 20);
-      behavior.set('wss://two.example/', 'hang');
+      setOpenDelay('wss://one.example/', 20);
+      setRelayBehavior('wss://two.example/', 'hang');
       FakeWebSocket.instances[0].close();
       FakeWebSocket.instances[1].close();
 
@@ -227,7 +174,7 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
   });
 
   it('shares one wait when two callers request a connecting relay', async () => {
-    behavior.set('wss://pending.example/', 'hang');
+    setRelayBehavior('wss://pending.example/', 'hang');
     const client = new NostrClient(['wss://pending.example'], 20);
     try {
       await client.connect();
@@ -254,7 +201,7 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
       old.close();
       await reconnect;
       expect(FakeWebSocket.instances).toHaveLength(2);
-      old.onclose?.();
+      old.onclose?.({ code: 1000, reason: '' });
 
       await expect(client.deleteArticle(article('e'.repeat(64)))).resolves.toMatchObject({
         acceptedRelays: ['wss://relay.example'],
@@ -264,6 +211,44 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
         true
       );
     } finally {
+      await client.close();
+    }
+  });
+
+  it('keeps the connection open after publishing, for the next publication', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const client = new NostrClient(['wss://relay.example'], 1000);
+    try {
+      const publication = client.postLongFormContent(article());
+      await vi.advanceTimersByTimeAsync(100);
+      await expect(publication).resolves.toBeDefined();
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      expect(FakeWebSocket.instances).toHaveLength(1);
+      expect(FakeWebSocket.instances[0].readyState).toBe(FakeWebSocket.OPEN);
+    } finally {
+      vi.useRealTimers();
+      await client.close();
+    }
+  });
+
+  it('waits 10 seconds for a relay to answer before taking it as one that did not', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    setRelayBehavior('wss://silent.example', 'silent');
+    const client = new NostrClient(['wss://silent.example'], 1000);
+    try {
+      const publication = client.postLongFormContent(article());
+      const settled = vi.fn();
+      publication.then(settled, settled);
+      await vi.advanceTimersByTimeAsync(9_900);
+      expect(settled).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(200);
+
+      await expect(publication).rejects.toMatchObject({
+        result: { acceptedRelays: [], rejectedRelays: [], timedOutRelays: ['wss://silent.example'] }
+      });
+    } finally {
+      vi.useRealTimers();
       await client.close();
     }
   });

@@ -1,6 +1,10 @@
 import { nip19, nip05 } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 
+// nostr-tools keeps the fetch that it finds when it loads, so the one of the moment is looked up at
+// each request instead, as a test can replace it.
+nip05.useFetchImplementation((...args: Parameters<typeof fetch>) => fetch(...args));
+
 // NIP-01 has the content as a JSON object, but a relay can send anything.
 const parseContent = (content: string): Record<string, unknown> | undefined => {
   try {

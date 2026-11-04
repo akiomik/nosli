@@ -2,12 +2,13 @@
   import { onDestroy, onMount } from 'svelte';
   import { browser } from '$app/env';
   import { goto } from '$app/navigation';
-  import { nip19, getPublicKey } from 'nostr-tools';
+  import { nip19 } from 'nostr-tools';
   import { _ } from 'svelte-i18n';
 
   import { focusWhen } from '#lib/actions/focusWhen.js';
   import { pubkey, seckey, nip07 } from '#lib/stores/cookie.js';
   import KeyManager, { Nip07CanceledError } from '#lib/services/KeyManager.js';
+  import { readLoginKey } from '#lib/services/loginKey.js';
   import Alert from '#lib/components/Alert.svelte';
   import ExternalLink from '#lib/components/ExternalLink.svelte';
   import Nip07Waiting from '#lib/components/Nip07Waiting.svelte';
@@ -20,24 +21,7 @@
     isNip07Available = await KeyManager.hasNip07();
   });
 
-  // The pubkey of a key, with the seckey of an nsec, or undefined for a key that cannot be used.
-  // nip19.decode takes an npub or nsec of any length. A pubkey is 32 bytes, and a secret key is a
-  // number from 1 to one less than the curve order, which getPublicKey checks.
-  const readKey = (key: string | undefined): { pubkey: string; seckey?: string } | undefined => {
-    if (key === undefined) return undefined;
-
-    try {
-      const { type, data } = nip19.decode(key);
-      if (typeof data !== 'string') return undefined;
-      if (type === 'nsec') return { pubkey: getPublicKey(data), seckey: data };
-      if (type === 'npub' && /^[0-9a-f]{64}$/.test(data)) return { pubkey: data };
-    } catch {
-      // Not NIP-19, or an nsec that is not a secret key.
-    }
-    return undefined;
-  };
-
-  $: login = readKey(key);
+  $: login = readLoginKey(key);
 
   // Set while the extension is asked for the key, to stop waiting for it.
   let keyLookup: AbortController | undefined = undefined;
