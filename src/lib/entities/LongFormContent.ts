@@ -2,6 +2,13 @@ import { nip19, Kind } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 import Tag from '$lib/entities/Tag';
 
+const nosliTag = new Tag('t', 'nosli');
+
+// Nosli reads these tags into fields or rebuilds them from the editor.
+const isOwnTag = ([typ, value]: string[]): boolean =>
+  ['d', 'title', 'summary', 'image', 'published_at', 'e'].includes(typ) ||
+  (typ === nosliTag.typ && value === nosliTag.value);
+
 export default class LongFormContent {
   constructor(
     public id: string | undefined,
@@ -13,25 +20,53 @@ export default class LongFormContent {
     public summary: string,
     public image: string | undefined,
     public publishedAt: Date | undefined,
-    public tags: Tag[]
+    public tags: Tag[],
+    // Tags from other clients, written back unchanged so that an update does not drop them.
+    public otherTags: string[][] = []
   ) {}
 
   static fromEvent(event: Event): LongFormContent {
-    const publishedAt = event.tags.find(([typ]) => typ === 'published_at')?.[1];
+    const value = (typ: string) => event.tags.find((tag) => tag[0] === typ)?.[1];
+    const publishedAt = value('published_at');
     return new LongFormContent(
       event.id,
-      event.tags[0][1],
+      value('d') ?? '',
       event.pubkey,
       event.content,
       new Date(event.created_at * 1000),
-      event.tags.find(([typ]) => typ === 'title')?.[1] || '',
-      event.tags.find(([typ]) => typ === 'summary')?.[1] || '',
-      event.tags.find(([typ]) => typ === 'image')?.[1],
+      value('title') || '',
+      value('summary') || '',
+      value('image'),
       publishedAt === undefined ? undefined : new Date(Number.parseInt(publishedAt, 10) * 1000),
       event.tags
+        .filter((tag) => isOwnTag(tag) && ['e', 't'].includes(tag[0]))
         .map((tag) => Tag.fromEvent(tag))
-        .filter((tag: Tag | undefined): tag is Tag => tag !== undefined)
-        .filter((tag: Tag) => ['e', 'p', 't'].includes(tag.typ))
+        .filter((tag: Tag | undefined): tag is Tag => tag !== undefined),
+      event.tags.filter((tag) => !isOwnTag(tag))
+    );
+  }
+
+  // Builds a new list, or an update of `previous` that keeps what the editor does not change.
+  static compose(params: {
+    identifier: string;
+    title: string;
+    summary: string;
+    noteIds: string[];
+    previous?: LongFormContent;
+  }): LongFormContent {
+    const { identifier, title, summary, noteIds, previous } = params;
+    return new LongFormContent(
+      undefined,
+      identifier,
+      '',
+      noteIds.map((id) => `nostr:${nip19.neventEncode({ id })}`).join('\n'),
+      new Date(),
+      title,
+      summary,
+      previous?.image,
+      previous?.publishedAt,
+      [...noteIds.map((id) => new Tag('e', id, '', 'mention')), nosliTag],
+      previous?.otherTags
     );
   }
 
@@ -42,7 +77,8 @@ export default class LongFormContent {
       ['summary', this.summary],
       ...this.tags.map((tag: Tag) => {
         return [tag.typ, tag.value];
-      })
+      }),
+      ...this.otherTags
     ];
     if (this.image) {
       tags.push(['image', this.image]);
