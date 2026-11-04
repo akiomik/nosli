@@ -8,6 +8,8 @@
   import { loginMethod, type LoginMethod } from '$lib/stores/login';
   import MenuProfile from '$lib/components/MenuProfile.svelte';
 
+  export let open = false;
+
   const dispatch = createEventDispatcher();
 
   const loginMethodLabels: Record<LoginMethod, string> = {
@@ -18,6 +20,9 @@
 
   // Looked up again for each login.
   $: pubkey = $loginMethod ? KeyManager.getPublicKey() : undefined;
+  // The profile is loaded when the menu first opens, once the relays have connected, and then kept.
+  let opened = false;
+  $: if (open) opened = true;
 
   const logout = () => {
     dispatch('select', 'logout');
@@ -27,10 +32,11 @@
 </script>
 
 {#if $loginMethod}
-  <div class="space-y-2">
+  <!-- The menu is as wide as its widest line, so this sets a width that fits most names on one line,
+       and a longer name wraps instead of widening the menu. -->
+  <div class="min-w-56 space-y-2">
     {#await pubkey then pubkey}
-      {#if pubkey}
-        <!-- The menu is as wide as its widest line, so a long name wraps instead of widening it. -->
+      {#if pubkey && opened}
         <div class="whitespace-normal">
           <MenuProfile {pubkey} />
         </div>
