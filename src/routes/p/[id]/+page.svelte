@@ -49,7 +49,7 @@
 </div>
 
 {#if $profile}
-  <p use:linkify={linkifyOpts}>{$profile.about}</p>
+  <p class="wrap-anywhere" use:linkify={linkifyOpts}>{$profile.about}</p>
 {/if}
 
 {#if $profile && $loginMethod === 'npub'}
