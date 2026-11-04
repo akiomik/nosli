@@ -2,7 +2,7 @@
   import { getContext } from 'svelte';
   import type { nip19 } from 'nostr-tools';
   import type { RxNostr } from 'rx-nostr';
-  import { _ } from 'svelte-i18n';
+  import { _, date } from 'svelte-i18n';
 
   import type { PageData } from './$types';
   import { matomeStore, profileStore, notesStore } from '#lib/stores/nostr.js';
@@ -31,12 +31,18 @@
   // Checked again for each login, and when the author changes rather than for each version.
   $: author = $matome?.pubkey;
   $: isMine = author && $loginMethod ? KeyManager.isLoggedInAs(author) : false;
+  $: title =
+    $matome && $profile
+      ? $_('list-title-with-author', {
+          values: { title: $matome.title, name: $profile.formattedName() }
+        })
+      : $matome?.title;
 </script>
 
 <svelte:head>
   <!-- A title is always set, so that the previous page's title does not stay while the list loads. -->
   {#if $matome}
-    <title>{$matome.title}{$profile ? ` by ${$profile.formattedName()}` : ''} | Nosli</title>
+    <title>{title} | Nosli</title>
     <meta name="description" content={$matome.summary} />
     <meta name="keywords" content="nostr,curated,list,damus,snort" />
     <meta property="og:url" content="https://nosli.vercel.app/li/{$matome.nip19Id()}" />
@@ -80,9 +86,7 @@
 
     <p>
       {$_('last-updated')}
-      {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
-        $matome.createdAt
-      )}
+      {$date($matome.createdAt, { dateStyle: 'medium', timeStyle: 'medium' })}
     </p>
   </div>
 

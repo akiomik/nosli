@@ -23,14 +23,15 @@
   const profile = profileStore({ client, pubkey: data.pubkey });
 
   $: name = $profile?.formattedName() || 'nostrich';
+  $: desc = $_('profile-description', { values: { name } });
 </script>
 
 <svelte:head>
   <title>{name} | Nosli</title>
-  <meta name="description" content="View {name}'s profile and lists" />
+  <meta name="description" content={desc} />
   <meta property="og:url" content="https://nosli.vercel.app/p/{data.pubkey}" />
   <meta property="og:title" content="{name} | Nosli" />
-  <meta property="og:description" content="View {name}'s profile and lists" />
+  <meta property="og:description" content={desc} />
 </svelte:head>
 
 <div class="flex space-x-4 items-center">

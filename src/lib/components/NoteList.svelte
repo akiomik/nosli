@@ -25,7 +25,7 @@
     {/if}
   {:else}
     <Alert variant="warning">
-      <p>No data found &#128064;</p>
+      <p>{$_('no-notes-found')}</p>
     </Alert>
   {/each}
 </div>

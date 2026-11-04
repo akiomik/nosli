@@ -28,8 +28,9 @@
          buttons would cover the name. -->
     <AppBar.Lead class="shrink-0">
       <a href="/">
+        <!-- The name next to the logo labels the link. -->
         <span class="flex items-center">
-          <img src="/favicon.svg" alt="Nosli icon" class="h-10 mr-1" width="40" height="40" />
+          <img src="/favicon.svg" alt="" class="h-10 mr-1" width="40" height="40" />
           Nosli
         </span>
       </a>
@@ -48,13 +49,13 @@
         positioning={{ placement: 'bottom', gutter: 0, fitViewport: true }}
       >
         <Popover.Trigger class="btn preset-tonal-surface bg-surface-100 max-[16rem]:px-2">
-          <span><FontAwesomeIcon icon={faSignal} title="Relay connections" /></span>
+          <span><FontAwesomeIcon icon={faSignal} title={$_('relay-connections')} /></span>
           <span>{activeConnections?.length ?? 0}/{$connections?.length ?? 0}</span>
         </Popover.Trigger>
         <Popover.Positioner>
           <Popover.Content
             class="card z-50 max-w-(--available-width) p-4 shadow-xl"
-            aria-label="Relay connections"
+            aria-label={$_('relay-connections')}
           >
             <RelayConnectionStatusList connections={$connections ?? []} />
           </Popover.Content>
@@ -73,12 +74,12 @@
           positioning={{ placement: 'bottom-end', gutter: 0, fitViewport: true }}
         >
           <Popover.Trigger class="btn-icon hover:preset-tonal-surface">
-            <FontAwesomeIcon icon={faBars} title="Open menu" />
+            <FontAwesomeIcon icon={faBars} title={$_('open-menu')} />
           </Popover.Trigger>
           <Popover.Positioner>
             <Popover.Content
               class="card z-50 max-w-(--available-width) p-4 shadow-xl"
-              aria-label="Menu"
+              aria-label={$_('menu')}
             >
               <Menu open={showMenu} on:select={() => (showMenu = false)} />
             </Popover.Content>

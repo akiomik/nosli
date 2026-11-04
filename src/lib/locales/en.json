@@ -24,12 +24,27 @@
     "delete-list-confirmation": "Are you sure you want to delete this list?",
     "quit-editing-confirmation": "Quit editing?"
   },
+  "dismiss-notification": "Dismiss notification",
   "edit": "Edit",
   "edit-identifier": "Edit {identifier}",
+  "error": {
+    "internal": "Internal Error",
+    "not-found": "Not Found 💔",
+    "unauthorized": "Unauthorized 🙅"
+  },
+  "home": {
+    "description": "Nosli helps you create a curated list of posts on nostr",
+    "list-is": "A curated list is simply",
+    "list-is-end": ".",
+    "stored-in-relays": "It is stored in relays and can be viewed and edited by other NIP-23 supported clients.",
+    "tagged-with": "tagged with",
+    "title": "Nosli | Create curated lists of posts on nostr"
+  },
   "how-it-works": "How it works",
   "identifier-required": "Identifier (required, cannot be changed after creation)",
   "key": "Key",
   "last-updated": "Last updated:",
+  "list-title-with-author": "{title} by {name}",
   "loading-note": "Loading the note…",
   "logged-in-with-nip07": "Logged in with NIP-07",
   "logged-in-with-npub": "Logged in with npub (read-only)",
@@ -39,10 +54,20 @@
   "login-with-key": "with npub/nsec",
   "login-with-nip07": "with NIP-07 (recommended)",
   "logout": "Logout",
+  "menu": "Menu",
+  "move-down": "Move Down",
+  "move-up": "Move Up",
   "mypage": "My page",
   "nosli-description": "Nosli helps you create a curated list of posts on Nostr that is a open protocol for a decentralized global social network",
   "notes-required": "Notes (required)",
   "nip07-implementations": "NIP-07 implementations",
+  "no-lists-found": "No lists found 🤔",
+  "no-notes-found": "No data found 👀",
+  "notifications": "Notifications (Alt+T)",
+  "open-github-repository": "Open our GitHub repository",
+  "open-lightning-address": "Open our Lightning Address",
+  "open-menu": "Open menu",
+  "profile-description": "View {name}'s profile and lists",
   "publication": {
     "created-partially": "Created (accepted by {accepted} of {total} relays)",
     "deleted-partially": "Deletion accepted by {accepted} of {total} relays. The list may remain visible on the others.",
@@ -58,6 +83,14 @@
   },
   "recent-lists": "Recent lists",
   "recent-your-reactions": "Recent your reactions",
+  "relay-connections": "Relay connections",
+  "relay-status": {
+    "error": "Error",
+    "not-started": "Not connected",
+    "ongoing": "Connected",
+    "reconnecting": "Reconnecting",
+    "starting": "Connecting"
+  },
   "remove": "Remove",
   "reorder-by-least-recently-created": "Reorder by least recently created",
   "reorder-notes": "Reorder notes:",
@@ -71,5 +104,6 @@
   "title-placeholder": "My awesome notes",
   "update": "Update",
   "updated": "Updated",
+  "valid-nip05-identifier": "Valid NIP-05 identifier",
   ".": "."
 }

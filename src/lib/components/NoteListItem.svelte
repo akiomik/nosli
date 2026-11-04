@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getContext, onMount } from 'svelte';
   import type { RxNostr } from 'rx-nostr';
-  import { _ } from 'svelte-i18n';
+  import { _, date } from 'svelte-i18n';
   import type Note from '#lib/entities/Note.js';
   import { profileStore } from '#lib/stores/nostr.js';
   import NoteListItemProfile from '#lib/components/NoteListItemProfile.svelte';
@@ -75,9 +75,7 @@
     class="flex flex-wrap items-center justify-end gap-x-5 gap-y-2 border-t border-surface-300 p-4"
   >
     <p>
-      {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
-        note.createdAt
-      )}
+      {$date(note.createdAt, { dateStyle: 'medium', timeStyle: 'medium' })}
     </p>
     <slot name="footer" />
   </footer>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { _ } from 'svelte-i18n';
+
   import type LongFormContent from '#lib/entities/LongFormContent.js';
   import MatomeListItem from '#lib/components/MatomeListItem.svelte';
   import Alert from '#lib/components/Alert.svelte';
@@ -8,7 +10,7 @@
 
 {#if matomes.length === 0}
   <Alert>
-    <p>No lists found &#x1f914;</p>
+    <p>{$_('no-lists-found')}</p>
   </Alert>
 {:else}
   <div class="flex flex-col space-y-4">
