@@ -24,51 +24,53 @@
   $: activeConnections = $connections?.filter(({ state }) => state === 'ongoing');
 </script>
 
-<AppBar background="bg-surface-50">
-  {#snippet lead()}
-    <a href="/">
-      <span class="flex items-center">
-        <img src="/favicon.svg" alt="Nosli icon" class="h-10 mr-1" width="40" height="40" />
-        Nosli
-      </span>
-    </a>
-  {/snippet}
-  {#snippet trail()}
-    <div class="relative">
-      <button
-        type="button"
-        class="btn preset-tonal-surface bg-surface-100"
-        on:click|stopPropagation={handleRelayConnectionStatus}
-      >
-        <span><FontAwesomeIcon icon={faSignal} title="Relay connections" /></span>
-        <span>{activeConnections?.length ?? 0}/{$connections?.length ?? 0}</span>
-      </button>
-
-      <RelayConnectionStatusListPopover
-        open={showRelayConnectionStatus && $connections !== undefined}
-        connections={$connections ?? []}
-        on:close={() => (showRelayConnectionStatus = false)}
-      />
-    </div>
-
-    {#if KeyManager.isLoggedIn()}
-      {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
-        <a href="/li/new" class="btn bg-primary-500">{$_('create')}</a>
-      {/if}
-
+<AppBar class="bg-surface-50">
+  <AppBar.Toolbar class="grid-cols-[1fr_auto]">
+    <AppBar.Lead>
+      <a href="/">
+        <span class="flex items-center">
+          <img src="/favicon.svg" alt="Nosli icon" class="h-10 mr-1" width="40" height="40" />
+          Nosli
+        </span>
+      </a>
+    </AppBar.Lead>
+    <AppBar.Trail>
       <div class="relative">
-        <button class="btn-icon hover:preset-tonal-surface" on:click|stopPropagation={handleMenu}>
-          <FontAwesomeIcon icon={faBars} title="Open menu" />
+        <button
+          type="button"
+          class="btn preset-tonal-surface bg-surface-100"
+          on:click|stopPropagation={handleRelayConnectionStatus}
+        >
+          <span><FontAwesomeIcon icon={faSignal} title="Relay connections" /></span>
+          <span>{activeConnections?.length ?? 0}/{$connections?.length ?? 0}</span>
         </button>
 
-        <MenuPopover
-          open={showMenu}
-          on:select={() => (showMenu = false)}
-          on:close={() => (showMenu = false)}
+        <RelayConnectionStatusListPopover
+          open={showRelayConnectionStatus && $connections !== undefined}
+          connections={$connections ?? []}
+          on:close={() => (showRelayConnectionStatus = false)}
         />
       </div>
-    {:else}
-      <a href="/login" class="btn bg-primary-500">{$_('login')}</a>
-    {/if}
-  {/snippet}
+
+      {#if KeyManager.isLoggedIn()}
+        {#if KeyManager.isLoggedInWithNip07() || KeyManager.isLoggedInWithSecretKey()}
+          <a href="/li/new" class="btn bg-primary-500">{$_('create')}</a>
+        {/if}
+
+        <div class="relative">
+          <button class="btn-icon hover:preset-tonal-surface" on:click|stopPropagation={handleMenu}>
+            <FontAwesomeIcon icon={faBars} title="Open menu" />
+          </button>
+
+          <MenuPopover
+            open={showMenu}
+            on:select={() => (showMenu = false)}
+            on:close={() => (showMenu = false)}
+          />
+        </div>
+      {:else}
+        <a href="/login" class="btn bg-primary-500">{$_('login')}</a>
+      {/if}
+    </AppBar.Trail>
+  </AppBar.Toolbar>
 </AppBar>
