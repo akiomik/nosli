@@ -53,8 +53,7 @@
       return;
     }
 
-    // A relay that missed a deletion can still serve the list, while a partially published list is
-    // still available.
+    // A partial deletion can leave the list on other relays, unlike a partial publication.
     toaster.create({
       type: action === 'deleted' ? 'warning' : 'info',
       title,
