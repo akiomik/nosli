@@ -3,7 +3,7 @@
 
   const className = last
     ? 'inline'
-    : "inline after:content-['・'] after:text-surface-300 after:dark:text-surface-600 after:ml-1";
+    : "inline after:content-['・'] after:text-surface-300 dark:after:text-surface-600 after:ml-1";
 </script>
 
 <li class={className}>

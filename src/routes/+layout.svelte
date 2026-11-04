@@ -1,19 +1,19 @@
 <script lang="ts">
   import { setContext } from 'svelte';
-  import { AppShell, Toast, initializeStores } from '@skeletonlabs/skeleton';
+  import { Toaster } from '@skeletonlabs/skeleton-svelte';
   import '@fortawesome/fontawesome-svg-core/styles.css';
   import { config } from '@fortawesome/fontawesome-svg-core';
   import { createRxNostr } from 'rx-nostr';
 
   import { beforeNavigate, afterNavigate } from '$app/navigation';
-  import '../app.postcss';
+  import '../app.css';
   import * as settings from '$lib/services/settings';
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import { toaster } from '$lib/stores/toaster';
 
   config.autoAddCss = false;
-  initializeStores();
 
   let loading = false;
   let timeout: ReturnType<typeof setTimeout>;
@@ -34,24 +34,21 @@
   });
 </script>
 
-<Toast />
+<Toaster {toaster} />
 
-<AppShell>
-  <svelte:fragment slot="header">
-    <Header />
-  </svelte:fragment>
+<div class="min-h-screen flex flex-col">
+  <Header />
 
-  <div class="container mx-auto max-w-4xl p-4 space-y-8 mt-4">
+  <main class="container mx-auto max-w-4xl p-4 space-y-8 mt-4 flex-1">
     {#if loading}
       <LoadingSpinner />
     {:else}
       <slot />
     {/if}
-  </div>
+  </main>
 
-  <svelte:fragment slot="footer">
+  <footer>
     <hr />
-
     <Footer />
-  </svelte:fragment>
-</AppShell>
+  </footer>
+</div>

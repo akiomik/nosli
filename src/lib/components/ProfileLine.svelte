@@ -1,16 +1,13 @@
 <script lang="ts">
-  import { Avatar } from '@skeletonlabs/skeleton';
+  import { Avatar } from '@skeletonlabs/skeleton-svelte';
   import type Profile from '$lib/entities/Profile';
 
   export let profile: Profile | undefined;
 </script>
 
 <div class="flex flex-row items-center space-x-2">
-  <Avatar
-    src={profile?.safePicture()}
-    initials="NO"
-    alt="Profile picture of {profile?.formattedName() || 'nostrich'}"
-    width="w-8"
-  />
+  <Avatar src={profile?.safePicture()} name={profile?.formattedName() || 'nostrich'} size="size-8"
+    >NO</Avatar
+  >
   <p>{profile?.formattedName() || 'nostrich'}</p>
 </div>

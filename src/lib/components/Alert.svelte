@@ -1,22 +1,21 @@
 <script lang="ts">
   export let variant: '' | 'warning' | 'error' = '';
 
-  // NOTE: Dynamic class name does not seem to work
-  let className = 'variant-ghost';
+  let className = 'border-surface-500 bg-surface-200/30';
   switch (variant) {
     case 'warning':
-      className = 'variant-ghost-warning';
+      className = 'border-warning-500 bg-warning-200/30';
       break;
     case 'error':
-      className = 'variant-ghost-error';
+      className = 'border-error-500 bg-error-200/30';
       break;
   }
 </script>
 
-<aside class={`alert ${className}`}>
+<aside class={`flex items-center gap-3 rounded-lg border p-3 ${className}`}>
   <slot name="icon" />
 
-  <div class="alert-message">
+  <div>
     <slot />
   </div>
 </aside>
