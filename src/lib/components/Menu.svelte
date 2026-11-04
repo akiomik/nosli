@@ -20,7 +20,8 @@
 
   // Looked up again for each login.
   $: pubkey = $loginMethod ? KeyManager.getPublicKey() : undefined;
-  // The profile is loaded when the menu first opens, once the relays have connected, and then kept.
+  // The profile is loaded when the menu first opens, usually after the relays have connected, and then
+  // kept.
   let opened = false;
   $: if (open) opened = true;
 
