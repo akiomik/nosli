@@ -195,8 +195,14 @@ export default class NostrClient {
     return { content: LongFormContent.fromEvent(event), publication };
   }
 
-  public async deleteEvent(id: string): Promise<PublicationResult> {
+  // The a tag also deletes the earlier versions that relays still hold, which the e tag misses.
+  public async deleteArticle(article: LongFormContent): Promise<PublicationResult> {
     await this.waitForRelayBeforeSigning();
+    const tags = [
+      ['a', article.address()],
+      ['k', Kind.Article.toString()]
+    ];
+    if (article.id) tags.unshift(['e', article.id]);
     let event = {
       id: '',
       sig: '',
@@ -204,7 +210,7 @@ export default class NostrClient {
       content: 'Deleted',
       pubkey: '',
       created_at: Math.round(new Date().getTime() / 1000),
-      tags: [['e', id]]
+      tags
     };
     event = await KeyManager.signEvent(event);
 

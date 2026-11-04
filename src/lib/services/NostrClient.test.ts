@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getPublicKey, SimplePool, type Event, type Pub, type Relay } from 'nostr-tools';
+import { getPublicKey, Kind, SimplePool, type Event, type Pub, type Relay } from 'nostr-tools';
 
 import LongFormContent from '$lib/entities/LongFormContent';
 import NostrClient from './NostrClient';
@@ -72,8 +72,45 @@ function acceptingPublication() {
   } as Pub;
 }
 
+// The latest version of a list that has been edited, so relays may hold earlier versions too.
+const publishedArticle = new LongFormContent(
+  'f'.repeat(64),
+  'edited-list',
+  getPublicKey('1'.repeat(64)),
+  'content',
+  new Date(),
+  'title',
+  '',
+  undefined,
+  undefined,
+  []
+);
+
 afterEach(() => {
   vi.restoreAllMocks();
+});
+
+describe('NostrClient.deleteArticle', () => {
+  it('targets the address of the article as well as its latest event', async () => {
+    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+    const publish = vi
+      .spyOn(SimplePool.prototype, 'publish')
+      .mockImplementation(() => acceptingPublication());
+    const client = new NostrClient(['wss://one']);
+
+    await client.deleteArticle(publishedArticle);
+
+    expect(publish).toHaveBeenCalledOnce();
+    expect(publish.mock.calls[0][1]).toMatchObject({
+      kind: Kind.EventDeletion,
+      pubkey: publishedArticle.pubkey,
+      tags: [
+        ['e', publishedArticle.id],
+        ['a', `${Kind.Article}:${publishedArticle.pubkey}:edited-list`],
+        ['k', `${Kind.Article}`]
+      ]
+    });
+  });
 });
 
 describe('NostrClient relay readiness', () => {
@@ -89,7 +126,7 @@ describe('NostrClient relay readiness', () => {
     const signEvent = vi.spyOn(KeyManager, 'signEvent').mockRejectedValue(signError);
     const client = new NostrClient(['wss://one']);
 
-    const deletion = client.deleteEvent('event-id');
+    const deletion = client.deleteArticle(publishedArticle);
     await Promise.resolve();
     expect(signEvent).not.toHaveBeenCalled();
 
@@ -108,7 +145,7 @@ describe('NostrClient relay readiness', () => {
     await client.connect();
 
     target.disconnect();
-    await expect(client.deleteEvent('event-id')).resolves.toMatchObject({
+    await expect(client.deleteArticle(publishedArticle)).resolves.toMatchObject({
       acceptedRelays: ['wss://one']
     });
     expect(target.connect).toHaveBeenCalledOnce();
@@ -128,7 +165,7 @@ describe('NostrClient relay readiness', () => {
     await client.connect();
 
     second.disconnect();
-    await expect(client.deleteEvent('event-id')).resolves.toMatchObject({
+    await expect(client.deleteArticle(publishedArticle)).resolves.toMatchObject({
       acceptedRelays: ['wss://one', 'wss://two'],
       unavailableRelays: []
     });
@@ -147,7 +184,7 @@ describe('NostrClient relay readiness', () => {
       .mockImplementation(() => acceptingPublication());
     const client = new NostrClient(['wss://one']);
 
-    await expect(client.deleteEvent('event-id')).resolves.toMatchObject({
+    await expect(client.deleteArticle(publishedArticle)).resolves.toMatchObject({
       acceptedRelays: ['wss://one']
     });
     expect(target.connect).toHaveBeenCalledOnce();
@@ -165,7 +202,7 @@ describe('NostrClient relay readiness', () => {
     const client = new NostrClient(['wss://one'], 100);
     await client.connect();
 
-    const deletion = client.deleteEvent('event-id');
+    const deletion = client.deleteArticle(publishedArticle);
     const assertion = expect(deletion).resolves.toMatchObject({
       acceptedRelays: ['wss://one']
     });
@@ -273,7 +310,7 @@ describe('NostrClient relay readiness', () => {
     await client.close();
     resolveRelay(target.relay);
     await vi.waitFor(() => expect(target.close).toHaveBeenCalledOnce());
-    await expect(client.deleteEvent('event-id')).rejects.toThrow('closed');
+    await expect(client.deleteArticle(publishedArticle)).rejects.toThrow('closed');
   });
 
   it('does not sign or publish if no relay becomes available', async () => {
@@ -281,7 +318,9 @@ describe('NostrClient relay readiness', () => {
     const publish = vi.spyOn(SimplePool.prototype, 'publish');
     const signEvent = vi.spyOn(KeyManager, 'signEvent');
     const client = new NostrClient(['wss://one']);
-    await expect(client.deleteEvent('event-id')).rejects.toBeInstanceOf(PublicationFailedError);
+    await expect(client.deleteArticle(publishedArticle)).rejects.toBeInstanceOf(
+      PublicationFailedError
+    );
     expect(signEvent).not.toHaveBeenCalled();
     expect(publish).not.toHaveBeenCalled();
   });

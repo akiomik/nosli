@@ -256,7 +256,7 @@ describe('NostrClient with real SimplePool and fake WebSocket', () => {
       expect(FakeWebSocket.instances).toHaveLength(2);
       old.onclose?.();
 
-      await expect(client.deleteEvent('e'.repeat(64))).resolves.toMatchObject({
+      await expect(client.deleteArticle(article())).resolves.toMatchObject({
         acceptedRelays: ['wss://relay.example'],
         unavailableRelays: []
       });
