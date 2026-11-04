@@ -27,6 +27,8 @@
 <AppBar class="bg-surface-50">
   <!-- On a narrow screen, or with a large font, the buttons move below the logo instead of overflowing. -->
   <AppBar.Toolbar class="flex flex-wrap gap-y-2">
+    <!-- The image's max-width: 100% would let the logo shrink to the width of the name, and the
+         buttons would cover the name. -->
     <AppBar.Lead class="shrink-0">
       <a href="/">
         <span class="flex items-center">
@@ -35,7 +37,8 @@
         </span>
       </a>
     </AppBar.Lead>
-    <!-- Below 16rem, the buttons take less padding so that they fit on one line below the logo. -->
+    <!-- On a screen narrower than 16rem, the buttons take less padding so that they still fit on one
+         line below the logo. Narrower still, they wrap. -->
     <AppBar.Trail class="flex-wrap justify-end ml-auto">
       <div class="relative">
         <button
