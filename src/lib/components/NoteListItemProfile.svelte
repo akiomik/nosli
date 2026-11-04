@@ -8,7 +8,7 @@
 </script>
 
 <div class="flex items-center">
-  <div class="mr-2 shrink-0">
+  <div class="mr-2">
     <Avatar class="size-12">
       <Avatar.Image src={profile?.safePicture()} alt={name} />
       <Avatar.Fallback>NO</Avatar.Fallback>

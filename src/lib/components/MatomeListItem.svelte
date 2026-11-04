@@ -17,7 +17,8 @@
     <p class="text-ellipsis overflow-hidden line-clamp-8 mt-4">
       {matome.summary}
     </p>
-    <div class="flex flex-row items-center mt-4 space-x-2">
+    <!-- The date moves below a long name instead of squeezing it. -->
+    <div class="flex flex-row flex-wrap items-center mt-4 gap-x-2 gap-y-1">
       <ProfileLine profile={$profile} />
       <p class="text-surface-900/50 whitespace-nowrap shrink-0">
         {Intl.DateTimeFormat('ja-JP', { dateStyle: 'medium', timeStyle: 'medium' }).format(
