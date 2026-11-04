@@ -42,6 +42,18 @@
         {$_('edit-identifier', { values: { identifier: $matome.identifier } })}
       </h1>
 
+      {#if $matome.hasContentBesidesNotes()}
+        <!-- Shown when editing starts rather than on saving, so that the author can decide before
+             doing any work. -->
+        <Alert variant="warning">
+          <p>{$_('alert.content-replaced-on-edit')}</p>
+          <details class="mt-2">
+            <summary class="cursor-pointer">{$_('show-current-content')}</summary>
+            <p class="mt-2 whitespace-pre-wrap wrap-anywhere">{$matome.content}</p>
+          </details>
+        </Alert>
+      {/if}
+
       <MatomeForm matome={$matome} />
     {:else}
       <Alert variant="error">

@@ -3,6 +3,8 @@
   "add": "Add",
   "add-note": "Add note",
   "alert": {
+    "content-replaced-on-save": "Saving replaces the content, and the text that is not one of the notes is lost.",
+    "content-replaced-on-edit": "The content of this list has more than links to its notes, such as text written in another client. Saving here replaces the content with the notes, and that part is lost. To keep it, copy it from below before saving, or edit the list in the client that wrote it.",
     "failed-to-get-note": "Failed to get a note.",
     "failed-to-get-public-key": "Could not get your public key from the NIP-07 extension, so your recent reactions cannot be shown.",
     "failed-to-get-public-key-for-edit": "Could not get your public key from the NIP-07 extension, so this list cannot be edited.",
@@ -97,6 +99,7 @@
   "retry": "Try again",
   "retrying": "Trying again…",
   "see-other": "See",
+  "show-current-content": "Show the current content",
   "show-less": "Show less",
   "show-more": "Show more",
   "summary": "Summary",

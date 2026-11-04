@@ -76,6 +76,75 @@ describe('LongFormContent.eventIds', () => {
   });
 });
 
+describe('LongFormContent.hasContentBesidesNotes', () => {
+  const withContent = (content: string) =>
+    LongFormContent.fromEvent({
+      ...otherClientEvent,
+      content,
+      tags: [
+        ['d', 'my-list'],
+        ['title', 'Title'],
+        ['summary', ''],
+        ['e', oldNote],
+        ['e', newNote]
+      ]
+    });
+
+  it('is false for a list that Nosli composed', () => {
+    const list = LongFormContent.compose({
+      identifier: 'my-list',
+      title: 'Title',
+      summary: '',
+      notes: [{ id: oldNote, relays: ['wss://relay.example.com'] }, { id: newNote }]
+    });
+
+    expect(
+      LongFormContent.fromEvent({ ...list.toEvent(), pubkey: author }).hasContentBesidesNotes()
+    ).toBe(false);
+  });
+
+  it.each([
+    ['empty content', ''],
+    [
+      'note1 references to its notes',
+      `nostr:${nip19.noteEncode(oldNote)} nostr:${nip19.noteEncode(newNote)}`
+    ],
+    ['#[n] mentions, which Nosli wrote before nostr: references', '#[3]\n#[4]\n']
+  ])('is false for %s', (_name, content) => {
+    expect(withContent(content).hasContentBesidesNotes()).toBe(false);
+  });
+
+  it('is false for a list as Nosli published it before nostr: references', () => {
+    const list = LongFormContent.fromEvent({
+      ...otherClientEvent,
+      content: '#[3]\n#[4]',
+      tags: [
+        ['d', 'my-list'],
+        ['title', 'Title'],
+        ['summary', ''],
+        ['e', oldNote, '', 'mention'],
+        ['e', newNote, '', 'mention'],
+        ['t', 'nosli']
+      ]
+    });
+
+    expect(list.hasContentBesidesNotes()).toBe(false);
+  });
+
+  it.each([
+    ['text', `Some prose\nnostr:${nip19.neventEncode({ id: oldNote })}`],
+    [
+      'a reference to a note outside the list',
+      `nostr:${nip19.neventEncode({ id: 'f'.repeat(64) })}`
+    ],
+    ['a reference to a profile', `nostr:${nip19.npubEncode(author)}`],
+    ['a malformed reference', 'nostr:nevent1bad'],
+    ['a #[n] mention of a tag other than its e tags', '#[3]\n#[4]\n#[5]']
+  ])('is true for %s', (_name, content) => {
+    expect(withContent(content).hasContentBesidesNotes()).toBe(true);
+  });
+});
+
 describe('LongFormContent.compose', () => {
   const form = { identifier: 'my-list', title: 'New title', summary: 'New summary' };
 
