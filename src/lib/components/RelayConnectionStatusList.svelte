@@ -10,7 +10,7 @@
   {#each connections as { state, from } (from)}
     <li class="flex space-x-2 items-center">
       <RelayConnectionStatusIcon status={state} />
-      <p>{from}</p>
+      <p class="min-w-0 wrap-anywhere">{from}</p>
     </li>
   {/each}
 </ul>
