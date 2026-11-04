@@ -4,7 +4,7 @@
   import ProfileNip05 from '$lib/components/ProfileNip05.svelte';
 
   export let profile: Profile | undefined;
-  const name = profile?.displayName || profile?.name || profile?.pubkey || 'nostrich';
+  $: name = profile?.formattedName() || 'nostrich';
 </script>
 
 <div class="flex items-center">
@@ -16,7 +16,7 @@
   </div>
 
   <div class="text-ellipsis overflow-hidden">
-    <p class="font-bold text-ellipsis overflow-hidden">
+    <p class="font-bold wrap-anywhere">
       {name}
     </p>
 

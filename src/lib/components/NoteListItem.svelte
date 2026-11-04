@@ -51,7 +51,7 @@
         attributes: { alt: 'Embed image', decoding: 'async', loading: 'lazy' }
       }}
       use:linkify={linkifyOpts}
-      class="text-ellipsis overflow-hidden mt-4"
+      class="text-ellipsis overflow-hidden mt-4 wrap-anywhere"
       class:line-clamp-8={!expanded}
     >
       {note.modifiedContent()}
