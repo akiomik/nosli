@@ -11,7 +11,6 @@
   import Editor from '$lib/components/NoteEditor/Editor.svelte';
   import RecentReactionList from '$lib/components/NoteEditor/RecentReactionList.svelte';
   import LongFormContent from '$lib/entities/LongFormContent';
-  import Tag from '$lib/entities/Tag';
   import NostrClient from '$lib/services/NostrClient';
   import {
     publicationFailureKey,
@@ -91,28 +90,13 @@
       throw new Error('Unexpected error: identifier or title is undefined');
     }
 
-    const lfcContent = $editor.notes
-      .map((loadingNote) => `nostr:${nip19.neventEncode({ id: loadingNote.id })}`)
-      .join('\n');
-
-    const tags = [
-      ...$editor.notes.map(({ id }) => {
-        return new Tag('e', id, '', 'mention');
-      }),
-      new Tag('t', 'nosli')
-    ];
-    const lfc = new LongFormContent(
-      undefined,
+    const lfc = LongFormContent.compose({
       identifier,
-      '',
-      lfcContent,
-      new Date(),
       title,
-      summary || '',
-      undefined,
-      undefined,
-      tags
-    );
+      summary: summary || '',
+      noteIds: $editor.notes.map(({ id }) => id),
+      previous: matome
+    });
 
     await submit(
       'saving',

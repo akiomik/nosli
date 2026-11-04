@@ -20,7 +20,10 @@ export function takeTimeout<A>(timeout: number | Date): MonoTypeOperatorFunction
 }
 
 export function latestEachNaddr(): MonoTypeOperatorFunction<EventPacket> {
-  return latestEach(({ event }) => `${event.kind}:${event.pubkey}:${event.tags[0][1]}`);
+  return latestEach(({ event }) => {
+    const identifier = event.tags.find((tag) => tag[0] === 'd')?.[1] ?? '';
+    return `${event.kind}:${event.pubkey}:${identifier}`;
+  });
 }
 
 export function scanArray<A>(): OperatorFunction<A, A[]> {

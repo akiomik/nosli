@@ -2,6 +2,18 @@ import { nip19, Kind } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 import Tag from '$lib/entities/Tag';
 
+const nosliTag = new Tag('t', 'nosli');
+
+const isNosliTag = ([typ, value]: string[]): boolean =>
+  typ === nosliTag.typ && value === nosliTag.value;
+
+// NIP-23 gives published_at as a string of seconds.
+const parseTimestamp = (value: string | undefined): Date | undefined => {
+  if (value === undefined || !/^\d+$/.test(value)) return undefined;
+  const date = new Date(Number(value) * 1000);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+};
+
 export default class LongFormContent {
   constructor(
     public id: string | undefined,
@@ -13,25 +25,61 @@ export default class LongFormContent {
     public summary: string,
     public image: string | undefined,
     public publishedAt: Date | undefined,
-    public tags: Tag[]
+    public tags: Tag[],
+    // Tags that Nosli neither reads nor rebuilds, written back with an update.
+    public otherTags: string[][] = []
   ) {}
 
   static fromEvent(event: Event): LongFormContent {
-    const publishedAt = event.tags.find(([typ]) => typ === 'published_at')?.[1];
+    const value = (typ: string) => event.tags.find((tag) => tag[0] === typ)?.[1];
+    const publishedAt = parseTimestamp(value('published_at'));
+    // Nosli reads these tags into fields or rebuilds them, except a published_at that it cannot
+    // read. A client tag names the app that published the event, so Nosli drops it on update.
+    const ownTypes = ['d', 'title', 'summary', 'image', 'e', 'client'];
+    if (publishedAt) ownTypes.push('published_at');
+    const isOwnTag = (tag: string[]) => ownTypes.includes(tag[0]) || isNosliTag(tag);
+
     return new LongFormContent(
       event.id,
-      event.tags[0][1],
+      value('d') ?? '',
       event.pubkey,
       event.content,
       new Date(event.created_at * 1000),
-      event.tags.find(([typ]) => typ === 'title')?.[1] || '',
-      event.tags.find(([typ]) => typ === 'summary')?.[1] || '',
-      event.tags.find(([typ]) => typ === 'image')?.[1],
-      publishedAt === undefined ? undefined : new Date(Number.parseInt(publishedAt, 10) * 1000),
+      value('title') || '',
+      value('summary') || '',
+      value('image'),
+      publishedAt,
       event.tags
+        .filter((tag) => tag[0] === 'e' || isNosliTag(tag))
         .map((tag) => Tag.fromEvent(tag))
-        .filter((tag: Tag | undefined): tag is Tag => tag !== undefined)
-        .filter((tag: Tag) => ['e', 'p', 't'].includes(tag.typ))
+        .filter((tag: Tag | undefined): tag is Tag => tag !== undefined),
+      // NIP-01 tags hold only strings, and a null value would make the update impossible to sign.
+      event.tags.filter((tag) => !isOwnTag(tag) && tag.every((v) => typeof v === 'string'))
+    );
+  }
+
+  // Builds a new list, or an update of `previous` that keeps its image, published_at, and other
+  // tags. The content is always rebuilt from the notes.
+  static compose(params: {
+    identifier: string;
+    title: string;
+    summary: string;
+    noteIds: string[];
+    previous?: LongFormContent;
+  }): LongFormContent {
+    const { identifier, title, summary, noteIds, previous } = params;
+    return new LongFormContent(
+      undefined,
+      identifier,
+      '',
+      noteIds.map((id) => `nostr:${nip19.neventEncode({ id })}`).join('\n'),
+      new Date(),
+      title,
+      summary,
+      previous?.image,
+      previous?.publishedAt,
+      [...noteIds.map((id) => new Tag('e', id, '', 'mention')), nosliTag],
+      previous?.otherTags
     );
   }
 
@@ -42,7 +90,8 @@ export default class LongFormContent {
       ['summary', this.summary],
       ...this.tags.map((tag: Tag) => {
         return [tag.typ, tag.value];
-      })
+      }),
+      ...this.otherTags
     ];
     if (this.image) {
       tags.push(['image', this.image]);
@@ -74,11 +123,5 @@ export default class LongFormContent {
 
   eventIds(): string[] {
     return this.tags.filter((tag: Tag) => tag.typ === 'e').map((tag) => tag.value);
-  }
-
-  includesTag(tag: Tag): boolean {
-    return this.tags.some((t) => {
-      return t.equals(tag);
-    });
   }
 }
