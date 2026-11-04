@@ -231,7 +231,7 @@ describe('NostrClient.postLongFormContent', () => {
     expect(publish).not.toHaveBeenCalled();
   });
 
-  it('does not give the author to a NIP-07 extension, which can keep a pubkey it is given', async () => {
+  it('keeps the author from a NIP-07 extension, which may keep a given pubkey', async () => {
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
     const publish = vi.spyOn(SimplePool.prototype, 'publish');
     // Signs with another account, and keeps the pubkey of the event when it has one, as Alby does.

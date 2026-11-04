@@ -191,15 +191,15 @@ export default class NostrClient {
     };
   }
 
-  // An update gives the author of the list, the only account that can sign it. The author is not
-  // in the event to sign, since some NIP-07 extensions keep a given pubkey that is not theirs, and
-  // others refuse to sign it.
+  // For an update, `author` is the author of the list, the only account that can sign it. The event
+  // to sign has no pubkey, since some NIP-07 extensions keep a pubkey they are given, and others
+  // refuse one that is not theirs.
   public async postLongFormContent(
     lfc: LongFormContent,
     author?: string
   ): Promise<{ content: LongFormContent; publication: PublicationResult }> {
     await this.waitForRelayBeforeSigning();
-    const event = await KeyManager.signEvent(lfc.toEvent());
+    const event = await KeyManager.signEvent({ ...lfc.toEvent(), pubkey: '' });
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }

@@ -24,7 +24,8 @@ export class PublicationFailedError extends Error {
   }
 }
 
-// The signer used an account other than the author's, such as another account of a NIP-07 extension.
+// The signer used an account other than the author's, such as another account of a NIP-07
+// extension.
 // Relays would ignore such a deletion, and keep such an update as a new list of the signer's.
 export class SignedByAnotherAccountError extends Error {
   constructor() {
