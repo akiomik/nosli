@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Kind, nip19, type Event } from 'nostr-tools';
 
 import LongFormContent from './LongFormContent';
@@ -78,6 +78,37 @@ describe('LongFormContent.eventIds', () => {
 
 describe('LongFormContent.compose', () => {
   const form = { identifier: 'my-list', title: 'New title', summary: 'New summary' };
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Composes a list at `now`, in seconds, and returns its created_at.
+  const createdAt = (now: number, previousCreatedAt?: number) => {
+    vi.useFakeTimers({ now: now * 1000 });
+    const previous =
+      previousCreatedAt === undefined
+        ? undefined
+        : LongFormContent.fromEvent({ ...otherClientEvent, created_at: previousCreatedAt });
+    return LongFormContent.compose({ ...form, notes: [{ id: newNote }], previous }).toEvent()
+      .created_at;
+  };
+
+  it('creates a list at the current time', () => {
+    expect(createdAt(1_800_000_000)).toBe(1_800_000_000);
+  });
+
+  it('updates a list at the current time when the previous version is older', () => {
+    expect(createdAt(1_800_000_000, 1_700_000_000)).toBe(1_800_000_000);
+  });
+
+  it('updates a list later than a previous version from the same second', () => {
+    expect(createdAt(1_800_000_000.4, 1_800_000_000)).toBe(1_800_000_001);
+  });
+
+  it('updates a list later than a previous version from a clock that is ahead', () => {
+    expect(createdAt(1_800_000_000, 1_800_000_300)).toBe(1_800_000_301);
+  });
 
   it('creates a list with only the tags that Nosli writes', () => {
     const event = LongFormContent.compose({ ...form, notes: [{ id: newNote }] }).toEvent();
