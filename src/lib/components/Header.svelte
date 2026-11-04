@@ -38,11 +38,13 @@
          one line below the logo. Narrower still, they wrap. -->
     <AppBar.Trail class="flex-wrap justify-end ml-auto">
       <!-- The popovers stay next to their buttons, not in a portal, so that they come after them in
-           the tab order. Each keeps to the screen, sliding along it and taking at most its width. -->
+           the tab order. Each slides along the screen to stay on it, and is no wider than it. The
+           relay list has nothing to focus, so the focus stays on its button. -->
       <Popover
-        open={showRelayConnectionStatus && $connections !== undefined}
+        open={showRelayConnectionStatus}
         onOpenChange={(e) => (showRelayConnectionStatus = e.open)}
         portalled={false}
+        autoFocus={false}
         positioning={{ placement: 'bottom', gutter: 0, fitViewport: true }}
       >
         <Popover.Trigger class="btn preset-tonal-surface bg-surface-100 max-[16rem]:px-2">
@@ -50,7 +52,10 @@
           <span>{activeConnections?.length ?? 0}/{$connections?.length ?? 0}</span>
         </Popover.Trigger>
         <Popover.Positioner>
-          <Popover.Content class="card z-50 max-w-(--available-width) p-4 shadow-xl">
+          <Popover.Content
+            class="card z-50 max-w-(--available-width) p-4 shadow-xl"
+            aria-label="Relay connections"
+          >
             <RelayConnectionStatusList connections={$connections ?? []} />
           </Popover.Content>
         </Popover.Positioner>
@@ -71,7 +76,10 @@
             <FontAwesomeIcon icon={faBars} title="Open menu" />
           </Popover.Trigger>
           <Popover.Positioner>
-            <Popover.Content class="card z-50 max-w-(--available-width) p-4 shadow-xl">
+            <Popover.Content
+              class="card z-50 max-w-(--available-width) p-4 shadow-xl"
+              aria-label="Menu"
+            >
               <Menu open={showMenu} on:select={() => (showMenu = false)} />
             </Popover.Content>
           </Popover.Positioner>
