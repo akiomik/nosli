@@ -45,14 +45,19 @@ export default class KeyManager {
     );
   }
 
+  // The public key that the NIP-07 extension gives, which goes into npub links and is compared with
+  // event authors.
+  static async getNip07PublicKey(): Promise<string> {
+    const key = await (await KeyManager.nip07()).getPublicKey();
+    if (typeof key !== 'string' || !/^[0-9a-f]{64}$/.test(key)) {
+      throw new Error('The NIP-07 extension gave an invalid public key');
+    }
+    return key;
+  }
+
   static async getPublicKey(): Promise<string> {
     if (get(nip07)) {
-      const key = await (await KeyManager.nip07()).getPublicKey();
-      // The key goes into npub links and is compared with event authors.
-      if (typeof key !== 'string' || !/^[0-9a-f]{64}$/.test(key)) {
-        throw new Error('The NIP-07 extension gave an invalid public key');
-      }
-      return key;
+      return KeyManager.getNip07PublicKey();
     } else {
       return get(pubkey);
     }

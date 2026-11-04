@@ -32,16 +32,13 @@
   };
 
   const onLoginWithNip07 = async () => {
-    if (!window.nostr?.getPublicKey) {
-      return;
-    }
-
     try {
-      const npub = await window.nostr.getPublicKey();
-      // Replaces a login with a key, which would otherwise be used instead.
+      // The key is checked before logging in, so a refused or invalid one changes nothing.
+      const location = `/p/${nip19.npubEncode(await KeyManager.getNip07PublicKey())}`;
+      // Replaces a login with a key, which would otherwise be kept.
       KeyManager.logout();
       $nip07 = true;
-      goto(`/p/${nip19.npubEncode(npub)}`);
+      goto(location);
     } catch (e) {
       alert(e);
     }

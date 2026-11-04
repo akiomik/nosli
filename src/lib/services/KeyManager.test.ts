@@ -91,6 +91,7 @@ describe('KeyManager.getPublicKey with an extension that gives an invalid key', 
     window.nostr = { getPublicKey: async () => key as string, signEvent: vi.fn() };
 
     await expect(KeyManager.getPublicKey()).rejects.toThrow('invalid public key');
+    await expect(KeyManager.getNip07PublicKey()).rejects.toThrow('invalid public key');
   });
 });
 
