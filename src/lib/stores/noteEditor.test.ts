@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EMPTY, first, from, map, mergeMap } from 'rxjs';
+import { EMPTY, concatMap, delay, first, from, map, mergeMap, of } from 'rxjs';
 import { get } from 'svelte/store';
 import {
   finishEvent,
@@ -11,6 +11,7 @@ import {
 } from 'nostr-tools';
 import type { RxNostr, RxReq } from 'rx-nostr';
 
+import type { LoadingNote } from '$lib/entities/LoadingNote';
 import KeyManager from '$lib/services/KeyManager';
 import { createNoteEditorStore } from './noteEditor';
 
@@ -21,14 +22,17 @@ vi.mock('$lib/stores/cookie', async () => {
 
 const key = '1'.repeat(64);
 const user = getPublicKey(key);
-const note = finishEvent({ kind: Kind.Text, content: 'note', created_at: 1, tags: [] }, key);
-const reaction = finishEvent(
-  { kind: Kind.Reaction, content: '+', created_at: 2, tags: [['e', note.id]] },
-  key
-);
+const note = (content: string) =>
+  finishEvent({ kind: Kind.Text, content, created_at: 1, tags: [] }, key);
+const reaction = (target: Event, createdAt: number) =>
+  finishEvent(
+    { kind: Kind.Reaction, content: '+', created_at: createdAt, tags: [['e', target.id]] },
+    key
+  );
 
-// Serves the events that match each request once, like a relay that answers and sends EOSE.
-const fakeClient = (events: Event[]) =>
+// Serves the events that match each request once, like a relay that answers and sends EOSE. With
+// `interval`, the events arrive that many milliseconds apart.
+const fakeClient = (events: Event[], interval = 0) =>
   ({
     use: (req: RxReq) =>
       req.getReqObservable().pipe(
@@ -36,6 +40,7 @@ const fakeClient = (events: Event[]) =>
         mergeMap((filters) =>
           from(events.filter((event) => matchFilters(filters as Filter[], event)))
         ),
+        concatMap((event) => (interval > 0 ? of(event).pipe(delay(interval)) : of(event))),
         map((event) => ({ from: 'wss://relay.example.com', subId: 'sub', event }))
       )
   }) as unknown as RxNostr;
@@ -86,18 +91,27 @@ describe('createNoteEditorStore', () => {
     expect(get(editor)).toMatchObject({ searchInitialized: true, searchFailed: true });
   });
 
-  it('loads recent reactions when a retry finds the public key', async () => {
+  it('shows recent reactions once when a retry finds the public key', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(KeyManager, 'getPublicKey').mockRejectedValueOnce(lookupError).mockResolvedValue(user);
-    const editor = createNoteEditorStore({ client: fakeClient([note, reaction]) });
+    const older = note('older');
+    const newer = note('newer');
+    const events = [older, newer, reaction(older, 2), reaction(newer, 3)];
+    const editor = createNoteEditorStore({ client: fakeClient(events, 20) });
     await vi.waitFor(() => expect(get(editor).searchFailed).toBe(true));
+    const shownWhileRetrying: LoadingNote[][] = [];
+    const unsubscribe = editor.subscribe(({ searchRetrying, searchedNotes }) => {
+      if (searchRetrying) shownWhileRetrying.push(searchedNotes);
+    });
 
     editor.retrySearch();
 
     await vi.waitFor(() => expect(get(editor).searchRetrying).toBe(false));
+    unsubscribe();
+    // The notes arrive one by one, but none shows under the failure message.
+    expect(shownWhileRetrying.length).toBeGreaterThan(0);
+    expect(shownWhileRetrying.every((notes) => notes.length === 0)).toBe(true);
     expect(get(editor).searchFailed).toBe(false);
-    expect(get(editor).searchedNotes).toEqual([
-      { id: note.id, note: expect.objectContaining({ id: note.id, content: 'note' }) }
-    ]);
+    expect(get(editor).searchedNotes.map(({ note }) => note?.content)).toEqual(['newer', 'older']);
   });
 });

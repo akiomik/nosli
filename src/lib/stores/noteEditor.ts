@@ -40,13 +40,18 @@ export function createNoteEditorStore(params: { matome?: LongFormContent; client
     KeyManager.getPublicKey().then(
       (pubkey) => {
         const limit = 100;
+        // Show the notes at once, so a retry does not fill them in under the failure message.
+        let found: LoadingNote[] = [];
         recentUserReactedNotesStore({
           client,
           pubkey,
           limit
         }).subscribe({
-          next: searchedNotes.set,
-          complete: () => settleSearch(false)
+          next: (notes) => (found = notes),
+          complete: () => {
+            settleSearch(false);
+            searchedNotes.set(found);
+          }
         });
       },
       (error) => {

@@ -32,7 +32,7 @@
         <!-- Unlike disabled, aria-disabled keeps the focus on the button while the retry runs. -->
         <button
           type="button"
-          class="btn preset-filled-surface-200-800 mt-2"
+          class="btn preset-filled-surface-200-800 mt-2 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed"
           aria-disabled={$editor.searchRetrying}
           on:click={editor.retrySearch}
         >
