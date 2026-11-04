@@ -12,6 +12,7 @@
   import RecentReactionList from '$lib/components/NoteEditor/RecentReactionList.svelte';
   import LongFormContent from '$lib/entities/LongFormContent';
   import NostrClient from '$lib/services/NostrClient';
+  import { initialIdentifier, isValidIdentifier } from '$lib/services/listIdentifier';
   import {
     publicationFailureKey,
     publicationSuccessMessage,
@@ -32,14 +33,13 @@
 
   let title: string | undefined = matome?.title;
   let summary: string | undefined = matome?.summary;
-  let identifier: string | undefined = matome?.identifier || `nosli-${new Date().getTime()}`;
+  let identifier = initialIdentifier(matome);
   let tabActive = 'edit';
   let inactive = false;
   let submission: 'saving' | 'deleting' | undefined = undefined;
   let failureKey: string | undefined = undefined;
 
-  $: isIdentifierValid =
-    identifier !== undefined && identifier.length > 0 && identifier.length <= 40;
+  $: isIdentifierValid = isValidIdentifier(identifier, matome);
   $: isTitleValid = title !== undefined && title.length > 0 && title.length <= 150;
   $: isSummaryValid = summary === undefined || summary.length <= 300;
   $: submitting = submission !== undefined;
@@ -86,12 +86,13 @@
   };
 
   const onCreate = async () => {
-    if (identifier === undefined || title === undefined || $editor.notes.length <= 0) {
-      throw new Error('Unexpected error: identifier or title is undefined');
+    if (title === undefined || $editor.notes.length <= 0) {
+      throw new Error('Unexpected error: the title or the notes are missing');
     }
 
     const lfc = LongFormContent.compose({
-      identifier,
+      // An update is always at the address of the list.
+      identifier: matome ? matome.identifier : identifier,
       title,
       summary: summary || '',
       notes: $editor.notes,
@@ -146,7 +147,7 @@
       bind:value={identifier}
       required
       class="input"
-      class:input-error={identifier !== undefined && !isIdentifierValid}
+      class:input-error={!isIdentifierValid}
       maxlength="40"
       disabled={typeof matome !== 'undefined' || submitting}
     />
