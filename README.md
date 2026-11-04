@@ -32,7 +32,9 @@ npm run check:watch
 
 Both run the TypeScript compiler and `svelte-check`, which each report errors that the other misses. For example, only the compiler reports an untyped SvelteKit `load`, because `svelte-check` adds types to route exports.
 
-The checks cover the files that SvelteKit's generated `tsconfig.json` includes: `src/`, `test/` and `tests/`. Put Svelte components and other source files there, since files elsewhere are not type-checked.
+The checks cover the files that SvelteKit's generated `tsconfig.json` includes: `src/`, `test/`, `tests/` and `vite.config.*`. Put Svelte components and other source files there, since files elsewhere are not type-checked.
+
+After adding a route, restart `npm run check:watch`, which generates the route's types when it starts.
 
 ## Building
 
