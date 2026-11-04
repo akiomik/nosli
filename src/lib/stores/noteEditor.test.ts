@@ -224,7 +224,7 @@ describe('createNoteEditorStore notes', () => {
     expect(get(editor).notes).toEqual(ids.map((id) => ({ id, note: undefined, relays: [] })));
   });
 
-  it('can still be edited when loading the notes of a list fails', async () => {
+  it('can still be used when its requests fail', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const ids = ['e'.repeat(64), 'f'.repeat(64)];
     const client = { use: () => throwError(() => new Error('relay error')) } as unknown as RxNostr;
@@ -233,6 +233,8 @@ describe('createNoteEditorStore notes', () => {
 
     await vi.waitFor(() => expect(get(editor).editorInitialized).toBe(true));
     expect(get(editor).notes).toEqual(ids.map((id) => ({ id, note: undefined, relays: [] })));
+    await vi.waitFor(() => expect(get(editor).searchInitialized).toBe(true));
+    expect(get(editor)).toMatchObject({ searchFailed: false, searchedNotes: [] });
   });
 
   it('lists a note that a list holds twice once', async () => {
