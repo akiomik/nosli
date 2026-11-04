@@ -61,7 +61,7 @@
   "move-down": "Move Down",
   "move-up": "Move Up",
   "mypage": "My page",
-  "nosli-description": "Nosli helps you create a curated list of posts on Nostr that is a open protocol for a decentralized global social network",
+  "nosli-description": "Nosli helps you create a curated list of posts on Nostr, an open protocol for a decentralized global social network",
   "notes-required": "Notes (required)",
   "nip07-implementations": "NIP-07 implementations",
   "no-lists-found": "No lists found 🤔",
@@ -85,7 +85,7 @@
     "waiting": "This can take a little while."
   },
   "recent-lists": "Recent lists",
-  "recent-your-reactions": "Recent your reactions",
+  "recent-your-reactions": "Your recent reactions",
   "relay-connections": "Relay connections",
   "relay-status": {
     "error": "Error",
