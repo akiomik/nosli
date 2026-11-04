@@ -6,28 +6,46 @@
 
   import type { PageData } from './$types';
   import { focusWhen } from '#lib/actions/focusWhen.js';
+  import LongFormContent from '#lib/entities/LongFormContent.js';
   import { matomeStore } from '#lib/stores/nostr.js';
+  import { orMissing, retries, retryable } from '#lib/stores/missing.js';
   import KeyManager, { Nip07CanceledError, Nip07MissingError } from '#lib/services/KeyManager.js';
   import { loginMethod } from '#lib/stores/login.js';
   import MatomeForm from '#lib/components/MatomeForm.svelte';
   import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
   import Nip07Waiting from '#lib/components/Nip07Waiting.svelte';
   import Alert from '#lib/components/Alert.svelte';
+  import MissingAlert from '#lib/components/MissingAlert.svelte';
 
   export let data: PageData & {
     params: nip19.AddressPointer;
   };
 
-  // TODO: Display "not found" on timeout
   const client: RxNostr = getContext('nostr-client');
-  $: matome = matomeStore({
-    client,
-    pubkey: data.params.pubkey,
-    identifier: data.params.identifier
-  });
+  // The list, or why there is none once the request has ended. It can be asked for again, since
+  // the relays may only have been slow.
+  $: request = retryable(
+    () =>
+      matomeStore({
+        client,
+        pubkey: data.params.pubkey,
+        identifier: data.params.identifier
+      }).pipe(orMissing(client)),
+    retries(client)
+  );
+  $: matome = $request instanceof LongFormContent ? $request : undefined;
+  $: missing = typeof $request === 'string' ? $request : undefined;
+  // After a retry, what it found takes the focus from its button, which has left the page.
+  let requestRetried = false;
+  const retryRequest = () => {
+    requestRetried = true;
+    request.retry();
+  };
+  // A retry for the previous list does not move the focus on this one.
+  $: if (request) requestRetried = false;
   // Checked again for each login, and when the author changes rather than for each version. The
   // author can stop waiting for a NIP-07 extension and try again.
-  $: author = $matome?.pubkey;
+  $: author = matome?.pubkey;
   let keyLookup = new AbortController();
   let retried = false;
   // A lookup for another author or login is not a retry.
@@ -50,7 +68,7 @@
 </svelte:head>
 
 <!-- After a logout, the load answers with a 401. -->
-{#if $matome && $loginMethod}
+{#if matome && $loginMethod}
   {#await loggedInAs}
     <LoadingSpinner>
       {#if $loginMethod === 'nip07'}
@@ -63,24 +81,24 @@
       <h1
         class="text-3xl md:text-5xl font-heading-token wrap-anywhere"
         tabindex="-1"
-        use:focusWhen={retried}
+        use:focusWhen={retried || requestRetried}
       >
-        {$_('edit-identifier', { values: { identifier: $matome.identifier } })}
+        {$_('edit-identifier', { values: { identifier: matome.identifier } })}
       </h1>
 
-      {#if $matome.hasContentBesidesNotes()}
+      {#if matome.hasContentBesidesNotes()}
         <!-- Shown when editing starts, and again by the save button, so that the author can decide
              before doing any work. -->
         <Alert variant="warning">
           <p>{$_('alert.content-replaced-on-edit')}</p>
           <details class="mt-2">
             <summary class="cursor-pointer">{$_('show-current-content')}</summary>
-            <p class="mt-2 whitespace-pre-wrap wrap-anywhere">{$matome.content}</p>
+            <p class="mt-2 whitespace-pre-wrap wrap-anywhere">{matome.content}</p>
           </details>
         </Alert>
       {/if}
 
-      <MatomeForm matome={$matome} />
+      <MatomeForm {matome} />
     {:else}
       <Alert variant="error">
         <p>{$_('error.unauthorized')}</p>
@@ -110,6 +128,13 @@
       </Alert>
     {/if}
   {/await}
+{:else if missing && $loginMethod}
+  <MissingAlert
+    {missing}
+    notFound={$_('missing.list')}
+    focus={requestRetried}
+    on:retry={retryRequest}
+  />
 {:else}
   <LoadingSpinner />
 {/if}

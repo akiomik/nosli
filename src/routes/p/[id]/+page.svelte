@@ -6,6 +6,8 @@
 
   import type { PageData } from './$types';
   import { recentUserMatomesStore, profileStore } from '#lib/stores/nostr.js';
+  import { startWith } from 'rxjs';
+  import { retries, retryable, withEnd } from '#lib/stores/missing.js';
   import { linkify, linkifyOpts } from '#lib/actions/linkify.js';
   import KeyManager from '#lib/services/KeyManager.js';
   import { loginMethod } from '#lib/stores/login.js';
@@ -19,8 +21,25 @@
   };
 
   const client: RxNostr = getContext('nostr-client');
-  const matomes = recentUserMatomesStore({ client, pubkey: data.pubkey });
-  const profile = profileStore({ client, pubkey: data.pubkey });
+  // A retry asks for the profile again too, since it went to the same relays. Both are asked for
+  // again when the page moves to another profile, and the profile then starts from none.
+  const pageRetries = retries(client);
+  $: matomes = retryable(
+    () => recentUserMatomesStore({ client, pubkey: data.pubkey }).pipe(withEnd(client)),
+    pageRetries
+  );
+  // Why there are none, once the request has ended.
+  $: missing = $matomes?.ended && $matomes.value.length === 0 ? $matomes.reason : undefined;
+  $: profile = pageRetries
+    .again(() => profileStore({ client, pubkey: data.pubkey }))
+    .pipe(startWith(undefined));
+  let retried = false;
+  const retry = () => {
+    retried = true;
+    matomes.retry();
+  };
+  // A retry on the previous profile does not move the focus on this one.
+  $: if (matomes) retried = false;
 
   $: name = $profile?.formattedName() || 'nostrich';
   $: desc = $_('profile-description', { values: { name } });
@@ -67,8 +86,8 @@
 
 <h2 class="text-2xl md:text-3xl font-heading-token">{$_('created-lists')}</h2>
 
-{#if $matomes}
-  <MatomeList matomes={$matomes} />
+{#if $matomes && ($matomes.ended || $matomes.value.length > 0)}
+  <MatomeList matomes={$matomes.value} {missing} focus={retried} on:retry={retry} />
 {:else}
   <LoadingSpinner />
 {/if}

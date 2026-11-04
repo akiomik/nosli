@@ -62,6 +62,11 @@
   "login-with-nip07": "NIP-07 を使用 (推奨)",
   "logout": "ログアウト",
   "menu": "メニュー",
+  "missing": {
+    "list": "このまとめは見つかりませんでした。",
+    "notes": "見つからなかった投稿があります。",
+    "unreachable": "リレーに接続できませんでした。"
+  },
   "move-down": "下へ移動",
   "move-up": "上へ移動",
   "mypage": "マイページ",
