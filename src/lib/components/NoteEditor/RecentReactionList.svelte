@@ -32,7 +32,7 @@
           <button
             type="button"
             class="btn ml-5"
-            class:preset-tonal-surface={isUsed(id)}
+            class:preset-filled-surface-200-800={isUsed(id)}
             class:preset-tonal-primary={!isUsed(id)}
             on:click|preventDefault={() => toggle(id)}
           >

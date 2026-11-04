@@ -59,11 +59,12 @@
   <input
     type="text"
     bind:value={newNoteId}
+    class="ig-input"
     class:input-error={newNoteId && !isNewNoteIdValid}
     placeholder="note1.../nevent1..."
   />
   <button
-    class="preset-filled-surface-300-700 disabled:opacity-50 disabled:cursor-not-allowed"
+    class="ig-btn preset-filled-surface-300-700 disabled:opacity-50 disabled:cursor-not-allowed"
     disabled={!isNewNoteIdValid}
     on:click|preventDefault={() => {
       editor.appendNote(newNoteId);

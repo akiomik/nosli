@@ -12,7 +12,7 @@
 </script>
 
 <div class="flex items-center">
-  <div class="btn-group preset-tonal-surface ml-5">
+  <div class="btn-group preset-filled-surface-200-800 ml-5">
     <button on:click|preventDefault={() => editor.moveUp(noteId)} disabled={isFirst}>
       <FontAwesomeIcon icon={faAngleUp} title="Move Up" />
     </button>

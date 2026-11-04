@@ -10,6 +10,12 @@
 
 [data-theme='legacy'] {
   --body-background-color: #e4e8f3;
+  /* Style links as Skeleton v2 did: darker than primary-500 and underlined, not marked by color alone. */
+  --anchor-font-color: var(--color-primary-700);
+  --anchor-text-decoration: underline;
+  --anchor-text-decoration-hover: underline;
+  --anchor-text-decoration-active: underline;
+  --anchor-text-decoration-focus: underline;
 }
 
 .btn,
@@ -20,6 +26,11 @@
 
 .input-error {
   border-color: var(--color-error-500);
+}
+
+/* Inputs inside a group have no border, so the group's ring shows the error. */
+.input-group:has(.input-error) {
+  --tw-ring-color: var(--color-error-500);
 }
 
 .card {
