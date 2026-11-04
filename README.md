@@ -20,6 +20,20 @@ npm run dev
 npm run dev -- --open
 ```
 
+## Checking
+
+```bash
+# type-check once, as CI does
+npm run check
+
+# type-check again whenever a file changes
+npm run check:watch
+```
+
+Both run the TypeScript compiler and `svelte-check`, which each report errors that the other misses. For example, only the compiler reports an untyped SvelteKit `load`, because `svelte-check` adds types to route exports.
+
+The checks cover the files that SvelteKit's generated `tsconfig.json` includes: `src/`, `test/` and `tests/`. Put Svelte components and other source files there, since files elsewhere are not type-checked.
+
 ## Building
 
 To create a production version of your app:
