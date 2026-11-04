@@ -24,6 +24,14 @@ export class PublicationFailedError extends Error {
   }
 }
 
+// The signer used another account than the author, such as another account of a NIP-07 extension.
+// Relays would ignore such a deletion, and keep such an update as a new list of the signer's.
+export class SignedByAnotherAccountError extends Error {
+  constructor() {
+    super('The event is not signed by the author.');
+  }
+}
+
 const ACK_TIMEOUT_MS = 10_000;
 
 export async function publishToRelays(

@@ -12,7 +12,7 @@ import {
 import LongFormContent from '$lib/entities/LongFormContent';
 import NostrClient, { decodeNoteId } from './NostrClient';
 import KeyManager from './KeyManager';
-import { PublicationFailedError } from './publishToRelays';
+import { PublicationFailedError, SignedByAnotherAccountError } from './publishToRelays';
 
 vi.mock('$lib/stores/cookie', async () => {
   const { writable } = await import('svelte/store');
@@ -174,7 +174,9 @@ describe('NostrClient.deleteArticle', () => {
     const client = new NostrClient(['wss://one']);
     const othersArticle = listVersion('f'.repeat(64), getPublicKey('2'.repeat(64)));
 
-    await expect(client.deleteArticle(othersArticle)).rejects.toThrow('not signed by the author');
+    await expect(client.deleteArticle(othersArticle)).rejects.toBeInstanceOf(
+      SignedByAnotherAccountError
+    );
     expect(publish).not.toHaveBeenCalled();
   });
 
@@ -185,6 +187,60 @@ describe('NostrClient.deleteArticle', () => {
 
     await expect(client.deleteArticle(draft)).rejects.toThrow('not published');
     expect(signEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('NostrClient.postLongFormContent', () => {
+  const update = (previous: LongFormContent) =>
+    LongFormContent.compose({
+      identifier: previous.identifier,
+      title: 'New title',
+      summary: '',
+      notes: [{ id: 'e'.repeat(64) }],
+      previous
+    });
+
+  it('publishes an update that its author signed', async () => {
+    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+    const publish = vi
+      .spyOn(SimplePool.prototype, 'publish')
+      .mockImplementation(() => acceptingPublication());
+    const client = new NostrClient(['wss://one']);
+
+    await client.postLongFormContent(update(publishedArticle));
+
+    expect(publish.mock.calls[0][1]).toMatchObject({ pubkey: publishedArticle.pubkey });
+  });
+
+  it('does not publish an update that another account signed', async () => {
+    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+    const publish = vi.spyOn(SimplePool.prototype, 'publish');
+    const client = new NostrClient(['wss://one']);
+    const othersArticle = listVersion('f'.repeat(64), getPublicKey('2'.repeat(64)));
+
+    await expect(client.postLongFormContent(update(othersArticle))).rejects.toBeInstanceOf(
+      SignedByAnotherAccountError
+    );
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('publishes a new list that any account signed', async () => {
+    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+    const publish = vi
+      .spyOn(SimplePool.prototype, 'publish')
+      .mockImplementation(() => acceptingPublication());
+    const client = new NostrClient(['wss://one']);
+    const list = LongFormContent.compose({
+      identifier: 'new-list',
+      title: 'Title',
+      summary: '',
+      notes: [{ id: 'e'.repeat(64) }]
+    });
+
+    const { content } = await client.postLongFormContent(list);
+
+    expect(content.pubkey).toBe(getPublicKey('1'.repeat(64)));
+    expect(publish).toHaveBeenCalledOnce();
   });
 });
 

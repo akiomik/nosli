@@ -14,6 +14,7 @@ import KeyManager from '$lib/services/KeyManager';
 import { relayHints } from '$lib/services/relayHints';
 import {
   PublicationFailedError,
+  SignedByAnotherAccountError,
   emptyPublicationResult,
   publishToRelays,
   type PublicationResult
@@ -190,6 +191,7 @@ export default class NostrClient {
     };
   }
 
+  // A list with an author is an update, which only its author can sign.
   public async postLongFormContent(
     lfc: LongFormContent
   ): Promise<{ content: LongFormContent; publication: PublicationResult }> {
@@ -198,6 +200,7 @@ export default class NostrClient {
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
+    if (lfc.pubkey && event.pubkey !== lfc.pubkey) throw new SignedByAnotherAccountError();
 
     const { available, unavailable } = await this.relaysAfterSigning();
     const publication = await publishToRelays(this.pool, available, event, undefined, unavailable);
@@ -229,10 +232,7 @@ export default class NostrClient {
     if (!validateEvent(event) || !verifySignature(event)) {
       throw new Error('Unexpected error: event is invalid.');
     }
-    // Relays ignore a request from anyone but the author, such as another NIP-07 account.
-    if (event.pubkey !== article.pubkey) {
-      throw new Error('The deletion request is not signed by the author.');
-    }
+    if (event.pubkey !== article.pubkey) throw new SignedByAnotherAccountError();
 
     const { available, unavailable } = await this.relaysAfterSigning();
     return publishToRelays(this.pool, available, event, undefined, unavailable);
