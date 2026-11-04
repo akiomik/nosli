@@ -2,6 +2,7 @@ import { nip19, Kind } from 'nostr-tools';
 import type { Event } from 'nostr-tools';
 import { isEventId } from '$lib/entities/EventId';
 import Tag from '$lib/entities/Tag';
+import { toSeconds } from '$lib/helper';
 import { relayHints } from '$lib/services/relayHints';
 
 // A note in a list, with the relays that hint where it can be found.
@@ -15,9 +16,6 @@ const MAX_NOTE_RELAY_HINTS = 3;
 
 const isNosliTag = ([typ, value]: string[]): boolean =>
   typ === nosliTag.typ && value === nosliTag.value;
-
-// Nostr timestamps are in whole seconds, rounded from a Date.
-const toSeconds = (date: Date): number => Math.round(date.getTime() / 1000);
 
 // NIP-23 gives published_at as a string of seconds.
 const parseTimestamp = (value: string | undefined): Date | undefined => {

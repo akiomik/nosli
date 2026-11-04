@@ -170,6 +170,28 @@ describe('NostrClient.deleteArticle', () => {
     });
   });
 
+  it.each([
+    ['at the current time for an article that is older', 1_799_999_000, 1_800_000_000],
+    ['no earlier than an article from a clock that is ahead', 1_800_000_300, 1_800_000_300]
+  ])('dates the request %s', async (_case, articleCreatedAt, requestCreatedAt) => {
+    vi.useFakeTimers({ now: 1_800_000_000_000, toFake: ['Date'] });
+    vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
+    const publish = vi
+      .spyOn(SimplePool.prototype, 'publish')
+      .mockImplementation(() => acceptingPublication());
+    const client = new NostrClient(['wss://one']);
+    const article = listVersion('f'.repeat(64));
+    article.createdAt = new Date(articleCreatedAt * 1000);
+
+    try {
+      await client.deleteArticle(article);
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(publish.mock.calls[0][1]).toMatchObject({ created_at: requestCreatedAt });
+  });
+
   it('does not publish a request that someone other than the author signed', async () => {
     vi.spyOn(SimplePool.prototype, 'ensureRelay').mockResolvedValue(fakeRelay('wss://one').relay);
     const publish = vi.spyOn(SimplePool.prototype, 'publish');
