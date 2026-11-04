@@ -16,6 +16,9 @@ const MAX_NOTE_RELAY_HINTS = 3;
 const isNosliTag = ([typ, value]: string[]): boolean =>
   typ === nosliTag.typ && value === nosliTag.value;
 
+// Nostr timestamps are in whole seconds, rounded from a Date.
+const toSeconds = (date: Date): number => Math.round(date.getTime() / 1000);
+
 // NIP-23 gives published_at as a string of seconds.
 const parseTimestamp = (value: string | undefined): Date | undefined => {
   if (value === undefined || !/^\d+$/.test(value)) return undefined;
@@ -78,6 +81,11 @@ export default class LongFormContent {
     previous?: LongFormContent;
   }): LongFormContent {
     const { identifier, title, summary, notes, previous } = params;
+    // Relays keep only the newest version of a list, and the one with the lowest ID of those created
+    // in the same second. An update is therefore later than the version it replaces, even when that
+    // version is from the same second, or from a clock that is ahead of this one.
+    const now = toSeconds(new Date());
+    const createdAt = previous ? Math.max(now, toSeconds(previous.createdAt) + 1) : now;
     return new LongFormContent(
       undefined,
       identifier,
@@ -88,7 +96,7 @@ export default class LongFormContent {
             `nostr:${nip19.neventEncode({ id, relays: relays?.slice(0, MAX_NOTE_RELAY_HINTS) })}`
         )
         .join('\n'),
-      new Date(),
+      new Date(createdAt * 1000),
       title,
       summary,
       previous?.image,
@@ -112,7 +120,7 @@ export default class LongFormContent {
       tags.push(['image', this.image]);
     }
     if (this.publishedAt) {
-      tags.push(['published_at', Math.round(this.publishedAt.getTime() / 1000).toString()]);
+      tags.push(['published_at', toSeconds(this.publishedAt).toString()]);
     }
 
     const event = {
@@ -121,7 +129,7 @@ export default class LongFormContent {
       kind: Kind.Article,
       content: this.content,
       pubkey: this.pubkey,
-      created_at: Math.round(this.createdAt.getTime() / 1000),
+      created_at: toSeconds(this.createdAt),
       tags
     };
 
