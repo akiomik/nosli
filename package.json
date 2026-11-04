@@ -27,7 +27,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@sveltejs/adapter-vercel": "^5.10.3",
     "@sveltejs/kit": "^2.70.3",
-    "@sveltejs/vite-plugin-svelte": "^4.0.4",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tailwindcss/forms": "^0.5.10",
     "@types/node": "^22.20.5",
     "@types/sanitize-html": "^2.8.0",
@@ -44,8 +44,8 @@
     "tailwindcss": "^4.3.3",
     "tslib": "^2.4.1",
     "typescript": "5.4.5",
-    "vite": "^5.4.21",
-    "vitest": "^1.6.1"
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
   },
   "type": "module",
   "dependencies": {
