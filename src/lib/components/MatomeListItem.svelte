@@ -13,8 +13,8 @@
 
 <div class="card">
   <div class="p-4">
-    <h3 class="text-xl md:text-2xl font-heading-token">{matome.title}</h3>
-    <p class="text-ellipsis overflow-hidden line-clamp-8 mt-4">
+    <h3 class="text-xl md:text-2xl font-heading-token wrap-anywhere">{matome.title}</h3>
+    <p class="text-ellipsis overflow-hidden line-clamp-8 mt-4 wrap-anywhere">
       {matome.summary}
     </p>
     <!-- The date moves below a long name instead of squeezing it. -->

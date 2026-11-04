@@ -37,7 +37,7 @@
     <LoadingSpinner />
   {:then loggedInAs}
     {#if loggedInAs}
-      <h1 class="text-3xl md:text-5xl font-heading-token">
+      <h1 class="text-3xl md:text-5xl font-heading-token wrap-anywhere">
         {$_('edit-identifier', { values: { identifier: $matome.identifier } })}
       </h1>
 

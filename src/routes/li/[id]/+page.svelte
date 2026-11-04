@@ -49,13 +49,13 @@
 
 {#if $matome}
   <div class="flex items-center justify-between space-x-2">
-    <h1 class="text-3xl md:text-5xl font-heading-token">{$matome.title}</h1>
+    <h1 class="text-3xl md:text-5xl font-heading-token min-w-0 wrap-anywhere">{$matome.title}</h1>
 
     {#await isMine}
       <!-- noop -->
     {:then isMine}
       {#if isMine && $loginMethod !== 'npub'}
-        <div>
+        <div class="shrink-0">
           <a href="/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">{$_('edit')}</a>
         </div>
       {/if}
@@ -65,7 +65,7 @@
   </div>
 
   {#if $matome.summary}
-    <p use:linkify={linkifyOpts}>{$matome.summary}</p>
+    <p class="wrap-anywhere" use:linkify={linkifyOpts}>{$matome.summary}</p>
   {/if}
 
   <div class="flex flex-col space-y-2">
