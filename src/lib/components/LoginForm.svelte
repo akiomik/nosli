@@ -1,16 +1,22 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
   import { nip19, getPublicKey } from 'nostr-tools';
   import { _ } from 'svelte-i18n';
 
   import { pubkey, seckey, nip07 } from '$lib/stores/cookie.js';
+  import KeyManager from '$lib/services/KeyManager';
   import Alert from '$lib/components/Alert.svelte';
   import ExternalLink from '$lib/components/ExternalLink.svelte';
 
   let key: string | undefined = undefined; // TODO: support NIP-07
 
-  $: isNip07Available = browser && !!window.nostr;
+  // Undefined while an extension that is still loading is waited for.
+  let isNip07Available: boolean | undefined = undefined;
+  onMount(async () => {
+    isNip07Available = await KeyManager.hasNip07();
+  });
 
   const keyIsValid = (key: string | undefined) => {
     if (key === undefined || (!key.startsWith('npub') && !key.startsWith('nsec'))) {
@@ -32,6 +38,8 @@
 
     try {
       const npub = await window.nostr.getPublicKey();
+      // Replaces a login with a key, which would otherwise be used instead.
+      KeyManager.logout();
       $nip07 = true;
       goto(`/p/${nip19.npubEncode(npub)}`);
     } catch (e) {
@@ -46,6 +54,8 @@
         throw new Error('Unexpected error: decoded key is not string');
       }
 
+      // Replaces any login, such as a NIP-07 one whose extension refused, which would be used instead.
+      KeyManager.logout();
       if (key.startsWith('npub')) {
         $pubkey = decoded;
       } else {
@@ -60,7 +70,7 @@
 
 <h2 class="text-2xl md:text-3xl font-heading-token">{$_('login-with-nip07')}</h2>
 
-{#if browser && !isNip07Available}
+{#if isNip07Available === false}
   <Alert variant="warning">
     <p>
       {$_('alert.nip07-unavailable')}

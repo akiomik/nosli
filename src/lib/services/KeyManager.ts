@@ -15,9 +15,11 @@ declare global {
 }
 
 // NIP-07 extensions add window.nostr while the page loads, which can be after the app starts, so a
-// missing one is waited for until this long after the page started loading.
+// missing one is waited for until this long after the app started.
 const NIP07_WAIT_MS = 3000;
 const NIP07_POLL_MS = 100;
+// When the app loaded this module, which is after the page itself arrived, however long that took.
+const startedAt = performance.now();
 
 export default class KeyManager {
   private constructor() {
@@ -25,7 +27,7 @@ export default class KeyManager {
   }
 
   private static async nip07(): Promise<Nip07> {
-    while (!window.nostr && performance.now() < NIP07_WAIT_MS) {
+    while (!window.nostr && performance.now() < startedAt + NIP07_WAIT_MS) {
       await new Promise((resolve) => setTimeout(resolve, NIP07_POLL_MS));
     }
     if (!window.nostr) {
@@ -35,9 +37,22 @@ export default class KeyManager {
     return window.nostr;
   }
 
+  // Whether this browser has a NIP-07 extension, waiting for one that is still loading.
+  static async hasNip07(): Promise<boolean> {
+    return KeyManager.nip07().then(
+      () => true,
+      () => false
+    );
+  }
+
   static async getPublicKey(): Promise<string> {
     if (get(nip07)) {
-      return (await KeyManager.nip07()).getPublicKey();
+      const key = await (await KeyManager.nip07()).getPublicKey();
+      // The key goes into npub links and is compared with event authors.
+      if (typeof key !== 'string' || !/^[0-9a-f]{64}$/.test(key)) {
+        throw new Error('The NIP-07 extension gave an invalid public key');
+      }
+      return key;
     } else {
       return get(pubkey);
     }
@@ -73,10 +88,6 @@ export default class KeyManager {
 
   static isLoggedInWithKey(): boolean {
     return get(pubkey) !== '';
-  }
-
-  static isLoggedInWithPublicKey(): boolean {
-    return get(pubkey) !== '' && get(seckey) === '';
   }
 
   static isLoggedInWithSecretKey(): boolean {
