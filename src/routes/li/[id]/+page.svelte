@@ -55,7 +55,7 @@
       <!-- noop -->
     {:then isMine}
       {#if isMine && $loginMethod !== 'npub'}
-        <div class="shrink-0">
+        <div>
           <a href="/li/{$matome.nip19Id()}/edit" class="btn bg-primary-500">{$_('edit')}</a>
         </div>
       {/if}
