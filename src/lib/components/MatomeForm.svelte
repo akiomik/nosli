@@ -101,7 +101,7 @@
 
     await submit(
       'saving',
-      () => client.postLongFormContent(lfc),
+      () => client.postLongFormContent(lfc, matome?.pubkey),
       ({ content, publication }) => {
         notifySuccess(matome ? 'updated' : 'created', publication);
         goto(`/li/${content.nip19Id()}`);
