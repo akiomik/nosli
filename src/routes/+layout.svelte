@@ -3,13 +3,13 @@
   import { Toast } from '@skeletonlabs/skeleton-svelte';
   import '@fortawesome/fontawesome-svg-core/styles.css';
   import { config } from '@fortawesome/fontawesome-svg-core';
-  import { createRxNostr } from 'rx-nostr';
   import { _ } from 'svelte-i18n';
 
   import { beforeNavigate, afterNavigate, invalidate } from '$app/navigation';
   import '../app.css';
   import * as settings from '#lib/services/settings.js';
   import KeyManager from '#lib/services/KeyManager.js';
+  import { createClient } from '#lib/stores/client.js';
   import Header from '#lib/components/Header.svelte';
   import Footer from '#lib/components/Footer.svelte';
   import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
@@ -21,8 +21,7 @@
   let loading = false;
   let timeout: ReturnType<typeof setTimeout>;
 
-  const client = createRxNostr();
-  client.setRelays(settings.defaultRelays);
+  const client = createClient(settings.defaultRelays);
   setContext('nostr-client', client);
 
   beforeNavigate(() => {

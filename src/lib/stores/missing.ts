@@ -17,8 +17,8 @@ import type { RxNostr } from 'rx-nostr';
 // nothing.
 export type Missing = 'unreachable' | 'not-found';
 
-// Whether a relay sends anything while a request runs. rx-nostr 0.9 keeps a relay "ongoing" after
-// its connection has closed, so the relays' state cannot tell.
+// Whether a relay sends anything while a request runs. A relay can be connected and still not answer,
+// so the relays' state cannot tell.
 const watchAnswers = (client: RxNostr) => {
   let answered = false;
   const subscription = client.createAllMessageObservable().subscribe(() => (answered = true));
@@ -64,15 +64,11 @@ export function withEnd<T>(client: RxNostr): OperatorFunction<T, Progress<T>> {
     });
 }
 
-// rx-nostr 0.9 does not connect again to a relay whose connection failed, so the relay is added
-// again, as it was.
-const reviveFailedRelays = (client: RxNostr) => {
-  const relays = client.getRelays();
-  for (const [url, state] of Object.entries(client.getAllRelayState())) {
-    if (state !== 'error') continue;
-    const relay = relays.find((relay) => relay.url === url) ?? url;
-    client.removeRelay(url);
-    client.addRelay(relay);
+// Connects again to the relays whose connection failed, which rx-nostr does not do by itself. A
+// request to such a relay waits for the connection, and is sent once it opens.
+const reconnectFailedRelays = (client: RxNostr) => {
+  for (const [url, { connection }] of Object.entries(client.getAllRelayStatus())) {
+    if (connection === 'error' && client.getDefaultRelay(url)?.read) client.reconnect(url);
   }
 };
 
@@ -88,7 +84,7 @@ export function retries(client: RxNostr): Retries {
   const attempts = new BehaviorSubject<void>(undefined);
   return {
     retry: () => {
-      reviveFailedRelays(client);
+      reconnectFailedRelays(client);
       attempts.next();
     },
     again: (request) => attempts.pipe(switchMap(request))

@@ -100,11 +100,15 @@
   "recent-your-reactions": "Your recent reactions",
   "relay-connections": "Relay connections",
   "relay-status": {
+    "connected": "Connected",
+    "connecting": "Connecting",
+    "dormant": "Idle",
     "error": "Error",
-    "not-started": "Not connected",
-    "ongoing": "Connected",
-    "reconnecting": "Reconnecting",
-    "starting": "Connecting"
+    "initialized": "Not connected",
+    "rejected": "Closed by the relay",
+    "retrying": "Reconnecting",
+    "terminated": "Closed",
+    "waiting-for-retrying": "Waiting to reconnect"
   },
   "remove": "Remove",
   "reorder-by-least-recently-created": "Reorder by least recently created",

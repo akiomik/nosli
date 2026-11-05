@@ -100,11 +100,15 @@
   "recent-your-reactions": "最近リアクションした投稿",
   "relay-connections": "リレーの接続状況",
   "relay-status": {
+    "connected": "接続済み",
+    "connecting": "接続中",
+    "dormant": "休止中",
     "error": "エラー",
-    "not-started": "未接続",
-    "ongoing": "接続済み",
-    "reconnecting": "再接続中",
-    "starting": "接続中"
+    "initialized": "未接続",
+    "rejected": "リレー側で切断",
+    "retrying": "再接続中",
+    "terminated": "切断済み",
+    "waiting-for-retrying": "再接続待ち"
   },
   "remove": "削除",
   "reorder-by-least-recently-created": "投稿が古い順に並び替え",

@@ -11,10 +11,10 @@ import {
   takeUntil,
   scan
 } from 'rxjs';
-import type { MonoTypeOperatorFunction, OperatorFunction } from 'rxjs';
-import { latestEach, verify } from 'rx-nostr';
+import type { MonoTypeOperatorFunction, Observable, OperatorFunction } from 'rxjs';
+import { latestEach } from 'rx-nostr';
 import type { EventPacket, ConnectionStatePacket } from 'rx-nostr';
-import { getEventHash, matchFilter, validateEvent } from 'nostr-tools';
+import { getEventHash, matchFilter, validateEvent, verifyEvent } from 'nostr-tools';
 import type { Event, Filter } from 'nostr-tools';
 
 // As NIP-33 had it before it moved into NIP-01, an addressable event is at the value of its first d
@@ -43,10 +43,23 @@ const isEvent = (event: unknown): event is Event =>
   Math.abs((event as Event).created_at) <= MAX_DATE_SECONDS &&
   (event as Event).tags.every((tag) => tag.every((value) => typeof value === 'string'));
 
+// An event whose expiration tag holds a time that has passed, as NIP-40 has it. A tag that does not
+// hold a time in seconds does not expire the event.
+const hasExpired = (event: Event): boolean => {
+  const expiration = event.tags.find(([name]) => name === 'expiration')?.[1];
+  return (
+    expiration !== undefined &&
+    /^\d+$/.test(expiration) &&
+    Number(expiration) <= Math.floor(Date.now() / 1000)
+  );
+};
+
 // A relay can answer with any event under any ID. Keeps each event that matches the request's
-// filters, whose ID is its hash, and whose signature is valid, once. A bad copy that arrives first is
-// dropped, so it does not hide the real event.
-export function requestedEvents(filters: Filter[]): MonoTypeOperatorFunction<EventPacket> {
+// filters, whose ID is its hash, whose signature is valid, and that has not expired (NIP-40), once.
+// A bad copy that arrives first is dropped, so it does not hide the real event.
+export function requestedEvents(
+  filters: Filter[]
+): <P extends Pick<EventPacket, 'event'>>(packets: Observable<P>) => Observable<P> {
   return (packets) =>
     defer(() => {
       // Once an event is verified, any later copy with its ID is dropped without checking it again.
@@ -57,9 +70,10 @@ export function requestedEvents(filters: Filter[]): MonoTypeOperatorFunction<Eve
             isEvent(event) &&
             !verified.has(event.id) &&
             getEventHash(event) === event.id &&
-            matchesFilters(filters, event)
+            matchesFilters(filters, event) &&
+            !hasExpired(event) &&
+            verifyEvent(event)
         ),
-        verify(),
         tap(({ event }) => verified.add(event.id))
       );
     });
@@ -85,7 +99,7 @@ export function takeTimeout<A>(timeout: number | Date): MonoTypeOperatorFunction
 // longer has no naddr, and no link can open it.
 const MAX_TLV_BYTES = 255;
 
-export const hasNaddr = ({ event }: EventPacket): boolean =>
+export const hasNaddr = <P extends Pick<EventPacket, 'event'>>({ event }: P): boolean =>
   new TextEncoder().encode(identifierOf(event)).length <= MAX_TLV_BYTES;
 
 export function latestEachNaddr(): MonoTypeOperatorFunction<EventPacket> {

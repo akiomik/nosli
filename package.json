@@ -62,7 +62,7 @@
     "linkifyjs": "^4.3.2",
     "nostr-tools": "2.25.2",
     "re2": "^1.27.0",
-    "rx-nostr": "^0.9.0",
+    "rx-nostr": "3.7.8",
     "sanitize-html": "^2.18.1",
     "svelte-i18n": "^4.0.1",
     "url-regex-safe": "^3.0.0"

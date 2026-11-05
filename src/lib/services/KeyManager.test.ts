@@ -10,8 +10,7 @@ vi.mock('#lib/stores/cookie.js', async () => {
 const hex = publicKeyOf('1'.repeat(64));
 const extension = {
   getPublicKey: async () => hex,
-  signEvent: vi.fn(),
-  getRelays: async () => ({})
+  signEvent: vi.fn()
 };
 
 let KeyManager: typeof import('./KeyManager').default;
@@ -96,8 +95,7 @@ describe('KeyManager.getPublicKey with an extension that gives an invalid key', 
     nip07.set(true);
     window.nostr = {
       getPublicKey: async () => key as string,
-      signEvent: vi.fn(),
-      getRelays: async () => ({})
+      signEvent: vi.fn()
     };
 
     await expect(KeyManager.getPublicKey()).rejects.toThrow('invalid public key');
@@ -117,8 +115,7 @@ describe('KeyManager with a NIP-07 extension that has not answered', () => {
           new Promise<Event>(
             (resolve) => (giveSignature = () => resolve(signWith('1'.repeat(64), event)))
           )
-      ),
-      getRelays: async () => ({})
+      )
     };
     window.nostr = nostr;
     nip07.set(true);
@@ -195,8 +192,7 @@ describe('KeyManager with a NIP-07 extension that has not answered', () => {
     const refusal = new Error('User rejected');
     window.nostr = {
       getPublicKey: () => Promise.reject(refusal),
-      signEvent: () => Promise.reject(refusal),
-      getRelays: async () => ({})
+      signEvent: () => Promise.reject(refusal)
     };
     nip07.set(true);
     const wait = new AbortController();

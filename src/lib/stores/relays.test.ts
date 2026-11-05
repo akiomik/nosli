@@ -3,7 +3,9 @@ import type { Observable } from 'rxjs';
 
 import NostrClient from '#lib/services/NostrClient.js';
 import {
+  FakeWebSocket,
   dropConnectionsOf,
+  sendFrameFrom,
   setAnswerDelay,
   setRelayBehavior,
   setRelayEvents,
@@ -429,6 +431,26 @@ describe('relayConnectionsStore', () => {
 });
 
 describe('the client', () => {
+  it('connects to the relays at once, and keeps the connections between requests', async () => {
+    const client = clientOf(relays);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(relays.map((url) => socketsTo(url).map(({ readyState }) => readyState))).toEqual([
+      [FakeWebSocket.OPEN],
+      [FakeWebSocket.OPEN]
+    ]);
+
+    watch(findList(client));
+    await vi.advanceTimersByTimeAsync(60_000);
+    const later = watch(findList(client));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(later.values).toEqual(['not-found']);
+    expect(relays.map((url) => socketsTo(url).map(({ readyState }) => readyState))).toEqual([
+      [FakeWebSocket.OPEN],
+      [FakeWebSocket.OPEN]
+    ]);
+  });
+
   it('makes no HTTP request, as for relay information', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch');
     setRelayEvents(a, [list]);
@@ -440,5 +462,132 @@ describe('the client', () => {
 
     expect(fetch).not.toHaveBeenCalled();
     fetch.mockRestore();
+  });
+});
+
+describe('what changes with rx-nostr 3', () => {
+  const deletions = (client: RxNostr) =>
+    matomeDeletionRequestsStore({ client, author, ids: [list.id] }).pipe(withEnd(client));
+
+  it.each<[RelayBehavior, string]>([
+    ['drop', 'unreachable'],
+    ['reject', 'not-found']
+  ])(
+    'ends the request for a list at once when every relay does this: %s',
+    async (behavior, reason) => {
+      behave(behavior);
+
+      const request = watch(findList(clientOf(relays)));
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(request.values).toEqual([reason]);
+      expect(request.endedAt).toBeLessThan(10);
+    }
+  );
+
+  it.each<RelayBehavior>(['reject', 'drop'])(
+    'does not wait for deletion requests from a relay that does this: %s',
+    async (behavior) => {
+      setRelayBehavior(a, behavior);
+      setRelayEvents(b, [deletion]);
+
+      const request = watch(deletions(clientOf(relays)));
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(request.values.at(-1)).toMatchObject({ value: [{ id: deletion.id }], ended: true });
+      expect(request.endedAt).toBeLessThan(10);
+    }
+  );
+
+  it('shows of two versions of a list dated the same the one with the lowest ID, as NIP-01 has it', async () => {
+    const versions = ['one', 'two', 'three'].map((title) =>
+      signWith(key, {
+        kind: KIND.article,
+        content: '',
+        created_at: 10,
+        tags: [
+          ['d', 'my-list'],
+          ['title', title],
+          ['t', NostrClient.TAG]
+        ]
+      })
+    );
+    const lowest = [...versions].sort((x, y) => (x.id < y.id ? -1 : 1))[0];
+    versions.forEach((version, i) => setRelayEvents(`wss://r${i}.example.com`, [version]));
+    const client = clientOf(versions.map((_, i) => `wss://r${i}.example.com`));
+
+    const request = watch(findList(client));
+    const recent = watch(recentGlobalMatomesStore({ client, limit: 25 }));
+    await vi.advanceTimersByTimeAsync(20);
+
+    expect(request.values.at(-1)).toMatchObject({ id: lowest.id });
+    expect(recent.values.at(-1)?.map(({ id }) => id)).toEqual([lowest.id]);
+  });
+
+  // rx-nostr 0.9 sent the request to a relay that had failed through a socket of its own, which
+  // threw once the relay answered after it was added again.
+  it('connects again on a retry to a relay that came up while a request to it ran', async () => {
+    setRelayBehavior(b, 'refuse');
+    setRelayEvents(b, [list]);
+    const client = clientOf(relays);
+    await vi.advanceTimersByTimeAsync(10);
+
+    setRelayBehavior(b, 'ack');
+    const shared = retries(client);
+    const found = watch(shared.again(() => findList(client)));
+    shared.retry();
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(found.values).toMatchObject([{ id: list.id }]);
+  });
+
+  it('lists the state of each relay when the list is opened after the relays connected', async () => {
+    setRelayBehavior(b, 'refuse');
+    const client = clientOf(relays);
+    await vi.advanceTimersByTimeAsync(10);
+
+    let listed: { from: string; status: string }[] = [];
+    relayConnectionsStore(client).subscribe((packets) => {
+      listed = packets.map(({ from, state }) => ({ from, status: statusOf(state) }));
+    });
+
+    expect(listed).toEqual([
+      { from: a, status: 'connected' },
+      { from: b, status: 'failed' }
+    ]);
+  });
+
+  it('keeps answering from a relay that sent a frame that is not JSON', async () => {
+    setRelayEvents(a, [list]);
+    const client = clientOf([a]);
+    await vi.advanceTimersByTimeAsync(10);
+
+    sendFrameFrom(a, 'not JSON');
+    const request = watch(findList(client));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(request.values).toMatchObject([{ id: list.id }]);
+  });
+
+  it('leaves out a list that has expired, as NIP-40 has it', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const expiring = (title: string, expiration: number) =>
+      signWith(key, {
+        kind: KIND.article,
+        content: '',
+        created_at: 10,
+        tags: [
+          ['d', title],
+          ['title', title],
+          ['t', NostrClient.TAG],
+          ['expiration', `${expiration}`]
+        ]
+      });
+    setRelayEvents(a, [expiring('expired', now - 1), expiring('expiring', now + 60)]);
+
+    const request = watch(recentGlobalMatomesStore({ client: clientOf(relays), limit: 25 }));
+    await vi.advanceTimersByTimeAsync(20);
+
+    expect(request.values.at(-1)?.map(({ title }) => title)).toEqual(['expiring']);
   });
 });

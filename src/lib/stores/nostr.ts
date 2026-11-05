@@ -1,10 +1,13 @@
 import {
+  asapScheduler,
+  concat,
   defaultIfEmpty,
   defer,
   distinctUntilChanged,
   filter,
   finalize,
   flatMap,
+  ignoreElements,
   map,
   merge,
   of,
@@ -12,13 +15,14 @@ import {
   startWith,
   switchMap,
   take,
+  timer,
   toArray
 } from 'rxjs';
 import type { Observable, OperatorFunction } from 'rxjs';
-import { latest, createRxNostr, createRxOneshotReq } from 'rx-nostr';
-import type { Nostr, RxNostr, RxReq, ConnectionStatePacket, EventPacket } from 'rx-nostr';
+import { latest, createRxOneshotReq } from 'rx-nostr';
+import type { RxNostr, ConnectionStatePacket, EventPacket } from 'rx-nostr';
 import { kinds } from 'nostr-tools';
-import type { Event } from 'nostr-tools';
+import type { Event, Filter } from 'nostr-tools';
 
 import {
   requestedEvents,
@@ -28,6 +32,7 @@ import {
   latestEachNaddr,
   latestConnectionState
 } from '#lib/stores/operators.js';
+import { createClient } from '#lib/stores/client.js';
 import NostrClient from '#lib/services/NostrClient.js';
 import { normalizeRelayHint, relayHints } from '#lib/services/relayHints.js';
 import { isEventId } from '#lib/entities/EventId.js';
@@ -37,9 +42,6 @@ import Note from '#lib/entities/Note.js';
 import Reaction from '#lib/entities/Reaction.js';
 import type { LoadingNote } from '#lib/entities/LoadingNote.js';
 
-// The filters go to rx-nostr, whose filters have no tag that is undefined, unlike those of nostr-tools.
-type Filter = Nostr.Filter;
-
 const DEFAULT_TIMEOUT_WITHOUT_SORT = 1000;
 const DEFAULT_TIMEOUT_WITH_SORT = 750;
 // Lists are shown before their deletion requests arrive, so waiting longer for them delays nothing.
@@ -48,50 +50,42 @@ const DEFAULT_DELETION_TIMEOUT = 5000;
 // At most this many hinted relays are asked, so that a list cannot make a viewer open many sockets.
 const MAX_HINTED_RELAYS = 8;
 
+// The events that the relays of the client send for `filters`, until each relay has ended the
+// request with EOSE or CLOSED, or is down. rx-nostr ends a request on the EOSE of its last relay
+// before it passes that EOSE on to those who watch every message, as orMissing and withEnd do, so the
+// request ends only once it has.
+function request(client: RxNostr, filters: Filter[]): Observable<EventPacket> {
+  return concat(
+    client.use(createRxOneshotReq({ filters })),
+    timer(0, asapScheduler).pipe(ignoreElements())
+  );
+}
+
 // Also asks the hinted relays that the client does not read from, up to MAX_HINTED_RELAYS of them in
 // the order given. They get a client of their own that closes when the request ends, so a hint never
 // joins the shared relays.
-function useWithRelayHints(
+function requestWithRelayHints(
   client: RxNostr,
-  createReq: () => RxReq,
+  filters: Filter[],
   relays: string[]
 ): Observable<EventPacket> {
   const hints = relayHints(relays);
   const known = new Set(
-    hints.length > 0 ? client.getRelays().map(({ url }) => normalizeRelayHint(url)) : []
+    hints.length > 0
+      ? Object.values(client.getDefaultRelays({ filter: 'read-all' })).map(({ url }) =>
+          normalizeRelayHint(url)
+        )
+      : []
   );
   const extra = hints.filter((url) => !known.has(url)).slice(0, MAX_HINTED_RELAYS);
-  if (extra.length === 0) return client.use(createReq());
+  if (extra.length === 0) return request(client, filters);
 
   return defer(() => {
-    const hinted = createRxNostr();
-    hinted.setRelays(extra.map((url) => ({ url, read: true, write: false })));
-    return merge(client.use(createReq()), hinted.use(createReq())).pipe(
-      finalize(() => closeHintedClient(hinted))
+    const hinted = createClient(extra.map((url) => ({ url, read: true, write: false })));
+    return merge(request(client, filters), request(hinted, filters)).pipe(
+      finalize(() => hinted.dispose())
     );
   });
-}
-
-// rx-nostr 0.9 throws when a socket that was still connecting reports its error after dispose(), so
-// the relays are closed first, and the client is disposed once none of them is connecting.
-function closeHintedClient(hinted: RxNostr) {
-  const connecting = () =>
-    Object.values(hinted.getAllRelayState()).some(
-      (state) => state === 'starting' || state === 'reconnecting'
-    );
-  hinted.setRelays(hinted.getRelays().map(({ url }) => ({ url, read: false, write: false })));
-  if (!connecting()) {
-    hinted.dispose();
-    return;
-  }
-  hinted
-    .createConnectionStateObservable()
-    .pipe(
-      filter(() => !connecting()),
-      take(1)
-    )
-    // The socket is still handling its error when the state changes, so dispose after it.
-    .subscribe(() => setTimeout(() => hinted.dispose()));
 }
 
 // The deletion requests that the authors send for the versions with these IDs, or for the lists at
@@ -107,7 +101,7 @@ function deletionRequests(
   ];
   if (filters.length === 0) return of([]);
 
-  return client.use(createRxOneshotReq({ filters })).pipe(
+  return request(client, filters).pipe(
     requestedEvents(filters),
     takeTimeout(timeout),
     scan((requests: Event[], { event }) => [...requests, event], []),
@@ -136,12 +130,20 @@ function hidingDeleted(client: RxNostr): OperatorFunction<LongFormContent[], Lon
   );
 }
 
+// The state of the connection to each relay that the client reads from or writes to, in the order
+// that it was given.
 export function relayConnectionsStore(client: RxNostr): Observable<ConnectionStatePacket[]> {
-  const init: ConnectionStatePacket[] = client
-    .getRelays()
-    .map(({ url }) => ({ from: url, state: 'not-started' }));
+  return defer(() => {
+    const status = client.getAllRelayStatus();
+    const init: ConnectionStatePacket[] = Object.keys(client.getDefaultRelays()).map((url) => ({
+      from: url,
+      state: status[url]?.connection ?? 'initialized'
+    }));
 
-  return client.createConnectionStateObservable().pipe(startWith(...init), latestConnectionState());
+    return client
+      .createConnectionStateObservable()
+      .pipe(startWith(...init), latestConnectionState());
+  });
 }
 
 export function recentGlobalMatomesStore({
@@ -161,7 +163,7 @@ export function recentGlobalMatomesStore({
     }
   ];
 
-  return client.use(createRxOneshotReq({ filters })).pipe(
+  return request(client, filters).pipe(
     requestedEvents(filters),
     filter(hasNaddr),
     takeTimeout(timeout),
@@ -190,7 +192,7 @@ export function recentUserMatomesStore({
     }
   ];
 
-  return client.use(createRxOneshotReq({ filters })).pipe(
+  return request(client, filters).pipe(
     requestedEvents(filters),
     filter(hasNaddr),
     takeTimeout(timeout),
@@ -223,7 +225,7 @@ export function matomeStore({
     }
   ];
 
-  return client.use(createRxOneshotReq({ filters })).pipe(
+  return request(client, filters).pipe(
     requestedEvents(filters),
     latest(),
     takeTimeout(timeout),
@@ -267,7 +269,7 @@ export function profileStore({
     }
   ];
 
-  return client.use(createRxOneshotReq({ filters })).pipe(
+  return request(client, filters).pipe(
     requestedEvents(filters),
     // A profile that cannot be read is left out, as if it had not been sent, so it does not hide an
     // older one.
@@ -303,7 +305,7 @@ export function notesStore({
   ];
 
   // A found note comes with the relay that returned it.
-  return useWithRelayHints(client, () => createRxOneshotReq({ filters }), relays).pipe(
+  return requestWithRelayHints(client, filters, relays).pipe(
     requestedEvents(filters),
     takeTimeout(timeout),
     map(({ event, from }) => {
@@ -335,7 +337,7 @@ export function noteStore({
     }
   ];
 
-  return useWithRelayHints(client, () => createRxOneshotReq({ filters }), relays).pipe(
+  return requestWithRelayHints(client, filters, relays).pipe(
     requestedEvents(filters),
     takeTimeout(timeout),
     map(({ event, from }) => ({ note: Note.fromEvent(event), relay: from }))
@@ -361,7 +363,7 @@ export function recentUserReactionsStore({
     }
   ];
 
-  return client.use(createRxOneshotReq({ filters })).pipe(
+  return request(client, filters).pipe(
     requestedEvents(filters),
     takeTimeout(timeout),
     sortedBy(({ event }) => -event.created_at),
