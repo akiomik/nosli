@@ -2,12 +2,14 @@ import type { Event, Filter } from 'nostr-tools';
 
 // How a fake relay behaves. It opens and accepts every event (ack), fails to open (refuse), never
 // opens (hang), opens and refuses every event (reject), opens and never answers an event (silent), or
-// opens and drops the connection when it gets an event (drop).
+// opens and drops the connection when it gets an event (drop). The browser can also refuse to open a
+// socket to it at all, and throw, as for a blocked port (throw).
 //
 // It answers a REQ in the same way: with the events that it holds and then EOSE (ack), with CLOSED
 // (reject), not at all (silent), or by dropping the connection (drop). One that stalls sends the
 // events that it holds, but never EOSE (stall).
-export type RelayBehavior = 'ack' | 'refuse' | 'hang' | 'reject' | 'silent' | 'drop' | 'stall';
+export type RelayBehavior =
+  'ack' | 'refuse' | 'hang' | 'reject' | 'silent' | 'drop' | 'stall' | 'throw';
 
 // Relays are looked up by URL as the WebSocket gets it, with a trailing slash on a bare host.
 const keyOf = (url: string) => new URL(url).href;
@@ -126,6 +128,9 @@ export class FakeWebSocket {
   private listeners: Record<string, Listener[]> = {};
 
   constructor(public url: string) {
+    if (behaviors.get(keyOf(url)) === 'throw') {
+      throw new DOMException(`The port of ${url} is blocked.`, 'SecurityError');
+    }
     FakeWebSocket.instances.push(this);
     const behavior = this.behavior();
     const delay = openDelays.get(keyOf(url)) ?? 1;

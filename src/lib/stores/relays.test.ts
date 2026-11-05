@@ -19,6 +19,7 @@ import { orMissing, retries, withEnd } from './missing';
 import {
   matomeDeletionRequestsStore,
   matomeStore,
+  notesStore,
   noteStore,
   profileStore,
   recentGlobalMatomesStore,
@@ -717,5 +718,93 @@ describe('a relay whose connection failed', () => {
 
     expect(request.values).toMatchObject([{ id: list.id }]);
     expect(socketsTo(a)).toHaveLength(2);
+  });
+});
+
+// rx-nostr closes connections with 4537 and 4538 itself, and a relay can send them too.
+describe('a relay that closes the connection with a code of rx-nostr', () => {
+  const missingNote = 'f'.repeat(64);
+  const note = signWith(key, { kind: KIND.text, content: 'A note', created_at: 5, tags: [] });
+  const hint = 'wss://hint.example.com';
+
+  it.each([4537, 4538])(
+    'is connected to again, and answers, when a later request is made: %s',
+    async (code) => {
+      setRelayEvents(a, [list]);
+      const client = clientOf([a]);
+      await vi.advanceTimersByTimeAsync(10);
+      dropConnectionsOf(a, code);
+      await vi.advanceTimersByTimeAsync(10);
+
+      const request = watch(findList(client));
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(request.values).toMatchObject([{ id: list.id }]);
+      expect(request.endedAt).toBeLessThan(10);
+      expect(socketsTo(a)).toHaveLength(2);
+    }
+  );
+
+  it.each([4537, 4538])(
+    'does not keep a request to it from ending when it closes while asked: %s',
+    async (code) => {
+      setRelayBehavior(a, 'silent');
+      const client = clientOf([a]);
+      await vi.advanceTimersByTimeAsync(10);
+
+      const request = watch(findList(client));
+      await vi.advanceTimersByTimeAsync(10);
+      dropConnectionsOf(a, code);
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(request.values).toEqual(['unreachable']);
+      expect(request.endedAt).toBeLessThan(20);
+    }
+  );
+
+  it.each([4537, 4538])(
+    'does not keep the notes of a list from ending when it is a hinted relay: %s',
+    async (code) => {
+      setRelayEvents(a, [note]);
+      setRelayBehavior(hint, 'silent');
+      const client = clientOf([a]);
+      await vi.advanceTimersByTimeAsync(10);
+
+      const request = watch(
+        notesStore({ client, ids: [note.id, missingNote], relays: [hint] }).pipe(withEnd(client))
+      );
+      await vi.advanceTimersByTimeAsync(10);
+      dropConnectionsOf(hint, code);
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(request.values.at(-1)).toMatchObject({ ended: true });
+      expect(request.values.at(-1)?.value.map(({ note }) => note?.id)).toEqual([
+        note.id,
+        undefined
+      ]);
+      expect(request.endedAt).toBeLessThanOrEqual(1000);
+    }
+  );
+});
+
+describe('a hinted relay that the browser does not open a socket to, as for a blocked port', () => {
+  it('does not keep the notes found on the other relays from showing', async () => {
+    const note = signWith(key, { kind: KIND.text, content: 'A note', created_at: 5, tags: [] });
+    const blocked = 'wss://blocked.example.com:25';
+    setRelayEvents(a, [note]);
+    setRelayBehavior(blocked, 'throw');
+    const client = clientOf([a]);
+    await vi.advanceTimersByTimeAsync(10);
+
+    const request = watch(
+      notesStore({ client, ids: [note.id, 'f'.repeat(64)], relays: [blocked] }).pipe(
+        withEnd(client)
+      )
+    );
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(request.failed).toBe(false);
+    expect(request.values.at(-1)).toMatchObject({ ended: true });
+    expect(request.values.at(-1)?.value.map(({ note }) => note?.id)).toEqual([note.id, undefined]);
   });
 });
