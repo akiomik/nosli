@@ -51,6 +51,15 @@ export const requestsTo = (url: string): Filter[][] =>
       .map(([, , ...filters]) => filters)
   );
 
+// The subscription ID of each REQ that the relay got, over all of its sockets.
+export const requestIdsTo = (url: string): string[] =>
+  socketsTo(url).flatMap((socket) =>
+    socket.sent
+      .map((message) => JSON.parse(message))
+      .filter(([type]) => type === 'REQ')
+      .map(([, subId]) => subId)
+  );
+
 // How many subscriptions the relay has open, over all of its sockets: those that it got a REQ for,
 // and neither closed nor got a CLOSE for.
 export const openSubscriptionsAt = (url: string): number =>

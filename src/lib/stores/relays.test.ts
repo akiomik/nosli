@@ -5,6 +5,8 @@ import NostrClient from '#lib/services/NostrClient.js';
 import {
   FakeWebSocket,
   dropConnectionsOf,
+  requestIdsTo,
+  requestsTo,
   sendFrameFrom,
   setAnswerDelay,
   setRelayBehavior,
@@ -609,6 +611,7 @@ describe('a relay whose connection failed', () => {
     });
     return () => listed;
   };
+  const browserOnline = new EventTarget();
   // The relays refuse while the client connects, then come up with what they hold.
   const failedThenUp = async (events: unknown[]) => {
     behave('refuse');
@@ -650,6 +653,37 @@ describe('a relay whose connection failed', () => {
     await vi.advanceTimersByTimeAsync(1000);
 
     expect(relays.map((url) => socketsTo(url).length)).toEqual([2, 2]);
+    // The list, the profile, the recent lists, and then the deletion requests for those.
+    expect(relays.map((url) => requestsTo(url).length)).toEqual([4, 4]);
+    expect(relays.map((url) => new Set(requestIdsTo(url)).size)).toEqual([4, 4]);
+  });
+
+  it('gets each request once on Try again', async () => {
+    behave('refuse');
+    const client = clientOf(relays);
+    const shared = retries(client);
+    const request = watch(shared.again(() => findList(client)));
+    await vi.advanceTimersByTimeAsync(100);
+    behave('ack');
+    relays.forEach((url) => setRelayEvents(url, [list]));
+
+    shared.retry();
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(request.values.at(-1)).toMatchObject({ id: list.id });
+    expect(relays.map((url) => requestsTo(url).length)).toEqual([1, 1]);
+  });
+
+  it('gets each request once after the browser is back online', async () => {
+    const client = await failedThenUp([list]);
+    reconnectWhenOnline(client, browserOnline);
+
+    browserOnline.dispatchEvent(new Event('online'));
+    const request = watch(findList(client));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(request.values).toMatchObject([{ id: list.id }]);
+    expect(relays.map((url) => requestsTo(url).length)).toEqual([1, 1]);
   });
 
   it('ends a request as unreachable at once when it still refuses', async () => {
