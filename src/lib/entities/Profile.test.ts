@@ -191,7 +191,10 @@ describe('Profile.isNip05Valid', () => {
     'alice@example.com:443',
     'alice@localhost',
     'alice@127.1',
-    'alice@0x7f.1'
+    'alice@0x7f.1',
+    'alice@１２７.１',
+    'alice@127.1\u00ad',
+    'alice@127。1'
   ])('is not valid, and asks nothing, for the domain of %j', async (identifier) => {
     serve({ 'example.com': { alice: pubkey }, localhost: { alice: pubkey } });
 

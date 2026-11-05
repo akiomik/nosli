@@ -11,7 +11,8 @@ nip05.useFetchImplementation((...args: Parameters<typeof fetch>) => fetch(...arg
 // would leave out or decode, such as spaces and escapes, so that the request goes to the domain as
 // shown. The characters are checked in NFKC, since a browser's URL reads full-width forms such as
 // ％ as the ASCII ones before it decodes them. An ASCII domain must be its own host, which a URL can
-// read otherwise, as 127.1 for 127.0.0.1.
+// read otherwise, as 127.1 for 127.0.0.1, and so must an IPv4 host whatever else it was written
+// with, as １２７.１.
 const NOT_IN_DOMAIN = /[\s\p{Cc}/?#\\%@]/u;
 const asciiDomain = (domain: string): string | undefined => {
   const normalized = domain.normalize('NFKC');
@@ -25,8 +26,10 @@ const asciiDomain = (domain: string): string | undefined => {
       url.hash === '' &&
       url.username === '' &&
       url.password === '';
-    // eslint-disable-next-line no-control-regex
-    const asShown = !/^[\x00-\x7f]*$/.test(domain) || url.hostname === domain.toLowerCase();
+    const asShown = /^\d+\.\d+\.\d+\.\d+$/.test(url.hostname)
+      ? url.hostname === domain
+      : // eslint-disable-next-line no-control-regex
+        !/^[\x00-\x7f]*$/.test(domain) || url.hostname === domain.toLowerCase();
     return hostOnly && asShown ? url.hostname : undefined;
   } catch {
     return undefined;
