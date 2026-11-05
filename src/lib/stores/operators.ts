@@ -91,6 +91,16 @@ const MAX_TLV_BYTES = 255;
 export const hasNaddr = <P extends Pick<EventPacket, 'event'>>({ event }: P): boolean =>
   new TextEncoder().encode(identifierOf(event)).length <= MAX_TLV_BYTES;
 
+// The newest events first, and of those dated the same, the one with the lowest ID first, the order
+// in which NIP-01 has a later version replace an earlier one. So latestEachNaddr lets through only
+// the version that wins, whatever order the relays sent them in.
+export function newestFirst<P extends Pick<EventPacket, 'event'>>(): MonoTypeOperatorFunction<P> {
+  return sorted(
+    ({ event: x }, { event: y }) =>
+      y.created_at - x.created_at || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)
+  );
+}
+
 export function latestEachNaddr(): MonoTypeOperatorFunction<EventPacket> {
   return latestEach(({ event }) => `${event.kind}:${event.pubkey}:${identifierOf(event)}`);
 }

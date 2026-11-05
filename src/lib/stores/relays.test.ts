@@ -25,6 +25,7 @@ import {
   noteStore,
   profileStore,
   recentGlobalMatomesStore,
+  recentUserMatomesStore,
   recentUserReactionsStore,
   relayConnectionsStore
 } from './nostr';
@@ -504,30 +505,40 @@ describe('what changes with rx-nostr 3', () => {
     }
   );
 
-  it('shows of two versions of a list dated the same the one with the lowest ID, as NIP-01 has it', async () => {
-    const versions = ['one', 'two', 'three'].map((title) =>
-      signWith(key, {
-        kind: KIND.article,
-        content: '',
-        created_at: 10,
-        tags: [
-          ['d', 'my-list'],
-          ['title', title],
-          ['t', NostrClient.TAG]
-        ]
-      })
-    );
-    const lowest = [...versions].sort((x, y) => (x.id < y.id ? -1 : 1))[0];
-    versions.forEach((version, i) => setRelayEvents(`wss://r${i}.example.com`, [version]));
-    const client = clientOf(versions.map((_, i) => `wss://r${i}.example.com`));
+  it.each(['highest', 'lowest'])(
+    'shows of versions of a list dated the same the one with the lowest ID, as NIP-01 has it, when the %s ID arrives first',
+    async (first) => {
+      const versions = ['one', 'two', 'three'].map((title) =>
+        signWith(key, {
+          kind: KIND.article,
+          content: '',
+          created_at: 10,
+          tags: [
+            ['d', 'my-list'],
+            ['title', title],
+            ['t', NostrClient.TAG]
+          ]
+        })
+      );
+      const byId = [...versions].sort((x, y) => (x.id < y.id ? -1 : 1));
+      const arriving = first === 'lowest' ? byId : [...byId].reverse();
+      const urls = arriving.map((_, i) => `wss://r${i}.example.com`);
+      arriving.forEach((version, i) => {
+        setRelayEvents(urls[i], [version]);
+        setAnswerDelay(urls[i], 1 + 2 * i);
+      });
+      const client = clientOf(urls);
 
-    const request = watch(findList(client));
-    const recent = watch(recentGlobalMatomesStore({ client, limit: 25 }));
-    await vi.advanceTimersByTimeAsync(20);
+      const request = watch(findList(client));
+      const recent = watch(recentGlobalMatomesStore({ client, limit: 25 }));
+      const created = watch(recentUserMatomesStore({ client, pubkey: author }));
+      await vi.advanceTimersByTimeAsync(20);
 
-    expect(request.values.at(-1)).toMatchObject({ id: lowest.id });
-    expect(recent.values.at(-1)?.map(({ id }) => id)).toEqual([lowest.id]);
-  });
+      expect(request.values.at(-1)).toMatchObject({ id: byId[0].id });
+      expect(recent.values.at(-1)?.map(({ id }) => id)).toEqual([byId[0].id]);
+      expect(created.values.at(-1)?.map(({ id }) => id)).toEqual([byId[0].id]);
+    }
+  );
 
   // rx-nostr 0.9 sent the request to a relay that had failed through a socket of its own, which
   // threw once the relay answered after it was added again.
