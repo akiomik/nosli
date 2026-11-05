@@ -13,6 +13,8 @@ import {
 import type { Observable, OperatorFunction } from 'rxjs';
 import type { RxNostr } from 'rx-nostr';
 
+import { reconnectFailedRelays } from '#lib/stores/client.js';
+
 // Why a request ended without what it asked for: no relay answered it, or those that did had
 // nothing.
 export type Missing = 'unreachable' | 'not-found';
@@ -64,14 +66,6 @@ export function withEnd<T>(client: RxNostr): OperatorFunction<T, Progress<T>> {
     });
 }
 
-// Connects again to the relays whose connection failed, which rx-nostr does not do by itself. A
-// request to such a relay waits for the connection, and is sent once it opens.
-const reconnectFailedRelays = (client: RxNostr) => {
-  for (const [url, { connection }] of Object.entries(client.getAllRelayStatus())) {
-    if (connection === 'error' && client.getDefaultRelay(url)?.read) client.reconnect(url);
-  }
-};
-
 export type Retries = {
   retry: () => void;
   // The request, made again for each retry. Its values stay until the next request gives its own.
@@ -79,7 +73,8 @@ export type Retries = {
 };
 
 // Retries that make several requests again, as those of one page, which a failure to reach the
-// relays has left empty too. Each retry first connects again to the relays that failed.
+// relays has left empty too. Each retry first connects again to the relays that failed, as every
+// request does, so that it does so whatever the requests are.
 export function retries(client: RxNostr): Retries {
   const attempts = new BehaviorSubject<void>(undefined);
   return {

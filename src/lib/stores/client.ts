@@ -21,9 +21,32 @@ export function createClient(relays: (string | { url: string; read: boolean; wri
     // when there is none open yet.
     connectionStrategy: 'aggressive',
     disconnectTimeout: 0,
-    // A relay whose connection failed is not connected to again by itself.
+    // A relay whose connection failed is connected to again when Nosli next asks the relays
+    // something, through reconnectFailedRelays, not on a timer. While rx-nostr waits to retry, which
+    // takes up to seconds, it holds a request to the relay until the retry, the request ends only at
+    // its timeout, and reconnect() cannot cut the wait short.
     retry: { strategy: 'off' }
   });
   client.setDefaultRelays(relays);
   return client;
+}
+
+// Connects again to the relays that the client reads from whose connection failed. A request to such
+// a relay waits for the connection, and is sent once it opens. This includes a relay that closed the
+// connection with code 4000 (rejected), which rx-nostr takes as asking it not to connect again, but
+// no NIP does; rx-nostr 0.9 connected to it again for the next request too.
+export function reconnectFailedRelays(client: RxNostr) {
+  for (const [url, { connection }] of Object.entries(client.getAllRelayStatus())) {
+    const failed = connection === 'error' || connection === 'rejected';
+    if (failed && client.getDefaultRelay(url)?.read) client.reconnect(url);
+  }
+}
+
+// Connects again to the relays whose connection failed once the browser is back online, so that the
+// relays are up for the next request, and the header shows them as connected. Returns the function
+// that stops it.
+export function reconnectWhenOnline(client: RxNostr, target: EventTarget = window): () => void {
+  const reconnect = () => reconnectFailedRelays(client);
+  target.addEventListener('online', reconnect);
+  return () => target.removeEventListener('online', reconnect);
 }

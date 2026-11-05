@@ -14,6 +14,7 @@ import {
 } from '#lib/testing/FakeWebSocket.js';
 import { KIND, publicKeyOf, signWith } from '#lib/testing/nostr.js';
 import { clientOf, disposeClients, statusOf, type RxNostr } from '#lib/testing/rxNostr.js';
+import { reconnectWhenOnline } from './client';
 import { orMissing, retries, withEnd } from './missing';
 import {
   matomeDeletionRequestsStore,
@@ -21,6 +22,7 @@ import {
   noteStore,
   profileStore,
   recentGlobalMatomesStore,
+  recentUserReactionsStore,
   relayConnectionsStore
 } from './nostr';
 
@@ -589,5 +591,131 @@ describe('what changes with rx-nostr 3', () => {
     await vi.advanceTimersByTimeAsync(20);
 
     expect(request.values.at(-1)?.map(({ title }) => title)).toEqual(['expiring']);
+  });
+});
+
+describe('a relay whose connection failed', () => {
+  const reaction = signWith(key, {
+    kind: KIND.reaction,
+    content: '+',
+    created_at: 5,
+    tags: [['e', 'f'.repeat(64)]]
+  });
+  const statusesOf = (client: RxNostr) => {
+    let listed: string[] = [];
+    relayConnectionsStore(client).subscribe((packets) => {
+      listed = packets.map(({ state }) => statusOf(state));
+    });
+    return () => listed;
+  };
+  // The relays refuse while the client connects, then come up with what they hold.
+  const failedThenUp = async (events: unknown[]) => {
+    behave('refuse');
+    const client = clientOf(relays);
+    await vi.advanceTimersByTimeAsync(100);
+    behave('ack');
+    relays.forEach((url) => setRelayEvents(url, events));
+    return client;
+  };
+
+  it('is connected to again, and answers, when a later request is made', async () => {
+    const client = await failedThenUp([list]);
+
+    const request = watch(findList(client));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(request.values).toMatchObject([{ id: list.id }]);
+    expect(request.endedAt).toBeLessThan(10);
+    expect(relays.map((url) => socketsTo(url).length)).toEqual([2, 2]);
+  });
+
+  it('answers the requests that have no Try again, as for a profile or recent reactions', async () => {
+    const client = await failedThenUp([profile, reaction]);
+
+    const found = watch(profileStore({ client, pubkey: author }));
+    const reactions = watch(recentUserReactionsStore({ client, pubkey: author, limit: 10 }));
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(found.values.at(-1)).toMatchObject({ name: 'alice' });
+    expect(reactions.values.at(-1)).toHaveLength(1);
+  });
+
+  it('is connected to once for the requests that are made together', async () => {
+    const client = await failedThenUp([list]);
+
+    watch(findList(client));
+    watch(profileStore({ client, pubkey: author }));
+    watch(recentGlobalMatomesStore({ client, limit: 25 }));
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(relays.map((url) => socketsTo(url).length)).toEqual([2, 2]);
+  });
+
+  it('ends a request as unreachable at once when it still refuses', async () => {
+    behave('refuse');
+    const client = clientOf(relays);
+    await vi.advanceTimersByTimeAsync(100);
+
+    const request = watch(findList(client));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(request.values).toEqual(['unreachable']);
+    expect(request.endedAt).toBeLessThan(10);
+  });
+
+  it('is connected to again when a later request is made after it dropped the connection', async () => {
+    setRelayEvents(a, [list]);
+    const client = clientOf([a]);
+    await vi.advanceTimersByTimeAsync(10);
+    dropConnectionsOf(a);
+    await vi.advanceTimersByTimeAsync(10);
+
+    const request = watch(findList(client));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(request.values).toMatchObject([{ id: list.id }]);
+    expect(socketsTo(a)).toHaveLength(2);
+  });
+
+  it('is not connected to again while nothing is asked', async () => {
+    const client = await failedThenUp([list]);
+    const current = statusesOf(client);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(current()).toEqual(['failed', 'failed']);
+    expect(relays.map((url) => socketsTo(url).length)).toEqual([1, 1]);
+  });
+
+  it('is connected to again once the browser is back online, until that is stopped', async () => {
+    const client = await failedThenUp([]);
+    const current = statusesOf(client);
+    const browser = new EventTarget();
+    const stop = reconnectWhenOnline(client, browser);
+
+    browser.dispatchEvent(new Event('online'));
+    await vi.advanceTimersByTimeAsync(10);
+    expect(current()).toEqual(['connected', 'connected']);
+
+    stop();
+    dropConnectionsOf(a);
+    await vi.advanceTimersByTimeAsync(10);
+    browser.dispatchEvent(new Event('online'));
+    await vi.advanceTimersByTimeAsync(10);
+    expect(current()).toEqual(['failed', 'connected']);
+  });
+
+  it('is connected to again when a later request is made after it closed the connection with 4000', async () => {
+    setRelayEvents(a, [list]);
+    const client = clientOf([a]);
+    await vi.advanceTimersByTimeAsync(10);
+    dropConnectionsOf(a, 4000);
+    await vi.advanceTimersByTimeAsync(10);
+
+    const request = watch(findList(client));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(request.values).toMatchObject([{ id: list.id }]);
+    expect(socketsTo(a)).toHaveLength(2);
   });
 });

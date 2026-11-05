@@ -60,10 +60,10 @@ export const sendFrameFrom = (url: string, data: string) =>
     if (socket.readyState === FakeWebSocket.OPEN) socket.dispatchMessage(data);
   });
 
-// The relay drops every connection that it has.
-export const dropConnectionsOf = (url: string) =>
+// The relay drops every connection that it has, or closes it with `code`.
+export const dropConnectionsOf = (url: string, code = 1006) =>
   socketsTo(url).forEach((socket) => {
-    if (socket.readyState === FakeWebSocket.OPEN) socket.drop();
+    if (socket.readyState === FakeWebSocket.OPEN) socket.drop(code);
   });
 
 const looksLikeEvent = (value: unknown): value is Event =>
@@ -263,10 +263,10 @@ export class FakeWebSocket {
   }
 
   // The relay closes the connection.
-  drop() {
+  drop(code = 1006) {
     this.readyState = 3;
     this.subscriptions.clear();
-    this.dispatch('close', { type: 'close', code: 1006, reason: '' });
+    this.dispatch('close', { type: 'close', code, reason: '' });
   }
 
   close(code = 1000) {

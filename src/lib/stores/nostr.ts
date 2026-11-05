@@ -32,7 +32,7 @@ import {
   latestEachNaddr,
   latestConnectionState
 } from '#lib/stores/operators.js';
-import { createClient } from '#lib/stores/client.js';
+import { createClient, reconnectFailedRelays } from '#lib/stores/client.js';
 import NostrClient from '#lib/services/NostrClient.js';
 import { normalizeRelayHint, relayHints } from '#lib/services/relayHints.js';
 import { isEventId } from '#lib/entities/EventId.js';
@@ -51,14 +51,18 @@ const DEFAULT_DELETION_TIMEOUT = 5000;
 const MAX_HINTED_RELAYS = 8;
 
 // The events that the relays of the client send for `filters`, until each relay has ended the
-// request with EOSE or CLOSED, or is down. rx-nostr ends a request on the EOSE of its last relay
-// before it passes that EOSE on to those who watch every message, as orMissing and withEnd do, so the
-// request ends only once it has.
+// request with EOSE or CLOSED, or is down. The relays whose connection failed are connected to again
+// first, and asked once they are up. rx-nostr ends a request on the EOSE of its last relay before it
+// passes that EOSE on to those who watch every message, as orMissing and withEnd do, so the request
+// ends only once it has.
 function request(client: RxNostr, filters: Filter[]): Observable<EventPacket> {
-  return concat(
-    client.use(createRxOneshotReq({ filters })),
-    timer(0, asapScheduler).pipe(ignoreElements())
-  );
+  return defer(() => {
+    reconnectFailedRelays(client);
+    return concat(
+      client.use(createRxOneshotReq({ filters })),
+      timer(0, asapScheduler).pipe(ignoreElements())
+    );
+  });
 }
 
 // Also asks the hinted relays that the client does not read from, up to MAX_HINTED_RELAYS of them in

@@ -9,7 +9,7 @@
   import '../app.css';
   import * as settings from '#lib/services/settings.js';
   import KeyManager from '#lib/services/KeyManager.js';
-  import { createClient } from '#lib/stores/client.js';
+  import { createClient, reconnectWhenOnline } from '#lib/stores/client.js';
   import Header from '#lib/components/Header.svelte';
   import Footer from '#lib/components/Footer.svelte';
   import LoadingSpinner from '#lib/components/LoadingSpinner.svelte';
@@ -23,6 +23,7 @@
 
   const client = createClient(settings.defaultRelays);
   setContext('nostr-client', client);
+  onMount(() => reconnectWhenOnline(client));
 
   beforeNavigate(() => {
     timeout = setTimeout(() => {
