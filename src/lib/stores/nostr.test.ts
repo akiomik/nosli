@@ -1,24 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EMPTY, Subject, first, from, lastValueFrom, map, mergeMap, tap, toArray } from 'rxjs';
-import {
-  createRxNostr,
-  type ConnectionState,
-  type ConnectionStatePacket,
-  type EventPacket,
-  type RxNostr,
-  type RxReq
-} from 'rx-nostr';
-import { matchFilters } from 'nostr-tools';
+import { lastValueFrom, toArray } from 'rxjs';
 
 import NostrClient from '#lib/services/NostrClient.js';
 import {
-  KIND,
-  newSecretKey,
-  publicKeyOf,
-  signWith,
-  type Event,
-  type Filter
-} from '#lib/testing/nostr.js';
+  FakeWebSocket,
+  requestsTo,
+  setAnswerDelay,
+  setOpenDelay,
+  setRelayBehavior,
+  setRelayEvents,
+  socketsTo
+} from '#lib/testing/FakeWebSocket.js';
+import { KIND, newSecretKey, publicKeyOf, signWith, type Event } from '#lib/testing/nostr.js';
+import { clientOf, disposeClients, type RxNostr } from '#lib/testing/rxNostr.js';
 import {
   matomeDeletionRequestsStore,
   matomeStore,
@@ -30,60 +24,32 @@ import {
   recentUserReactionsStore
 } from './nostr';
 
-vi.mock('rx-nostr', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('rx-nostr')>()),
-  createRxNostr: vi.fn()
-}));
-
 vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
   return { nip07: writable(false), pubkey: writable(''), seckey: writable('') };
 });
 
 const key = '1'.repeat(64);
+const shared = 'wss://shared.example.com';
+const hint = 'wss://hint.example.com';
 const note = (content: string) =>
   signWith(key, { kind: KIND.text, content, created_at: 1, tags: [] });
 
-// A client that reads from `relays`, which hold `events`, and answers each request once. The state
-// of each relay is `state`, and `states` reports changes to it. `requested` holds the filters of
-// each request.
-const fakeClient = (relays: string[], events: Event[], state: ConnectionState = 'ongoing') => {
-  const states = new Subject<ConnectionStatePacket>();
-  const requested: Filter[][] = [];
-  const client = {
-    state,
-    states,
-    requested,
-    setRelays: vi.fn(),
-    dispose: vi.fn(),
-    getRelays: () => relays.map((url) => ({ url, read: true, write: true })),
-    getAllRelayState: () => Object.fromEntries(relays.map((url) => [url, client.state])),
-    createConnectionStateObservable: () => states.asObservable(),
-    use: vi.fn((req: RxReq) =>
-      req.getReqObservable().pipe(
-        first((filters) => filters !== null),
-        tap((filters) => requested.push(filters as Filter[])),
-        mergeMap((filters) =>
-          from(events.filter((event) => matchFilters(filters as Filter[], event)))
-        ),
-        map((event) => ({ from: relays[0], subId: 'sub', event }))
-      )
-    )
-  };
-  return client as typeof client & RxNostr;
+// A client that reads from `relays`, fake ones that hold `events` and answer each request.
+const fakeClient = (relays: string[], events: Event[]) => {
+  relays.forEach((relay) => setRelayEvents(relay, events));
+  return clientOf(relays);
 };
 
-// A client whose relays have nothing, so every request completes empty.
-const emptyClient = () => {
-  const client = { use: vi.fn(() => EMPTY) };
-  return client as typeof client & RxNostr;
-};
+// A client whose relays have nothing, so every request ends empty.
+const emptyClient = () => clientOf([shared]);
 
 const contents = (notes: { note?: { content: string } }[]) =>
   notes.map(({ note }) => note?.content);
 
 afterEach(() => {
-  vi.mocked(createRxNostr).mockReset();
+  disposeClients();
+  vi.useRealTimers();
 });
 
 describe('notesStore', () => {
@@ -101,82 +67,70 @@ describe('notesStore', () => {
     const emitted = await lastValueFrom(notesStore({ client, ids: [] }).pipe(toArray()));
 
     expect(emitted).toEqual([[]]);
-    expect(client.use).not.toHaveBeenCalled();
+    expect(requestsTo(shared)).toEqual([]);
   });
 
-  it('also asks the hinted relays that the client lacks, through a client that then closes', async () => {
-    const shared = note('on a shared relay');
-    const hinted = note('only on a hinted relay');
-    const client = fakeClient(['wss://shared.example.com/'], [shared]);
-    const hintedClient = fakeClient(['wss://hint.example.com'], [hinted]);
-    vi.mocked(createRxNostr).mockReturnValue(hintedClient);
+  it('also asks the hinted relays that the client lacks, and then closes them', async () => {
+    const onShared = note('on a shared relay');
+    const onHint = note('only on a hinted relay');
+    setRelayEvents(hint, [onHint]);
+    const client = fakeClient([`${shared}/`], [onShared]);
 
     const notes = await lastValueFrom(
-      notesStore({
-        client,
-        ids: [shared.id, hinted.id],
-        relays: ['wss://shared.example.com', 'wss://hint.example.com']
-      })
+      notesStore({ client, ids: [onShared.id, onHint.id], relays: [shared, hint] })
     );
 
     expect(contents(notes)).toEqual(['on a shared relay', 'only on a hinted relay']);
-    expect(hintedClient.setRelays).toHaveBeenNthCalledWith(1, [
-      { url: 'wss://hint.example.com', read: true, write: false }
-    ]);
-    expect(hintedClient.setRelays).toHaveBeenNthCalledWith(2, [
-      { url: 'wss://hint.example.com', read: false, write: false }
-    ]);
-    expect(hintedClient.dispose).toHaveBeenCalled();
+    expect(requestsTo(hint)).toEqual([[{ kinds: [KIND.text], ids: [onShared.id, onHint.id] }]]);
+    await vi.waitFor(() =>
+      expect(socketsTo(hint).every(({ readyState }) => readyState === FakeWebSocket.CLOSED)).toBe(
+        true
+      )
+    );
+    // The shared relay stays open for other requests.
+    expect(socketsTo(shared).map(({ readyState }) => readyState)).toEqual([FakeWebSocket.OPEN]);
   });
 
   it('gives each found note the relay that returned it', async () => {
-    const shared = note('on a shared relay');
-    const hinted = note('only on a hinted relay');
-    vi.mocked(createRxNostr).mockReturnValue(fakeClient(['wss://hint.example.com'], [hinted]));
+    const onShared = note('on a shared relay');
+    const onHint = note('only on a hinted relay');
+    setRelayEvents(hint, [onHint]);
 
     const notes = await lastValueFrom(
       notesStore({
-        client: fakeClient(['wss://shared.example.com/'], [shared]),
-        ids: [shared.id, hinted.id, 'f'.repeat(64)],
-        relays: ['wss://hint.example.com']
+        client: fakeClient([`${shared}/`], [onShared]),
+        ids: [onShared.id, onHint.id, 'f'.repeat(64)],
+        relays: [hint]
       })
     );
 
-    expect(notes.map(({ relays }) => relays)).toEqual([
-      ['wss://shared.example.com'],
-      ['wss://hint.example.com'],
-      undefined
-    ]);
+    expect(notes.map(({ relays }) => relays)).toEqual([[shared], [hint], undefined]);
   });
 
-  it('does not open another client when the client already reads from every hinted relay', async () => {
-    const shared = note('on a shared relay');
-    const client = fakeClient(['wss://Shared.example.com/'], [shared]);
+  it('does not connect again to a hinted relay that the client already reads from', async () => {
+    const onShared = note('on a shared relay');
+    const client = fakeClient(['wss://Shared.example.com/'], [onShared]);
 
-    await lastValueFrom(
-      notesStore({ client, ids: [shared.id], relays: ['wss://shared.example.com'] })
-    );
+    await lastValueFrom(notesStore({ client, ids: [onShared.id], relays: [shared] }));
 
-    expect(createRxNostr).not.toHaveBeenCalled();
+    expect(socketsTo(shared)).toHaveLength(1);
   });
 
   it('asks at most 8 hinted relays, in the order given, and only valid ones', async () => {
-    const hintedClient = fakeClient([], []);
-    vi.mocked(createRxNostr).mockReturnValue(hintedClient);
-    const relays = Array.from({ length: 10 }, (_, i) => `wss://h${i}.example.com`);
+    const relays = Array.from({ length: 10 }, (_, i) => `wss://h${i}.example.com/`);
 
     await lastValueFrom(
       notesStore({
-        client: fakeClient(['wss://shared.example.com'], []),
+        client: emptyClient(),
         ids: ['f'.repeat(64)],
         relays: ['ws://insecure.example.com', 'wss://localhost', ...relays]
       })
     );
 
-    expect(hintedClient.setRelays).toHaveBeenNthCalledWith(
-      1,
-      relays.slice(0, 8).map((url) => ({ url, read: true, write: false }))
-    );
+    expect(FakeWebSocket.instances.map(({ url }) => new URL(url).href)).toEqual([
+      `${shared}/`,
+      ...relays.slice(0, 8)
+    ]);
   });
 
   it('keeps only notes that were asked for and whose ID is their hash', async () => {
@@ -192,22 +146,14 @@ describe('notesStore', () => {
       pubkey: publicKeyOf(attacker)
     };
     const forged = { ...unsigned, id: genuine.id, sig: signWith(attacker, unsigned).sig };
-    // A hint relay sends the forged note and one that was not asked for, before the shared relays
-    // send the genuine one.
-    const client = fakeClient(['wss://shared.example.com'], []);
-    const hintedClient = fakeClient(['wss://hint.example.com'], []);
-    hintedClient.use.mockImplementation(() =>
-      from(
-        [forged, other].map((event) => ({ from: 'wss://hint.example.com', subId: 'sub', event }))
-      )
-    );
-    client.use.mockImplementation(() =>
-      from([{ from: 'wss://shared.example.com', subId: 'sub', event: genuine }])
-    );
-    vi.mocked(createRxNostr).mockReturnValue(hintedClient);
+    // A hint relay sends the forged note and one that was not asked for, before the shared relay
+    // sends the genuine one.
+    setRelayEvents(hint, [forged, other], { unfiltered: true });
+    setAnswerDelay(shared, 20);
+    const client = fakeClient([shared], [genuine]);
 
     const emitted = await lastValueFrom(
-      notesStore({ client, ids: [genuine.id], relays: ['wss://hint.example.com'] }).pipe(toArray())
+      notesStore({ client, ids: [genuine.id], relays: [hint] }).pipe(toArray())
     );
 
     expect(emitted.map(contents)).toEqual([['genuine']]);
@@ -216,47 +162,47 @@ describe('notesStore', () => {
 
 describe('noteStore', () => {
   it('finds a note that only a hinted relay has, with that relay', async () => {
-    const hinted = note('only on a hinted relay');
-    const hintedClient = fakeClient(['wss://hint.example.com'], [hinted]);
-    vi.mocked(createRxNostr).mockReturnValue(hintedClient);
+    const onHint = note('only on a hinted relay');
+    setRelayEvents(hint, [onHint]);
 
     const found = await lastValueFrom(
-      noteStore({
-        client: fakeClient(['wss://shared.example.com'], []),
-        id: hinted.id,
-        relays: ['wss://hint.example.com']
-      })
+      noteStore({ client: emptyClient(), id: onHint.id, relays: [hint] })
     );
 
-    expect(found).toMatchObject({
-      note: { content: 'only on a hinted relay' },
-      relay: 'wss://hint.example.com'
-    });
-    expect(hintedClient.dispose).toHaveBeenCalled();
+    expect(found).toMatchObject({ note: { content: 'only on a hinted relay' }, relay: hint });
+    await vi.waitFor(() =>
+      expect(socketsTo(hint).map(({ readyState }) => readyState)).toEqual([FakeWebSocket.CLOSED])
+    );
   });
 
-  it('closes the hinted relays at once, and disposes their client once none is connecting', async () => {
-    const hintedClient = fakeClient(['wss://hint.example.com'], [], 'starting');
-    vi.mocked(createRxNostr).mockReturnValue(hintedClient);
+  it('closes a hinted relay that is still connecting when the request ends', async () => {
+    setRelayBehavior(hint, 'hang');
 
     await lastValueFrom(
-      noteStore({
-        client: fakeClient(['wss://shared.example.com'], []),
-        id: 'f'.repeat(64),
-        relays: ['wss://hint.example.com']
-      }).pipe(toArray())
+      noteStore({ client: emptyClient(), id: 'f'.repeat(64), relays: [hint] }).pipe(toArray())
     );
 
-    expect(hintedClient.setRelays).toHaveBeenLastCalledWith([
-      { url: 'wss://hint.example.com', read: false, write: false }
-    ]);
-    expect(hintedClient.dispose).not.toHaveBeenCalled();
+    await vi.waitFor(() =>
+      expect(socketsTo(hint).every(({ readyState }) => readyState === FakeWebSocket.CLOSED)).toBe(
+        true
+      )
+    );
+  });
 
-    hintedClient.state = 'error';
-    hintedClient.states.next({ from: 'wss://hint.example.com', state: 'error' });
-    await new Promise((resolve) => setTimeout(resolve));
+  // The test fails on an error that is thrown after it, too.
+  it('ends without an error when a hinted relay fails to connect after the request ended', async () => {
+    vi.useFakeTimers();
+    setRelayBehavior(hint, 'refuse');
+    setOpenDelay(hint, 2000);
+    let ended = false;
+    noteStore({ client: emptyClient(), id: 'f'.repeat(64), relays: [hint] }).subscribe({
+      error: () => (ended = true),
+      complete: () => (ended = true)
+    });
 
-    expect(hintedClient.dispose).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(ended).toBe(true);
+    await vi.advanceTimersByTimeAsync(2000);
   });
 });
 
@@ -299,8 +245,13 @@ describe('profileStore', () => {
   const key = newSecretKey();
   const profile = (content: string, createdAt: number) =>
     signWith(key, { kind: KIND.metadata, content, created_at: createdAt, tags: [] });
+  // Each relay has one of the events, as the request asks for the newest one only.
   const names = async (events: Event[]) => {
-    const client = fakeClient(['wss://shared.example.com'], events);
+    const relays = events.map((event, i) => {
+      setRelayEvents(`wss://r${i}.example.com`, [event]);
+      return `wss://r${i}.example.com`;
+    });
+    const client = clientOf(relays);
     const profiles = profileStore({ client, pubkey: publicKeyOf(key) }).pipe(toArray());
     return (await lastValueFrom(profiles)).map(({ name }) => name);
   };
@@ -463,24 +414,17 @@ const stores: {
 ];
 
 describe.each(stores)('$name', ({ event, unrequested, read }) => {
-  // A relay sends `before`, and then the genuine event.
+  // A relay sends `before`, and then the genuine event, for every request.
   const show = (genuine: Event, before: unknown[], requested = [genuine]) => {
-    const client = fakeClient(['wss://shared.example.com'], []);
-    client.use.mockImplementation(() =>
-      from(
-        [...before, genuine].map((event) => ({
-          from: 'wss://shared.example.com',
-          subId: 'sub',
-          event: event as Event
-        }))
-      )
-    );
-    return read(client, requested);
+    setRelayEvents(shared, [...before, genuine], { unfiltered: true });
+    return read(clientOf([shared]), requested);
   };
 
   it('shows an event that more than one relay sends once', async () => {
     const genuine = event('genuine');
+    setRelayEvents(hint, [genuine]);
 
+    expect(await read(fakeClient([shared, hint], [genuine]), [genuine])).toEqual(['genuine']);
     expect(await show(genuine, [genuine])).toEqual(['genuine']);
   });
 
@@ -572,7 +516,7 @@ describe('deleted lists', () => {
 
       expect(titles(lists)[0]).toEqual(['kept', 'by-id', 'by-address']);
       expect(titles(lists).at(-1)).toEqual(['kept']);
-      expect(client.requested.at(-1)).toEqual([
+      expect(requestsTo(relay).at(-1)).toEqual([
         {
           kinds: [KIND.deletion],
           authors: [publicKeyOf(author)],
@@ -589,21 +533,24 @@ describe('deleted lists', () => {
     it('shows the lists before deletion requests arrive, and waits 5 seconds for them', async () => {
       vi.useFakeTimers();
       const target = list('target');
-      const deletions = new Subject<EventPacket>();
-      const client = fakeClient([relay], [target]);
-      client.use.mockImplementationOnce(client.use.getMockImplementation()!);
-      client.use.mockImplementationOnce(() => deletions);
+      // Another relay has the deletion request, which it sends after a second, but never sends EOSE.
+      const slow = 'wss://slow.example.com';
+      setRelayBehavior(slow, 'stall');
+      setAnswerDelay(slow, 1000);
+      setRelayEvents(slow, [deletion([['e', target.id]])]);
+      setRelayEvents(relay, [target]);
       const lists: string[][] = [];
       let completed = false;
 
-      read(client).subscribe({
+      read(clientOf([relay, slow])).subscribe({
         next: (matomes) => lists.push(matomes.map(({ title }) => title)),
         complete: () => (completed = true)
       });
-      await vi.advanceTimersByTimeAsync(1000);
+      // The request for the lists waits 750 ms for the slow relay.
+      await vi.advanceTimersByTimeAsync(750);
       expect(lists).toEqual([['target']]);
 
-      deletions.next({ from: relay, subId: 'sub', event: deletion([['e', target.id]]) });
+      await vi.advanceTimersByTimeAsync(1000);
       expect(lists).toEqual([['target'], []]);
 
       await vi.advanceTimersByTimeAsync(3999);
@@ -633,7 +580,7 @@ describe('deleted lists', () => {
       const client = emptyClient();
 
       expect(await lastValueFrom(read(client).pipe(toArray()))).toEqual([[]]);
-      expect(client.use).toHaveBeenCalledOnce();
+      expect(requestsTo(shared)).toHaveLength(1);
     });
   });
 
@@ -681,7 +628,7 @@ describe('deleted lists', () => {
         [byId.id],
         [byId.id, byAddress.id]
       ]);
-      expect(client.requested).toEqual([
+      expect(requestsTo(relay)).toEqual([
         [
           { kinds: [KIND.deletion], authors: [publicKeyOf(author)], '#e': [version.id] },
           {
@@ -708,7 +655,7 @@ describe('deleted lists', () => {
       );
 
       expect(emitted).toEqual([[]]);
-      expect(client.requested).toEqual([
+      expect(requestsTo(relay)).toEqual([
         [
           {
             kinds: [KIND.deletion],
