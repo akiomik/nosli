@@ -573,28 +573,6 @@ describe('what changes with rx-nostr 3', () => {
 
     expect(request.values).toMatchObject([{ id: list.id }]);
   });
-
-  it('leaves out a list that has expired, as NIP-40 has it', async () => {
-    const now = Math.floor(Date.now() / 1000);
-    const expiring = (title: string, expiration: number) =>
-      signWith(key, {
-        kind: KIND.article,
-        content: '',
-        created_at: 10,
-        tags: [
-          ['d', title],
-          ['title', title],
-          ['t', NostrClient.TAG],
-          ['expiration', `${expiration}`]
-        ]
-      });
-    setRelayEvents(a, [expiring('expired', now - 1), expiring('expiring', now + 60)]);
-
-    const request = watch(recentGlobalMatomesStore({ client: clientOf(relays), limit: 25 }));
-    await vi.advanceTimersByTimeAsync(20);
-
-    expect(request.values.at(-1)?.map(({ title }) => title)).toEqual(['expiring']);
-  });
 });
 
 describe('a relay whose connection failed', () => {
@@ -840,5 +818,83 @@ describe('a hinted relay that the browser does not open a socket to, as for a bl
     expect(request.failed).toBe(false);
     expect(request.values.at(-1)).toMatchObject({ ended: true });
     expect(request.values.at(-1)?.value.map(({ note }) => note?.id)).toEqual([note.id, undefined]);
+  });
+});
+
+// Nosli does not apply NIP-40 to any kind, as before rx-nostr 3.
+describe('events that have expired', () => {
+  const past = `${Math.floor(Date.now() / 1000) - 60}`;
+  const expiring = <T extends { tags: string[][] }>(template: T) => ({
+    ...template,
+    tags: [...template.tags, ['expiration', past]]
+  });
+
+  it('shows a list that has expired, among recent lists and on its page', async () => {
+    const expired = signWith(
+      key,
+      expiring({
+        kind: KIND.article,
+        content: '',
+        created_at: 10,
+        tags: [
+          ['d', 'my-list'],
+          ['title', 'My list'],
+          ['t', NostrClient.TAG]
+        ]
+      })
+    );
+    setRelayEvents(a, [expired]);
+    const client = clientOf([a]);
+
+    const recent = watch(recentGlobalMatomesStore({ client, limit: 25 }));
+    const found = watch(findList(client));
+    await vi.advanceTimersByTimeAsync(20);
+
+    expect(recent.values.at(-1)?.map(({ id }) => id)).toEqual([expired.id]);
+    expect(found.values).toMatchObject([{ id: expired.id }]);
+  });
+
+  it('hides a list by a deletion request that has expired, as the edit page checks it', async () => {
+    const expired = signWith(
+      key,
+      expiring({ kind: KIND.deletion, content: '', created_at: 20, tags: [['e', list.id]] })
+    );
+    setRelayEvents(a, [list, expired]);
+    const client = clientOf([a]);
+
+    const recent = watch(recentGlobalMatomesStore({ client, limit: 25 }));
+    const deletions = watch(
+      matomeDeletionRequestsStore({ client, author, ids: [list.id] }).pipe(withEnd(client))
+    );
+    await vi.advanceTimersByTimeAsync(20);
+
+    expect(recent.values.at(-1)).toEqual([]);
+    expect(deletions.values.at(-1)).toMatchObject({ value: [{ id: expired.id }], ended: true });
+  });
+
+  it('shows a profile and a note that have expired', async () => {
+    const expiredProfile = signWith(
+      key,
+      expiring({
+        kind: KIND.metadata,
+        content: JSON.stringify({ name: 'bob' }),
+        created_at: 2,
+        tags: []
+      })
+    );
+    const expiredNote = signWith(
+      key,
+      expiring({ kind: KIND.text, content: 'A note', created_at: 5, tags: [] })
+    );
+    setRelayEvents(a, [expiredProfile, profile]);
+    setRelayEvents(b, [expiredNote]);
+    const client = clientOf(relays);
+
+    const found = watch(profileStore({ client, pubkey: author }));
+    const note = watch(noteStore({ client, id: expiredNote.id }));
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(found.values.at(-1)).toMatchObject({ name: 'bob' });
+    expect(note.values.at(-1)).toMatchObject({ note: { id: expiredNote.id } });
   });
 });

@@ -43,20 +43,10 @@ const isEvent = (event: unknown): event is Event =>
   Math.abs((event as Event).created_at) <= MAX_DATE_SECONDS &&
   (event as Event).tags.every((tag) => tag.every((value) => typeof value === 'string'));
 
-// An event whose expiration tag holds a time that has passed, as NIP-40 has it. A tag that does not
-// hold a time in seconds does not expire the event.
-const hasExpired = (event: Event): boolean => {
-  const expiration = event.tags.find(([name]) => name === 'expiration')?.[1];
-  return (
-    expiration !== undefined &&
-    /^\d+$/.test(expiration) &&
-    Number(expiration) <= Math.floor(Date.now() / 1000)
-  );
-};
-
 // A relay can answer with any event under any ID. Keeps each event that matches the request's
-// filters, whose ID is its hash, whose signature is valid, and that has not expired (NIP-40), once.
-// A bad copy that arrives first is dropped, so it does not hide the real event.
+// filters, whose ID is its hash, and whose signature is valid, once. A bad copy that arrives first is
+// dropped, so it does not hide the real event. An event is kept after its expiration (NIP-40), as
+// before rx-nostr 3, which would drop it.
 export function requestedEvents(
   filters: Filter[]
 ): <P extends Pick<EventPacket, 'event'>>(packets: Observable<P>) => Observable<P> {
@@ -71,7 +61,6 @@ export function requestedEvents(
             !verified.has(event.id) &&
             getEventHash(event) === event.id &&
             matchesFilters(filters, event) &&
-            !hasExpired(event) &&
             verifyEvent(event)
         ),
         tap(({ event }) => verified.add(event.id))

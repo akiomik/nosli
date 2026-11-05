@@ -7,9 +7,10 @@ import { RelaySocket } from '#lib/stores/relaySocket.js';
 // publishes through NostrClient, so it only reads through this one.
 export function createClient(relays: (string | { url: string; read: boolean; write: boolean })[]) {
   const client: RxNostr = createRxNostr({
-    // Nosli checks every event itself, as requestedEvents does, including its signature, the filters
-    // of the request and its expiration. rx-nostr would check it before Nosli looks at what it is,
-    // and a relay that sent something other than an event would make the request fail.
+    // Nosli checks every event itself, as requestedEvents does, including its signature and the
+    // filters of the request. rx-nostr would check it before Nosli looks at what it is, and a relay
+    // that sent something other than an event would make the request fail. rx-nostr would also drop
+    // the events that have expired (NIP-40), which Nosli keeps, as before.
     verifier: noopVerifier,
     skipVerify: true,
     skipValidateFilterMatching: true,

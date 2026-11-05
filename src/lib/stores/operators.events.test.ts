@@ -154,29 +154,10 @@ describe('requestedEvents, on the filters', () => {
 
 describe('requestedEvents, on the expiration of an event (NIP-40)', () => {
   const now = Math.floor(Date.now() / 1000);
-  const expiring = (content: string, expiration: string) =>
-    signed(content, [['expiration', expiration]]);
 
-  it('drops an event that has expired', async () => {
-    expect(await kept([expiring('expired', `${now - 60}`)])).toEqual([]);
-  });
+  it('keeps an event that has expired, as before', async () => {
+    const expired = signed('expired', [['expiration', `${now - 60}`]]);
 
-  it('keeps an event that has not expired yet', async () => {
-    expect(await kept([expiring('not yet', `${now + 3600}`)])).toEqual(['not yet']);
-  });
-
-  it('keeps an event whose expiration is not a time in seconds', async () => {
-    const values = ['soon', '', ' 1', '-1', '1.5', '1e3'];
-
-    expect(await kept(values.map((value) => expiring(value, value)))).toEqual(values);
-  });
-
-  it('looks at the first expiration tag only', async () => {
-    const twice = signed('twice', [
-      ['expiration', `${now + 3600}`],
-      ['expiration', `${now - 60}`]
-    ]);
-
-    expect(await kept([twice])).toEqual(['twice']);
+    expect(await kept([expired])).toEqual(['expired']);
   });
 });
