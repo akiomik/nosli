@@ -13,12 +13,14 @@ import {
 import type { Observable, OperatorFunction } from 'rxjs';
 import type { RxNostr } from 'rx-nostr';
 
+import { reconnectFailedRelays } from '#lib/stores/client.js';
+
 // Why a request ended without what it asked for: no relay answered it, or those that did had
 // nothing.
 export type Missing = 'unreachable' | 'not-found';
 
-// Whether a relay sends anything while a request runs. rx-nostr 0.9 keeps a relay "ongoing" after
-// its connection has closed, so the relays' state cannot tell.
+// Whether a relay sends anything while a request runs. A relay can be connected and still not answer,
+// so the relays' state cannot tell.
 const watchAnswers = (client: RxNostr) => {
   let answered = false;
   const subscription = client.createAllMessageObservable().subscribe(() => (answered = true));
@@ -64,18 +66,6 @@ export function withEnd<T>(client: RxNostr): OperatorFunction<T, Progress<T>> {
     });
 }
 
-// rx-nostr 0.9 does not connect again to a relay whose connection failed, so the relay is added
-// again, as it was.
-const reviveFailedRelays = (client: RxNostr) => {
-  const relays = client.getRelays();
-  for (const [url, state] of Object.entries(client.getAllRelayState())) {
-    if (state !== 'error') continue;
-    const relay = relays.find((relay) => relay.url === url) ?? url;
-    client.removeRelay(url);
-    client.addRelay(relay);
-  }
-};
-
 export type Retries = {
   retry: () => void;
   // The request, made again for each retry. Its values stay until the next request gives its own.
@@ -83,12 +73,14 @@ export type Retries = {
 };
 
 // Retries that make several requests again, as those of one page, which a failure to reach the
-// relays has left empty too. Each retry first connects again to the relays that failed.
+// relays has left empty too. Each retry first connects again to the relays that failed. The requests
+// of nostr.ts do so themselves, but a retry makes again whatever requests it is given, so Try again
+// does not rely on them; RelaySocket sends a request once even when both connect again.
 export function retries(client: RxNostr): Retries {
   const attempts = new BehaviorSubject<void>(undefined);
   return {
     retry: () => {
-      reviveFailedRelays(client);
+      reconnectFailedRelays(client);
       attempts.next();
     },
     again: (request) => attempts.pipe(switchMap(request))

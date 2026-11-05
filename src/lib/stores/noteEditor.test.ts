@@ -1,36 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  EMPTY,
-  NEVER,
-  Subject,
-  concat,
-  concatMap,
-  delay,
-  finalize,
-  first,
-  from,
-  ignoreElements,
-  map,
-  mergeMap,
-  of,
-  throwError,
-  timer,
-  type Observable
-} from 'rxjs';
 import { get } from 'svelte/store';
-import { matchFilters, nip19 } from 'nostr-tools';
-import { createRxNostr, type RxNostr, type RxReq } from 'rx-nostr';
+import { nip19 } from 'nostr-tools';
 
 import type { LoadingNote } from '#lib/entities/LoadingNote.js';
 import LongFormContent from '#lib/entities/LongFormContent.js';
 import KeyManager, { Nip07CanceledError } from '#lib/services/KeyManager.js';
-import { KIND, publicKeyOf, signWith, type Event, type Filter } from '#lib/testing/nostr.js';
+import {
+  openSubscriptionsAt,
+  requestsTo,
+  setAnswerDelay,
+  setAnswerInterval,
+  setRelayBehavior,
+  setRelayEvents
+} from '#lib/testing/FakeWebSocket.js';
+import { KIND, publicKeyOf, signWith, type Event } from '#lib/testing/nostr.js';
+import { clientOf, disposeClients, failingClient } from '#lib/testing/rxNostr.js';
 import { createNoteEditorStore } from './noteEditor';
-
-vi.mock('rx-nostr', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('rx-nostr')>()),
-  createRxNostr: vi.fn()
-}));
 
 vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
@@ -49,43 +34,27 @@ const reaction = (target: Event, createdAt: number) =>
     tags: [['e', target.id]]
   });
 
-// Serves the events that match each request once, like a relay that answers and sends EOSE. With
-// `interval`, the events arrive that many milliseconds apart.
-const fakeClient = (events: Event[], interval = 0, relay = 'wss://relay.example.com') =>
-  ({
-    getRelays: () => [{ url: relay, read: true, write: true }],
-    getAllRelayState: () => ({ [relay]: 'ongoing' }),
-    createConnectionStateObservable: () => NEVER,
-    setRelays: () => {},
-    dispose: () => {},
-    use: (req: RxReq) =>
-      req.getReqObservable().pipe(
-        first((filters) => filters !== null),
-        mergeMap((filters) =>
-          from(events.filter((event) => matchFilters(filters as Filter[], event)))
-        ),
-        concatMap((event) => (interval > 0 ? of(event).pipe(delay(interval)) : of(event))),
-        map((event) => ({ from: relay, subId: 'sub', event }))
-      )
-  }) as unknown as RxNostr;
+const relay = 'wss://relay.example.com';
 
-// A client that answers a request for the note `id` with `answer`, and other requests with nothing.
-const noteClient = (id: string, answer: () => Observable<Event>) =>
-  ({
-    use: (req: RxReq) =>
-      req.getReqObservable().pipe(
-        first((filters) => filters !== null),
-        mergeMap((filters) => ((filters as Filter[])[0].ids?.includes(id) ? answer() : EMPTY)),
-        map((event) => ({ from: 'wss://relay.example.com', subId: 'sub', event }))
-      )
-  }) as unknown as RxNostr;
+// A client of a fake relay that holds `events`, and answers each request with those that match it
+// and EOSE. With `interval`, the events arrive that many milliseconds apart.
+const fakeClient = (events: Event[], interval = 0) => {
+  setRelayEvents(relay, events);
+  if (interval > 0) {
+    setAnswerDelay(relay, interval);
+    setAnswerInterval(relay, interval);
+  }
+  return clientOf([relay]);
+};
 
-// A client whose relays have nothing, so every request completes empty.
-const emptyClient = { use: () => EMPTY } as unknown as RxNostr;
+// A client whose relay has nothing, so every request ends empty.
+const emptyClient = () => clientOf([relay]);
 
-// A client whose relays have nothing and send EOSE after `ms` milliseconds.
-const slowEmptyClient = (ms: number) =>
-  ({ use: () => timer(ms).pipe(ignoreElements()) }) as unknown as RxNostr;
+// A client whose relay has nothing and sends EOSE after `ms` milliseconds.
+const slowEmptyClient = (ms: number) => {
+  setAnswerDelay(relay, ms);
+  return clientOf([relay]);
+};
 
 const listOf = (noteIds: string[]) =>
   LongFormContent.compose({
@@ -100,6 +69,7 @@ const contents = (notes: LoadingNote[]) => notes.map(({ note }) => note?.content
 const lookupError = new Error('Failed to resolve NIP-07');
 
 afterEach(() => {
+  disposeClients();
   vi.restoreAllMocks();
 });
 
@@ -108,7 +78,7 @@ describe('createNoteEditorStore', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(KeyManager, 'getPublicKey').mockRejectedValue(lookupError);
 
-    const editor = createNoteEditorStore({ client: emptyClient });
+    const editor = createNoteEditorStore({ client: emptyClient() });
 
     await vi.waitFor(() => expect(get(editor).searchInitialized).toBe(true));
     expect(get(editor)).toMatchObject({ searchFailed: true, searchRetrying: false });
@@ -121,7 +91,7 @@ describe('createNoteEditorStore', () => {
       .spyOn(KeyManager, 'getPublicKey')
       .mockRejectedValueOnce(lookupError)
       .mockReturnValueOnce(new Promise((_, reject) => (rejectRetry = reject)));
-    const editor = createNoteEditorStore({ client: emptyClient });
+    const editor = createNoteEditorStore({ client: emptyClient() });
     await vi.waitFor(() => expect(get(editor).searchFailed).toBe(true));
 
     editor.retrySearch();
@@ -151,7 +121,7 @@ describe('createNoteEditorStore', () => {
           )
       )
       .mockResolvedValue(user);
-    const editor = createNoteEditorStore({ client: emptyClient });
+    const editor = createNoteEditorStore({ client: emptyClient() });
     expect(get(editor)).toMatchObject({ searchInitialized: false, searchAwaitingKey: true });
 
     editor.cancelSearch();
@@ -251,7 +221,7 @@ describe('createNoteEditorStore notes', () => {
 
   it('keeps the notes of a list when no relay returns any of them', async () => {
     const ids = ['e'.repeat(64), 'f'.repeat(64)];
-    const editor = createNoteEditorStore({ matome: listOf(ids), client: emptyClient });
+    const editor = createNoteEditorStore({ matome: listOf(ids), client: emptyClient() });
 
     await vi.waitFor(() => expect(get(editor).editorInitialized).toBe(true));
     expect(get(editor).notes).toEqual(ids.map((id) => ({ id, note: undefined, relays: [] })));
@@ -260,7 +230,7 @@ describe('createNoteEditorStore notes', () => {
   it('can still be used when its requests fail', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const ids = ['e'.repeat(64), 'f'.repeat(64)];
-    const client = { use: () => throwError(() => new Error('relay error')) } as unknown as RxNostr;
+    const client = failingClient(new Error('relay error'));
 
     const editor = createNoteEditorStore({ matome: listOf(ids), client });
 
@@ -285,23 +255,20 @@ describe('createNoteEditorStore notes', () => {
   it('keeps a note added from recent reactions while the list is loading', async () => {
     const listed = note('listed');
     const added = note('added');
-    const listLoad = new Subject<Event>();
-    const client = {
-      use: (req: RxReq) =>
-        req.getReqObservable().pipe(
-          first((filters) => filters !== null),
-          mergeMap((filters) => {
-            const ids = (filters as Filter[])[0].ids ?? [];
-            return ids.includes(listed.id) ? listLoad : from(ids.includes(added.id) ? [added] : []);
-          }),
-          map((event) => ({ from: 'wss://relay.example.com', subId: 'sub', event }))
-        )
-    } as unknown as RxNostr;
-    const editor = createNoteEditorStore({ matome: listOf([listed.id]), client });
+    // The listed note comes from a slow relay, and the added note from a fast one.
+    const slow = 'wss://slow.example.com';
+    setRelayEvents(slow, [listed]);
+    setAnswerDelay(slow, 50);
+    setRelayEvents(relay, [added]);
+    const editor = createNoteEditorStore({
+      matome: listOf([listed.id]),
+      client: clientOf([relay, slow])
+    });
 
     editor.appendNote(added.id);
-    listLoad.next(listed);
-    listLoad.complete();
+    await vi.waitFor(() => expect(get(editor).adding).toEqual([]));
+    expect(get(editor).editorInitialized).toBe(false);
+    await vi.waitFor(() => expect(get(editor).editorInitialized).toBe(true));
 
     expect(contents(get(editor).notes)).toEqual(['listed', 'added']);
   });
@@ -332,38 +299,37 @@ describe('createNoteEditorStore notes', () => {
     expect(contents(get(editor).notes)).toEqual(['added']);
   });
 
-  it('adds a note in an uppercase identifier by its event ID', () => {
+  it('adds a note in an uppercase identifier by its event ID', async () => {
     const added = note('added');
     const editor = createNoteEditorStore({ client: fakeClient([added]) });
 
     editor.appendNote(nip19.noteEncode(added.id).toUpperCase());
 
-    expect(get(editor).notes.map(({ id }) => id)).toEqual([added.id]);
+    await vi.waitFor(() => expect(get(editor).notes.map(({ id }) => id)).toEqual([added.id]));
   });
 
-  it('adds a note as soon as a relay returns it, and ends its request', () => {
+  it('adds a note as soon as a relay returns it, and ends its request', async () => {
     const added = note('added');
-    const ended = vi.fn();
     // The relay returns the note but never sends EOSE.
-    const client = noteClient(added.id, () => concat(of(added), NEVER).pipe(finalize(ended)));
-    const editor = createNoteEditorStore({ client });
+    setRelayBehavior(relay, 'stall');
+    const editor = createNoteEditorStore({ client: fakeClient([added]) });
 
     editor.appendNote(added.id);
 
-    expect(get(editor).adding).toEqual([]);
+    await vi.waitFor(() => expect(get(editor).adding).toEqual([]));
     expect(contents(get(editor).notes)).toEqual(['added']);
-    expect(ended).toHaveBeenCalled();
+    await vi.waitFor(() => expect(openSubscriptionsAt(relay)).toBe(0));
   });
 
-  it('adds a note as not found when its request fails', () => {
+  it('adds a note as not found when its request fails', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const missing = 'f'.repeat(64);
-    const client = noteClient(missing, () => throwError(() => new Error('relay closed')));
-    const editor = createNoteEditorStore({ client });
+    const editor = createNoteEditorStore({ client: failingClient(new Error('relay closed')) });
 
     editor.appendNote(missing);
 
-    expect(get(editor)).toMatchObject({ notes: [{ id: missing, note: undefined }], adding: [] });
+    await vi.waitFor(() => expect(get(editor).adding).toEqual([]));
+    expect(get(editor).notes).toEqual([{ id: missing, note: undefined, relays: [] }]);
     expect(consoleError).toHaveBeenCalled();
   });
 
@@ -378,17 +344,20 @@ describe('createNoteEditorStore notes', () => {
     expect(get(editor)).toMatchObject({ notes: [], adding: [] });
   });
 
-  it('ends the request for a note that is removed while it is being added', () => {
+  it('ends the request for a note that is removed while it is being added', async () => {
     const missing = 'f'.repeat(64);
-    const ended = vi.fn();
-    // The relay never answers.
-    const client = noteClient(missing, () => NEVER.pipe(finalize(ended)));
-    const editor = createNoteEditorStore({ client });
+    // The relay never answers. The user's key never comes, so the note is its only request.
+    setRelayBehavior(relay, 'silent');
+    vi.spyOn(KeyManager, 'getPublicKey').mockReturnValue(new Promise(() => {}));
+    const editor = createNoteEditorStore({ client: emptyClient() });
 
     editor.appendNote(missing);
+    await vi.waitFor(() => expect(requestsTo(relay)).toHaveLength(1));
+    expect(openSubscriptionsAt(relay)).toBe(1);
     editor.removeNote(missing);
 
-    expect(ended).toHaveBeenCalled();
+    await vi.waitFor(() => expect(openSubscriptionsAt(relay)).toBe(0));
+    expect(get(editor)).toMatchObject({ notes: [], adding: [] });
   });
 
   it('adds a note once when it is removed and added again while being added', async () => {
@@ -412,13 +381,9 @@ describe('createNoteEditorStore relay hints', () => {
     vi.spyOn(KeyManager, 'getPublicKey').mockResolvedValue(user);
   });
 
-  afterEach(() => {
-    vi.mocked(createRxNostr).mockReset();
-  });
-
   it('finds an added nevent on the relay it hints at, and keeps the hint', async () => {
     const hinted = note('only on the hinted relay');
-    vi.mocked(createRxNostr).mockReturnValue(fakeClient([hinted], 0, hint));
+    setRelayEvents(hint, [hinted]);
     const editor = createNoteEditorStore({ client: fakeClient([]) });
 
     editor.appendNote(nip19.neventEncode({ id: hinted.id, relays: [`${hint}/`] }));
@@ -431,7 +396,7 @@ describe('createNoteEditorStore relay hints', () => {
 
   it('finds the notes of a list on the relays its e tags hint at, and keeps the hints', async () => {
     const hinted = note('only on the hinted relay');
-    vi.mocked(createRxNostr).mockReturnValue(fakeClient([hinted], 0, hint));
+    setRelayEvents(hint, [hinted]);
     const matome = LongFormContent.compose({
       identifier: 'list',
       title: 'List',
@@ -452,7 +417,6 @@ describe('createNoteEditorStore relay hints', () => {
   // A list saved with only a dead hint would otherwise point other readers to a relay without it.
   it('puts the relay that returned an added note before the hints that did not', async () => {
     const shared = note('on the shared relay');
-    vi.mocked(createRxNostr).mockReturnValue(fakeClient([], 0, hint));
     const editor = createNoteEditorStore({ client: fakeClient([shared]) });
 
     editor.appendNote(nip19.neventEncode({ id: shared.id, relays: [hint] }));
@@ -463,7 +427,6 @@ describe('createNoteEditorStore relay hints', () => {
 
   it('puts the relay that returned a listed note before the hints that did not', async () => {
     const shared = note('on the shared relay');
-    vi.mocked(createRxNostr).mockReturnValue(fakeClient([], 0, hint));
     const matome = LongFormContent.compose({
       identifier: 'list',
       title: 'List',

@@ -151,3 +151,13 @@ describe('requestedEvents, on the filters', () => {
     ).toEqual([]);
   });
 });
+
+describe('requestedEvents, on the expiration of an event (NIP-40)', () => {
+  const now = Math.floor(Date.now() / 1000);
+
+  it('keeps an event that has expired, as before', async () => {
+    const expired = signed('expired', [['expiration', `${now - 60}`]]);
+
+    expect(await kept([expired])).toEqual(['expired']);
+  });
+});

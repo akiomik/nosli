@@ -1,27 +1,21 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EMPTY, Subject, lastValueFrom, of, toArray } from 'rxjs';
-import type { ConnectionState, MessagePacket, Relay, RxNostr } from 'rx-nostr';
 
+import NostrClient from '#lib/services/NostrClient.js';
+import { setRelayBehavior, setRelayEvents, socketsTo } from '#lib/testing/FakeWebSocket.js';
+import { KIND, publicKeyOf, signWith } from '#lib/testing/nostr.js';
+import { clientOf, disposeClients, eose, fakeClient, type RxNostr } from '#lib/testing/rxNostr.js';
+import { matomeStore } from './nostr';
 import { orMissing, retries, retryable, withEnd } from './missing';
 
-// A client whose relays send `messages`, and are in these states.
-const fakeClient = ({
-  states = {},
-  relays = []
-}: { states?: Record<string, ConnectionState>; relays?: Relay[] } = {}) => {
-  const messages = new Subject<MessagePacket>();
-  const removeRelay = vi.fn();
-  const addRelay = vi.fn();
-  const client = {
-    createAllMessageObservable: () => messages.asObservable(),
-    getAllRelayState: () => states,
-    getRelays: () => relays,
-    removeRelay,
-    addRelay
-  } as unknown as RxNostr;
-  return { client, messages, removeRelay, addRelay };
-};
-const eose = (from: string): MessagePacket => ({ from, message: ['EOSE', 'sub'] });
+vi.mock('#lib/stores/cookie.js', async () => {
+  const { writable } = await import('svelte/store');
+  return { nip07: writable(false), pubkey: writable(''), seckey: writable('') };
+});
+
+afterEach(() => {
+  disposeClients();
+});
 
 describe('orMissing', () => {
   it('passes the values through, and adds nothing when there was one', async () => {
@@ -43,7 +37,7 @@ describe('orMissing', () => {
   });
 
   it('ends with unreachable when no relay answered while the request ran', () => {
-    const { client, messages } = fakeClient({ states: { 'wss://a': 'ongoing' } });
+    const { client, messages } = fakeClient();
     messages.next(eose('wss://a'));
     const request = new Subject<number>();
     const emitted: unknown[] = [];
@@ -94,27 +88,73 @@ describe('withEnd', () => {
 });
 
 describe('retries', () => {
-  it('adds the relays whose connection failed again, as they were, before each retry', () => {
-    const failed = { url: 'wss://a/', read: true, write: false };
-    const { client, removeRelay, addRelay } = fakeClient({
-      states: { 'wss://a/': 'error', 'wss://b/': 'ongoing', 'wss://c/': 'starting' },
-      relays: [
-        failed,
-        { url: 'wss://b/', read: true, write: true },
-        { url: 'wss://c/', read: true, write: true }
-      ]
-    });
-    const request = vi.fn(() => of('answer'));
+  const key = '7'.repeat(64);
+  const list = signWith(key, {
+    kind: KIND.article,
+    content: '',
+    created_at: 1,
+    tags: [
+      ['d', 'my-list'],
+      ['title', 'My list'],
+      ['t', NostrClient.TAG]
+    ]
+  });
+  const findList = (client: RxNostr) =>
+    matomeStore({ client, pubkey: publicKeyOf(key), identifier: 'my-list' }).pipe(
+      orMissing(client)
+    );
+  const down = 'wss://down.example.com';
+  const up = 'wss://up.example.com';
+
+  it('connects again to the relays whose connection failed whatever the request is', async () => {
+    setRelayBehavior(down, 'refuse');
+    const client = clientOf([down]);
+    await vi.waitFor(() => expect(socketsTo(down)[0]?.readyState).toBe(3));
+    setRelayBehavior(down, 'ack');
     const shared = retries(client);
-    shared.again(request).subscribe();
+    shared.again(() => of('not a request to the relays')).subscribe();
 
     shared.retry();
 
-    expect(removeRelay.mock.calls).toEqual([['wss://a/']]);
-    expect(addRelay.mock.calls).toEqual([[failed]]);
-    expect(removeRelay.mock.invocationCallOrder[0]).toBeLessThan(
-      request.mock.invocationCallOrder[1]
-    );
+    await vi.waitFor(() => expect(socketsTo(down)).toHaveLength(2));
+  });
+
+  it('connects again to the relays whose connection failed before each retry', async () => {
+    setRelayBehavior(down, 'refuse');
+    const client = clientOf([down, up]);
+    const shared = retries(client);
+    const found: unknown[] = [];
+    shared.again(() => findList(client)).subscribe((value) => found.push(value));
+    await vi.waitFor(() => expect(found).toEqual(['not-found']));
+
+    // The relay comes up with the list.
+    setRelayBehavior(down, 'ack');
+    setRelayEvents(down, [list]);
+    shared.retry();
+
+    await vi.waitFor(() => expect(found).toHaveLength(2));
+    expect(found[1]).toMatchObject({ id: list.id });
+    // The relay that was up keeps its connection.
+    expect(socketsTo(up)).toHaveLength(1);
+  });
+
+  it('finds the list once the relays that refused come up, on a retry', async () => {
+    setRelayBehavior(down, 'refuse');
+    setRelayBehavior(up, 'refuse');
+    const client = clientOf([down, up]);
+    const shared = retries(client);
+    const found: unknown[] = [];
+    shared.again(() => findList(client)).subscribe((value) => found.push(value));
+    await vi.waitFor(() => expect(found).toEqual(['unreachable']), { timeout: 2000 });
+
+    [down, up].forEach((relay) => {
+      setRelayBehavior(relay, 'ack');
+      setRelayEvents(relay, [list]);
+    });
+    shared.retry();
+
+    await vi.waitFor(() => expect(found).toHaveLength(2));
+    expect(found[1]).toMatchObject({ id: list.id });
   });
 });
 
@@ -122,7 +162,7 @@ describe('retryable', () => {
   it('starts with undefined, and makes the request again from undefined on each retry', () => {
     let made = 0;
     const request = vi.fn(() => of(`answer ${++made}`));
-    const store = retryable(request, retries(fakeClient().client));
+    const store = retryable(request, retries(clientOf([])));
     const emitted: unknown[] = [];
 
     const subscription = store.subscribe((value) => emitted.push(value));
@@ -137,7 +177,7 @@ describe('retryable', () => {
     const first = new Subject<string>();
     const store = retryable(
       vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(of('second')),
-      retries(fakeClient().client)
+      retries(clientOf([]))
     );
     const emitted: unknown[] = [];
 
@@ -149,7 +189,7 @@ describe('retryable', () => {
   });
 
   it('makes the other requests of its retries again, keeping their values until new ones arrive', () => {
-    const shared = retries(fakeClient().client);
+    const shared = retries(clientOf([]));
     const profiles = new Subject<string>();
     const list = retryable(() => of('list'), shared);
     const profile = shared.again(

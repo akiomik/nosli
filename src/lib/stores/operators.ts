@@ -11,10 +11,10 @@ import {
   takeUntil,
   scan
 } from 'rxjs';
-import type { MonoTypeOperatorFunction, OperatorFunction } from 'rxjs';
-import { latestEach, verify } from 'rx-nostr';
+import type { MonoTypeOperatorFunction, Observable, OperatorFunction } from 'rxjs';
+import { latestEach } from 'rx-nostr';
 import type { EventPacket, ConnectionStatePacket } from 'rx-nostr';
-import { getEventHash, matchFilter, validateEvent } from 'nostr-tools';
+import { getEventHash, matchFilter, validateEvent, verifyEvent } from 'nostr-tools';
 import type { Event, Filter } from 'nostr-tools';
 
 // As NIP-33 had it before it moved into NIP-01, an addressable event is at the value of its first d
@@ -45,8 +45,11 @@ const isEvent = (event: unknown): event is Event =>
 
 // A relay can answer with any event under any ID. Keeps each event that matches the request's
 // filters, whose ID is its hash, and whose signature is valid, once. A bad copy that arrives first is
-// dropped, so it does not hide the real event.
-export function requestedEvents(filters: Filter[]): MonoTypeOperatorFunction<EventPacket> {
+// dropped, so it does not hide the real event. An event is kept after its expiration (NIP-40), as
+// before rx-nostr 3, which would drop it.
+export function requestedEvents(
+  filters: Filter[]
+): <P extends Pick<EventPacket, 'event'>>(packets: Observable<P>) => Observable<P> {
   return (packets) =>
     defer(() => {
       // Once an event is verified, any later copy with its ID is dropped without checking it again.
@@ -57,9 +60,9 @@ export function requestedEvents(filters: Filter[]): MonoTypeOperatorFunction<Eve
             isEvent(event) &&
             !verified.has(event.id) &&
             getEventHash(event) === event.id &&
-            matchesFilters(filters, event)
+            matchesFilters(filters, event) &&
+            verifyEvent(event)
         ),
-        verify(),
         tap(({ event }) => verified.add(event.id))
       );
     });
@@ -85,8 +88,18 @@ export function takeTimeout<A>(timeout: number | Date): MonoTypeOperatorFunction
 // longer has no naddr, and no link can open it.
 const MAX_TLV_BYTES = 255;
 
-export const hasNaddr = ({ event }: EventPacket): boolean =>
+export const hasNaddr = <P extends Pick<EventPacket, 'event'>>({ event }: P): boolean =>
   new TextEncoder().encode(identifierOf(event)).length <= MAX_TLV_BYTES;
+
+// The newest events first, and of those dated the same, the one with the lowest ID first, the order
+// in which NIP-01 has a later version replace an earlier one. So latestEachNaddr lets through only
+// the version that wins, whatever order the relays sent them in.
+export function newestFirst<P extends Pick<EventPacket, 'event'>>(): MonoTypeOperatorFunction<P> {
+  return sorted(
+    ({ event: x }, { event: y }) =>
+      y.created_at - x.created_at || (x.id < y.id ? -1 : x.id > y.id ? 1 : 0)
+  );
+}
 
 export function latestEachNaddr(): MonoTypeOperatorFunction<EventPacket> {
   return latestEach(({ event }) => `${event.kind}:${event.pubkey}:${identifierOf(event)}`);

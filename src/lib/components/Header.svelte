@@ -17,7 +17,7 @@
   let showRelayConnectionStatus = false;
   let showMenu = false;
 
-  $: activeConnections = $connections?.filter(({ state }) => state === 'ongoing');
+  $: activeConnections = $connections?.filter(({ state }) => state === 'connected');
 </script>
 
 <AppBar class="bg-surface-50">
