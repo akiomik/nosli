@@ -1,24 +1,40 @@
 import { describe, expect, it, vi } from 'vitest';
-import { SimplePool, type Event, type Pub } from 'nostr-tools';
+import { SimplePool, type Event } from 'nostr-tools';
 
-import { PublicationFailedError, publishToRelays } from './publishToRelays';
+import { setRelayBehavior } from '#lib/testing/FakeWebSocket.js';
+import { PublicationFailedError, publishToRelays, type Publisher } from './publishToRelays';
 
+// A pool whose publication to each relay is accepted with ok, refused by the relay with failed, and
+// ends in what nostr-tools gives otherwise with fail.
 function fakePool() {
-  const callbacks = new Map<string, Partial<Record<'ok' | 'failed', () => void>>>();
-  const publish = vi.fn((relays: string[]): Pub => {
+  const callbacks = new Map<
+    string,
+    Record<'ok' | 'failed', () => void> & { fail: (reason: unknown) => void }
+  >();
+  const publish = vi.fn((relays: string[]): Promise<string>[] => {
     const relay = relays[0];
-    const listeners: Partial<Record<'ok' | 'failed', () => void>> = {};
-    callbacks.set(relay, listeners);
-    return {
-      on(type, callback) {
-        listeners[type] = callback;
-      },
-      off() {}
-    };
+    return [
+      new Promise<string>((resolve, reject) => {
+        callbacks.set(relay, {
+          ok: () => resolve(''),
+          failed: () => reject(new Error('blocked: not on the allowlist')),
+          fail: reject
+        });
+      })
+    ];
   });
 
-  return { pool: { publish } as Pick<SimplePool, 'publish'>, publish, callbacks };
+  return { pool: { publish } as Publisher, publish, callbacks };
 }
+
+// The error that nostr-tools gives for an event sent on a connection that has closed.
+const sendingOnClosedConnection = () => {
+  const error = new Error(
+    'Tried to send message \'["EVENT",{}]\' on a closed connection to wss://one.'
+  );
+  error.name = 'SendingOnClosedConnection';
+  return error;
+};
 
 describe('publishToRelays', () => {
   const event = {} as Event;
@@ -126,7 +142,9 @@ describe('publishToRelays', () => {
     }
   });
 
-  it('handles the real SimplePool response for a relay that was never connected', async () => {
+  // The relay never got the event, as with one that does not answer.
+  it('counts the real SimplePool response for a relay that cannot connect as unanswered', async () => {
+    setRelayBehavior('wss://disconnected.example', 'refuse');
     const pool = new SimplePool();
 
     await expect(
@@ -134,9 +152,55 @@ describe('publishToRelays', () => {
     ).rejects.toMatchObject({
       result: {
         acceptedRelays: [],
-        rejectedRelays: ['wss://disconnected.example'],
-        timedOutRelays: []
+        rejectedRelays: [],
+        timedOutRelays: ['wss://disconnected.example']
       }
+    });
+  });
+
+  it('counts the real answer of a relay whose connection has closed as unanswered', async () => {
+    const pool = new SimplePool();
+    const relay = await pool.ensureRelay('wss://closed.example');
+    relay.close();
+    const publisher: Publisher = { publish: (_relays, event) => [relay.publish(event)] };
+
+    await expect(publishToRelays(publisher, ['wss://closed.example'], event)).rejects.toMatchObject(
+      {
+        result: { acceptedRelays: [], rejectedRelays: [], timedOutRelays: ['wss://closed.example'] }
+      }
+    );
+  });
+
+  it.each([
+    ['a string, as the pool gives for a failed connection', () => 'connection failure: refused'],
+    ['an event sent on a closed connection', sendingOnClosedConnection],
+    ['an answer that timed out', () => new Error('publish timed out')],
+    ['a connection that closed', () => new Error('relay connection closed')],
+    ['a connection that errored', () => new Error('relay connection errored')]
+  ])('counts %s as unanswered', async (_case, reason) => {
+    const { pool, callbacks } = fakePool();
+    const result = publishToRelays(pool, ['wss://one', 'wss://two'], event);
+
+    callbacks.get('wss://one')?.ok?.();
+    callbacks.get('wss://two')?.fail(reason());
+    await expect(result).resolves.toEqual({
+      acceptedRelays: ['wss://one'],
+      rejectedRelays: [],
+      timedOutRelays: ['wss://two'],
+      unavailableRelays: []
+    });
+  });
+
+  it('counts the reason of a relay that refuses the event as a rejection', async () => {
+    const { pool, callbacks } = fakePool();
+    const result = publishToRelays(pool, ['wss://one', 'wss://two'], event);
+
+    callbacks.get('wss://one')?.ok?.();
+    callbacks.get('wss://two')?.fail(new Error('invalid: bad signature'));
+    await expect(result).resolves.toMatchObject({
+      acceptedRelays: ['wss://one'],
+      rejectedRelays: ['wss://two'],
+      timedOutRelays: []
     });
   });
 

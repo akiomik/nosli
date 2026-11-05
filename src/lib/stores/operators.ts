@@ -34,8 +34,8 @@ const matchesFilters = (filters: Filter[], event: Event): boolean =>
 const MAX_DATE_SECONDS = 8.64e12;
 
 // A relay can send anything as the event, and reading a field of null throws. NIP-01 tags hold only
-// strings, which validateEvent of nostr-tools does not check, and neither does it check that
-// created_at fits in a Date.
+// strings, which validateEvent of nostr-tools did not check before version 2, so Nosli checks them
+// too. Neither does it check that created_at fits in a Date.
 const isEvent = (event: unknown): event is Event =>
   typeof event === 'object' &&
   event !== null &&

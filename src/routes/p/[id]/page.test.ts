@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { nip19 } from 'nostr-tools';
+import { nsecOf } from '#lib/testing/nostr.js';
 
 import { load } from './+page';
 
@@ -12,7 +13,7 @@ describe('profile route', () => {
   });
 
   it('rejects secret-key and profile-pointer identifiers', async () => {
-    await expect(loadProfile(nip19.nsecEncode(hex))).rejects.toMatchObject({
+    await expect(loadProfile(nsecOf(hex))).rejects.toMatchObject({
       status: 404,
       body: { message: 'Not Found 💔' }
     });

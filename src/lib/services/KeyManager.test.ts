@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { get } from 'svelte/store';
-import { finishEvent, getPublicKey, type Event } from 'nostr-tools';
+import { publicKeyOf, signWith, type Event } from '#lib/testing/nostr.js';
 
 vi.mock('#lib/stores/cookie.js', async () => {
   const { writable } = await import('svelte/store');
   return { nip07: writable(false), pubkey: writable(''), seckey: writable('') };
 });
 
-const hex = getPublicKey('1'.repeat(64));
+const hex = publicKeyOf('1'.repeat(64));
 const extension = {
   getPublicKey: async () => hex,
   signEvent: vi.fn(),
@@ -115,7 +115,7 @@ describe('KeyManager with a NIP-07 extension that has not answered', () => {
       signEvent: vi.fn(
         (event: Pick<Event, 'kind' | 'tags' | 'content' | 'created_at'>) =>
           new Promise<Event>(
-            (resolve) => (giveSignature = () => resolve(finishEvent(event, '1'.repeat(64))))
+            (resolve) => (giveSignature = () => resolve(signWith('1'.repeat(64), event)))
           )
       ),
       getRelays: async () => ({})

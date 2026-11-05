@@ -8,18 +8,17 @@ import {
   type RxNostr,
   type RxReq
 } from 'rx-nostr';
-import {
-  finishEvent,
-  generatePrivateKey,
-  getPublicKey,
-  Kind,
-  matchFilters,
-  signEvent,
-  type Event,
-  type Filter
-} from 'nostr-tools';
+import { matchFilters } from 'nostr-tools';
 
 import NostrClient from '#lib/services/NostrClient.js';
+import {
+  KIND,
+  newSecretKey,
+  publicKeyOf,
+  signWith,
+  type Event,
+  type Filter
+} from '#lib/testing/nostr.js';
 import {
   matomeDeletionRequestsStore,
   matomeStore,
@@ -43,7 +42,7 @@ vi.mock('#lib/stores/cookie.js', async () => {
 
 const key = '1'.repeat(64);
 const note = (content: string) =>
-  finishEvent({ kind: Kind.Text, content, created_at: 1, tags: [] }, key);
+  signWith(key, { kind: KIND.text, content, created_at: 1, tags: [] });
 
 // A client that reads from `relays`, which hold `events`, and answers each request once. The state
 // of each relay is `state`, and `states` reports changes to it. `requested` holds the filters of
@@ -184,15 +183,15 @@ describe('notesStore', () => {
     const genuine = note('genuine');
     const other = note('not asked for');
     // An attacker signs their own note but claims the ID of the genuine one.
-    const attacker = generatePrivateKey();
+    const attacker = newSecretKey();
     const unsigned = {
-      kind: Kind.Text,
+      kind: KIND.text,
       content: 'forged',
       tags: [],
       created_at: 2,
-      pubkey: getPublicKey(attacker)
+      pubkey: publicKeyOf(attacker)
     };
-    const forged = { ...unsigned, id: genuine.id, sig: signEvent(unsigned, attacker) };
+    const forged = { ...unsigned, id: genuine.id, sig: signWith(attacker, unsigned).sig };
     // A hint relay sends the forged note and one that was not asked for, before the shared relays
     // send the genuine one.
     const client = fakeClient(['wss://shared.example.com'], []);
@@ -272,27 +271,24 @@ describe.each([
   }
 ])('$name', ({ read }) => {
   it('leaves out a list whose identifier is too long for an naddr', async () => {
-    const key = generatePrivateKey();
+    const key = newSecretKey();
     // 'あ' is 3 bytes in UTF-8.
     const list = (identifier: string) =>
-      finishEvent(
-        {
-          kind: Kind.Article,
-          content: '',
-          created_at: 1,
-          tags: [
-            ['d', identifier],
-            ['title', `${identifier.length}`],
-            ['t', NostrClient.TAG]
-          ]
-        },
-        key
-      );
+      signWith(key, {
+        kind: KIND.article,
+        content: '',
+        created_at: 1,
+        tags: [
+          ['d', identifier],
+          ['title', `${identifier.length}`],
+          ['t', NostrClient.TAG]
+        ]
+      });
     const client = fakeClient(
       ['wss://shared.example.com'],
       [list('あ'.repeat(85)), list('あ'.repeat(86))]
     );
-    const lists = await lastValueFrom(read(client, getPublicKey(key)));
+    const lists = await lastValueFrom(read(client, publicKeyOf(key)));
 
     expect(lists.map(({ title }) => title)).toEqual(['85']);
     expect(lists[0].nip19Id()).toMatch(/^naddr1/);
@@ -300,12 +296,12 @@ describe.each([
 });
 
 describe('profileStore', () => {
-  const key = generatePrivateKey();
+  const key = newSecretKey();
   const profile = (content: string, createdAt: number) =>
-    finishEvent({ kind: Kind.Metadata, content, created_at: createdAt, tags: [] }, key);
+    signWith(key, { kind: KIND.metadata, content, created_at: createdAt, tags: [] });
   const names = async (events: Event[]) => {
     const client = fakeClient(['wss://shared.example.com'], events);
-    const profiles = profileStore({ client, pubkey: getPublicKey(key) }).pipe(toArray());
+    const profiles = profileStore({ client, pubkey: publicKeyOf(key) }).pipe(toArray());
     return (await lastValueFrom(profiles)).map(({ name }) => name);
   };
 
@@ -320,8 +316,8 @@ describe('profileStore', () => {
   });
 });
 
-const author = generatePrivateKey();
-const attacker = generatePrivateKey();
+const author = newSecretKey();
+const attacker = newSecretKey();
 const nosliTag = ['t', NostrClient.TAG];
 
 // For each store: how to make an event it asks for, labelled `label`, how to make one it does not
@@ -335,113 +331,94 @@ const stores: {
   {
     name: 'recentGlobalMatomesStore',
     event: (label, key = author, createdAt = 1) =>
-      finishEvent(
-        {
-          kind: Kind.Article,
-          content: '',
-          created_at: createdAt,
-          tags: [['d', label], ['title', label], nosliTag]
-        },
-        key
-      ),
+      signWith(key, {
+        kind: KIND.article,
+        content: '',
+        created_at: createdAt,
+        tags: [['d', label], ['title', label], nosliTag]
+      }),
     // A list that another app published.
     unrequested: () =>
-      finishEvent(
-        { kind: Kind.Article, content: '', created_at: 2, tags: [['title', 'unrequested']] },
-        author
-      ),
+      signWith(author, {
+        kind: KIND.article,
+        content: '',
+        created_at: 2,
+        tags: [['title', 'unrequested']]
+      }),
     read: async (client) =>
       (await lastValueFrom(recentGlobalMatomesStore({ client, limit: 10 }))).map((l) => l.title)
   },
   {
     name: 'recentUserMatomesStore',
     event: (label, key = author, createdAt = 1) =>
-      finishEvent(
-        {
-          kind: Kind.Article,
-          content: '',
-          created_at: createdAt,
-          tags: [['d', label], ['title', label], nosliTag]
-        },
-        key
-      ),
+      signWith(key, {
+        kind: KIND.article,
+        content: '',
+        created_at: createdAt,
+        tags: [['d', label], ['title', label], nosliTag]
+      }),
     // Another author's list.
     unrequested: () =>
-      finishEvent(
-        {
-          kind: Kind.Article,
-          content: '',
-          created_at: 2,
-          tags: [['d', 'unrequested'], ['title', 'unrequested'], nosliTag]
-        },
-        attacker
-      ),
+      signWith(attacker, {
+        kind: KIND.article,
+        content: '',
+        created_at: 2,
+        tags: [['d', 'unrequested'], ['title', 'unrequested'], nosliTag]
+      }),
     read: async (client) =>
-      (await lastValueFrom(recentUserMatomesStore({ client, pubkey: getPublicKey(author) }))).map(
+      (await lastValueFrom(recentUserMatomesStore({ client, pubkey: publicKeyOf(author) }))).map(
         (l) => l.title
       )
   },
   {
     name: 'matomeStore',
     event: (label, key = author, createdAt = 1) =>
-      finishEvent(
-        {
-          kind: Kind.Article,
-          content: '',
-          created_at: createdAt,
-          tags: [['d', 'my-list'], ['title', label], nosliTag]
-        },
-        key
-      ),
+      signWith(key, {
+        kind: KIND.article,
+        content: '',
+        created_at: createdAt,
+        tags: [['d', 'my-list'], ['title', label], nosliTag]
+      }),
     // A newer list at the same identifier, by another author.
     unrequested: () =>
-      finishEvent(
-        {
-          kind: Kind.Article,
-          content: '',
-          created_at: 2,
-          tags: [['d', 'my-list'], ['title', 'unrequested'], nosliTag]
-        },
-        attacker
-      ),
+      signWith(attacker, {
+        kind: KIND.article,
+        content: '',
+        created_at: 2,
+        tags: [['d', 'my-list'], ['title', 'unrequested'], nosliTag]
+      }),
     read: async (client) => {
-      const list = matomeStore({ client, pubkey: getPublicKey(author), identifier: 'my-list' });
+      const list = matomeStore({ client, pubkey: publicKeyOf(author), identifier: 'my-list' });
       return [(await lastValueFrom(list)).title];
     }
   },
   {
     name: 'profileStore',
     event: (label, key = author, createdAt = 1) =>
-      finishEvent(
-        {
-          kind: Kind.Metadata,
-          content: JSON.stringify({ name: label }),
-          created_at: createdAt,
-          tags: []
-        },
-        key
-      ),
+      signWith(key, {
+        kind: KIND.metadata,
+        content: JSON.stringify({ name: label }),
+        created_at: createdAt,
+        tags: []
+      }),
     // A newer profile of another author.
     unrequested: () =>
-      finishEvent(
-        {
-          kind: Kind.Metadata,
-          content: JSON.stringify({ name: 'unrequested' }),
-          created_at: 2,
-          tags: []
-        },
-        attacker
-      ),
+      signWith(attacker, {
+        kind: KIND.metadata,
+        content: JSON.stringify({ name: 'unrequested' }),
+        created_at: 2,
+        tags: []
+      }),
     read: async (client) => [
-      (await lastValueFrom(profileStore({ client, pubkey: getPublicKey(author) }))).name
+      (await lastValueFrom(profileStore({ client, pubkey: publicKeyOf(author) }))).name
     ]
   },
   {
     name: 'notesStore',
     event: (label, key = author, createdAt = 1) =>
-      finishEvent({ kind: Kind.Text, content: label, created_at: createdAt, tags: [] }, key),
+      signWith(key, { kind: KIND.text, content: label, created_at: createdAt, tags: [] }),
     unrequested: () =>
-      finishEvent({ kind: Kind.Text, content: 'unrequested', created_at: 2, tags: [] }, author),
+      signWith(author, { kind: KIND.text, content: 'unrequested', created_at: 2, tags: [] }),
     read: async (client, requested) => {
       const ids = [...new Set(requested.map(({ id }) => id))];
       return contents(await lastValueFrom(notesStore({ client, ids }))).filter(Boolean);
@@ -450,9 +427,9 @@ const stores: {
   {
     name: 'noteStore',
     event: (label, key = author, createdAt = 1) =>
-      finishEvent({ kind: Kind.Text, content: label, created_at: createdAt, tags: [] }, key),
+      signWith(key, { kind: KIND.text, content: label, created_at: createdAt, tags: [] }),
     unrequested: () =>
-      finishEvent({ kind: Kind.Text, content: 'unrequested', created_at: 2, tags: [] }, author),
+      signWith(author, { kind: KIND.text, content: 'unrequested', created_at: 2, tags: [] }),
     read: async (client, requested) => {
       const ids = [...new Set(requested.map(({ id }) => id))];
       const found = ids.map((id) => lastValueFrom(noteStore({ client, id }).pipe(toArray())));
@@ -462,30 +439,24 @@ const stores: {
   {
     name: 'recentUserReactionsStore',
     event: (label, key = author, createdAt = 1) =>
-      finishEvent(
-        {
-          kind: Kind.Reaction,
-          content: label,
-          created_at: createdAt,
-          tags: [['e', 'e'.repeat(64)]]
-        },
-        key
-      ),
+      signWith(key, {
+        kind: KIND.reaction,
+        content: label,
+        created_at: createdAt,
+        tags: [['e', 'e'.repeat(64)]]
+      }),
     // Another author's reaction.
     unrequested: () =>
-      finishEvent(
-        {
-          kind: Kind.Reaction,
-          content: 'unrequested',
-          created_at: 2,
-          tags: [['e', 'e'.repeat(64)]]
-        },
-        attacker
-      ),
+      signWith(attacker, {
+        kind: KIND.reaction,
+        content: 'unrequested',
+        created_at: 2,
+        tags: [['e', 'e'.repeat(64)]]
+      }),
     read: async (client) =>
       (
         await lastValueFrom(
-          recentUserReactionsStore({ client, pubkey: getPublicKey(author), limit: 10 })
+          recentUserReactionsStore({ client, pubkey: publicKeyOf(author), limit: 10 })
         )
       ).map((r) => r.content)
   }
@@ -553,18 +524,15 @@ describe.each(stores)('$name', ({ event, unrequested, read }) => {
 
 describe('deleted lists', () => {
   const list = (identifier: string, createdAt = 10, key = author) =>
-    finishEvent(
-      {
-        kind: Kind.Article,
-        content: '',
-        created_at: createdAt,
-        tags: [['d', identifier], ['title', identifier], nosliTag]
-      },
-      key
-    );
+    signWith(key, {
+      kind: KIND.article,
+      content: '',
+      created_at: createdAt,
+      tags: [['d', identifier], ['title', identifier], nosliTag]
+    });
   const deletion = (tags: string[][], createdAt = 20, key = author) =>
-    finishEvent({ kind: Kind.EventDeletion, content: '', created_at: createdAt, tags }, key);
-  const address = (identifier: string) => `${Kind.Article}:${getPublicKey(author)}:${identifier}`;
+    signWith(key, { kind: KIND.deletion, content: '', created_at: createdAt, tags });
+  const address = (identifier: string) => `${KIND.article}:${publicKeyOf(author)}:${identifier}`;
   const titles = (lists: { title: string }[][]) => lists.map((l) => l.map(({ title }) => title));
   const relay = 'wss://shared.example.com';
 
@@ -575,7 +543,7 @@ describe('deleted lists', () => {
     },
     {
       name: 'recentUserMatomesStore',
-      read: (client: RxNostr) => recentUserMatomesStore({ client, pubkey: getPublicKey(author) })
+      read: (client: RxNostr) => recentUserMatomesStore({ client, pubkey: publicKeyOf(author) })
     }
   ])('$name', ({ read }) => {
     const emitted = (events: Event[]) =>
@@ -606,13 +574,13 @@ describe('deleted lists', () => {
       expect(titles(lists).at(-1)).toEqual(['kept']);
       expect(client.requested.at(-1)).toEqual([
         {
-          kinds: [Kind.EventDeletion],
-          authors: [getPublicKey(author)],
+          kinds: [KIND.deletion],
+          authors: [publicKeyOf(author)],
           '#e': [kept.id, byId.id, byAddress.id]
         },
         {
-          kinds: [Kind.EventDeletion],
-          authors: [getPublicKey(author)],
+          kinds: [KIND.deletion],
+          authors: [publicKeyOf(author)],
           '#a': ['kept', 'by-id', 'by-address'].map(address)
         }
       ]);
@@ -702,7 +670,7 @@ describe('deleted lists', () => {
       const emitted = await lastValueFrom(
         matomeDeletionRequestsStore({
           client,
-          author: getPublicKey(author),
+          author: publicKeyOf(author),
           ids: [version.id],
           addresses: [address('my-list')]
         }).pipe(toArray())
@@ -715,10 +683,10 @@ describe('deleted lists', () => {
       ]);
       expect(client.requested).toEqual([
         [
-          { kinds: [Kind.EventDeletion], authors: [getPublicKey(author)], '#e': [version.id] },
+          { kinds: [KIND.deletion], authors: [publicKeyOf(author)], '#e': [version.id] },
           {
-            kinds: [Kind.EventDeletion],
-            authors: [getPublicKey(author)],
+            kinds: [KIND.deletion],
+            authors: [publicKeyOf(author)],
             '#a': [address('my-list')]
           }
         ]
@@ -731,20 +699,20 @@ describe('deleted lists', () => {
       await lastValueFrom(
         matomeDeletionRequestsStore({
           client,
-          author: getPublicKey(author),
+          author: publicKeyOf(author),
           addresses: [address('my-list')]
         })
       );
       const emitted = await lastValueFrom(
-        matomeDeletionRequestsStore({ client, author: getPublicKey(author) }).pipe(toArray())
+        matomeDeletionRequestsStore({ client, author: publicKeyOf(author) }).pipe(toArray())
       );
 
       expect(emitted).toEqual([[]]);
       expect(client.requested).toEqual([
         [
           {
-            kinds: [Kind.EventDeletion],
-            authors: [getPublicKey(author)],
+            kinds: [KIND.deletion],
+            authors: [publicKeyOf(author)],
             '#a': [address('my-list')]
           }
         ]

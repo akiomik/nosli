@@ -1,6 +1,6 @@
 import { get } from 'svelte/store';
 import type { Event } from 'nostr-tools';
-import { signEvent, getEventHash } from 'nostr-tools';
+import { finalizeEvent, utils } from 'nostr-tools';
 import { nip07, pubkey, seckey } from '#lib/stores/cookie.js';
 
 // The part of a NIP-07 extension that this app uses. rx-nostr declares window.nostr for the whole
@@ -104,10 +104,13 @@ export default class KeyManager {
     if (get(nip07)) {
       return KeyManager.askNip07((nostr) => nostr.signEvent(event), signal);
     } else {
-      event.pubkey = get(pubkey);
-      event.id = getEventHash(event);
-      event.sig = signEvent(event, get(seckey));
-      return event;
+      const signed = finalizeEvent(event, utils.hexToBytes(get(seckey)));
+      // finalizeEvent signs as the account of the secret key, which is that of the login unless the
+      // cookies were changed by hand. Such an event would be published under another account.
+      if (signed.pubkey !== get(pubkey)) {
+        throw new Error('The secret key is not that of the logged-in account');
+      }
+      return signed;
     }
   }
 

@@ -1,4 +1,7 @@
-import type { Event, SimplePool } from 'nostr-tools';
+import type { Event } from 'nostr-tools';
+
+// What publishes an event to each relay, as SimplePool of nostr-tools does, with the answer of each.
+export type Publisher = { publish: (relays: string[], event: Event) => Promise<string>[] };
 
 export type PublicationResult = {
   acceptedRelays: string[];
@@ -33,10 +36,21 @@ export class SignedByAnotherAccountError extends Error {
   }
 }
 
-const ACK_TIMEOUT_MS = 10_000;
+export const ACK_TIMEOUT_MS = 10_000;
+
+// Whether nostr-tools failed to publish to the relay without its answer: the event was not sent, the
+// connection closed, or the answer timed out. The relay may have stored the event, as with one that
+// stays silent, or not got it, as with one whose connection dropped just before. nostr-tools rejects
+// with a string or one of these errors of its own then, and with the reason of the relay when the
+// relay refuses the event.
+const isUnanswered = (error: unknown): boolean =>
+  !(error instanceof Error) ||
+  error.name === 'SendingOnClosedConnection' ||
+  error.message === 'publish timed out' ||
+  error.message.startsWith('relay connection');
 
 export async function publishToRelays(
-  pool: Pick<SimplePool, 'publish'>,
+  pool: Publisher,
   relays: string[],
   event: Event,
   acknowledgmentTimeoutInMillis = ACK_TIMEOUT_MS,
@@ -46,8 +60,6 @@ export async function publishToRelays(
     throw new PublicationFailedError({ ...emptyPublicationResult(), unavailableRelays });
   }
 
-  // A single-relay call preserves the per-relay acknowledgment contract of
-  // nostr-tools 1.6 even though 1.7 returns one Pub for the entire input list.
   const outcomes = await Promise.all(
     relays.map(
       (relay) =>
@@ -62,9 +74,11 @@ export async function publishToRelays(
           const timeout = setTimeout(() => finish('timedOut'), acknowledgmentTimeoutInMillis);
 
           try {
-            const publication = pool.publish([relay], event);
-            publication.on('ok', () => finish('accepted'));
-            publication.on('failed', () => finish('rejected'));
+            const [publication] = pool.publish([relay], event);
+            publication.then(
+              () => finish('accepted'),
+              (error: unknown) => finish(isUnanswered(error) ? 'timedOut' : 'rejected')
+            );
           } catch (error) {
             clearTimeout(timeout);
             reject(error);

@@ -16,9 +16,9 @@ import {
 } from 'rxjs';
 import type { Observable, OperatorFunction } from 'rxjs';
 import { latest, createRxNostr, createRxOneshotReq } from 'rx-nostr';
-import type { RxNostr, RxReq, ConnectionStatePacket, EventPacket } from 'rx-nostr';
-import { Kind } from 'nostr-tools';
-import type { Event, Filter } from 'nostr-tools';
+import type { Nostr, RxNostr, RxReq, ConnectionStatePacket, EventPacket } from 'rx-nostr';
+import { kinds } from 'nostr-tools';
+import type { Event } from 'nostr-tools';
 
 import {
   requestedEvents,
@@ -36,6 +36,9 @@ import Profile from '#lib/entities/Profile.js';
 import Note from '#lib/entities/Note.js';
 import Reaction from '#lib/entities/Reaction.js';
 import type { LoadingNote } from '#lib/entities/LoadingNote.js';
+
+// The filters go to rx-nostr, whose filters have no tag that is undefined, unlike those of nostr-tools.
+type Filter = Nostr.Filter;
 
 const DEFAULT_TIMEOUT_WITHOUT_SORT = 1000;
 const DEFAULT_TIMEOUT_WITH_SORT = 750;
@@ -99,8 +102,8 @@ function deletionRequests(
   timeout: number
 ): Observable<Event[]> {
   const filters: Filter[] = [
-    ...(ids.length > 0 ? [{ kinds: [Kind.EventDeletion], authors, '#e': ids }] : []),
-    ...(addresses.length > 0 ? [{ kinds: [Kind.EventDeletion], authors, '#a': addresses }] : [])
+    ...(ids.length > 0 ? [{ kinds: [kinds.EventDeletion], authors, '#e': ids }] : []),
+    ...(addresses.length > 0 ? [{ kinds: [kinds.EventDeletion], authors, '#a': addresses }] : [])
   ];
   if (filters.length === 0) return of([]);
 
@@ -152,7 +155,7 @@ export function recentGlobalMatomesStore({
 }): Observable<LongFormContent[]> {
   const filters: Filter[] = [
     {
-      kinds: [Kind.Article],
+      kinds: [kinds.LongFormArticle],
       '#t': [NostrClient.TAG],
       limit
     }
@@ -181,7 +184,7 @@ export function recentUserMatomesStore({
 }): Observable<LongFormContent[]> {
   const filters: Filter[] = [
     {
-      kinds: [Kind.Article],
+      kinds: [kinds.LongFormArticle],
       authors: [pubkey],
       '#t': [NostrClient.TAG]
     }
@@ -212,7 +215,7 @@ export function matomeStore({
 }): Observable<LongFormContent> {
   const filters: Filter[] = [
     {
-      kinds: [Kind.Article],
+      kinds: [kinds.LongFormArticle],
       authors: [pubkey],
       '#d': [identifier],
       '#t': [NostrClient.TAG],
@@ -258,7 +261,7 @@ export function profileStore({
 }): Observable<Profile> {
   const filters: Filter[] = [
     {
-      kinds: [Kind.Metadata],
+      kinds: [kinds.Metadata],
       authors: [pubkey],
       limit: 1
     }
@@ -294,7 +297,7 @@ export function notesStore({
 
   const filters: Filter[] = [
     {
-      kinds: [Kind.Text],
+      kinds: [kinds.ShortTextNote],
       ids: ids
     }
   ];
@@ -326,7 +329,7 @@ export function noteStore({
 }): Observable<{ note: Note; relay: string }> {
   const filters: Filter[] = [
     {
-      kinds: [Kind.Text],
+      kinds: [kinds.ShortTextNote],
       ids: [id],
       limit: 1
     }
@@ -352,7 +355,7 @@ export function recentUserReactionsStore({
 }): Observable<Reaction[]> {
   const filters: Filter[] = [
     {
-      kinds: [Kind.Reaction],
+      kinds: [kinds.Reaction],
       authors: [pubkey],
       limit
     }
