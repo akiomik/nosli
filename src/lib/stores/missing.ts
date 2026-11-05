@@ -73,8 +73,9 @@ export type Retries = {
 };
 
 // Retries that make several requests again, as those of one page, which a failure to reach the
-// relays has left empty too. Each retry first connects again to the relays that failed, as every
-// request does, so that it does so whatever the requests are.
+// relays has left empty too. Each retry first connects again to the relays that failed. The requests
+// of nostr.ts do so themselves, but a retry makes again whatever requests it is given, so Try again
+// does not rely on them; RelaySocket sends a request once even when both connect again.
 export function retries(client: RxNostr): Retries {
   const attempts = new BehaviorSubject<void>(undefined);
   return {

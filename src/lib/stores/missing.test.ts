@@ -4,7 +4,7 @@ import { EMPTY, Subject, lastValueFrom, of, toArray } from 'rxjs';
 import NostrClient from '#lib/services/NostrClient.js';
 import { setRelayBehavior, setRelayEvents, socketsTo } from '#lib/testing/FakeWebSocket.js';
 import { KIND, publicKeyOf, signWith } from '#lib/testing/nostr.js';
-import { clientOf, disposeClients, type RxNostr } from '#lib/testing/rxNostr.js';
+import { answersOnlyClient, clientOf, disposeClients, type RxNostr } from '#lib/testing/rxNostr.js';
 import { matomeStore } from './nostr';
 import { orMissing, retries, retryable, withEnd } from './missing';
 
@@ -13,63 +13,53 @@ vi.mock('#lib/stores/cookie.js', async () => {
   return { nip07: writable(false), pubkey: writable(''), seckey: writable('') };
 });
 
-// A client whose relays send `messages`, the only part of a client that these operators watch.
-const fakeClient = () => {
-  const messages = new Subject<{ from: string; message: unknown[] }>();
-  const client = {
-    createAllMessageObservable: () => messages.asObservable()
-  } as unknown as RxNostr;
-  return { client, messages };
-};
-const eose = (from: string) => ({ from, message: ['EOSE', 'sub'] });
-
 afterEach(() => {
   disposeClients();
 });
 
 describe('orMissing', () => {
   it('passes the values through, and adds nothing when there was one', async () => {
-    const { client } = fakeClient();
+    const { client } = answersOnlyClient();
 
     expect(await lastValueFrom(of(1, 2).pipe(orMissing(client), toArray()))).toEqual([1, 2]);
   });
 
   it('ends with not-found when a relay answered while the request ran', () => {
-    const { client, messages } = fakeClient();
+    const { client, answer } = answersOnlyClient();
     const request = new Subject<number>();
     const emitted: unknown[] = [];
     request.pipe(orMissing(client)).subscribe((value) => emitted.push(value));
 
-    messages.next(eose('wss://a'));
+    answer('wss://a');
     request.complete();
 
     expect(emitted).toEqual(['not-found']);
   });
 
   it('ends with unreachable when no relay answered while the request ran', () => {
-    const { client, messages } = fakeClient();
-    messages.next(eose('wss://a'));
+    const { client, answer, watched } = answersOnlyClient();
+    answer('wss://a');
     const request = new Subject<number>();
     const emitted: unknown[] = [];
     request.pipe(orMissing(client)).subscribe((value) => emitted.push(value));
 
     request.complete();
-    messages.next(eose('wss://a'));
+    answer('wss://a');
 
     expect(emitted).toEqual(['unreachable']);
-    expect(messages.observed).toBe(false);
+    expect(watched()).toBe(false);
   });
 });
 
 describe('withEnd', () => {
   it('marks each value as not ended, and the last one again as ended with the reason', () => {
-    const { client, messages } = fakeClient();
+    const { client, answer, watched } = answersOnlyClient();
     const request = new Subject<string>();
     const emitted: unknown[] = [];
     request.pipe(withEnd(client)).subscribe((value) => emitted.push(value));
 
     request.next('a');
-    messages.next(eose('wss://a'));
+    answer('wss://a');
     request.next('b');
     request.complete();
 
@@ -78,11 +68,11 @@ describe('withEnd', () => {
       { value: 'b', ended: false },
       { value: 'b', ended: true, reason: 'not-found' }
     ]);
-    expect(messages.observed).toBe(false);
+    expect(watched()).toBe(false);
   });
 
   it('ends as unreachable when no relay answered', async () => {
-    const { client } = fakeClient();
+    const { client } = answersOnlyClient();
 
     expect(await lastValueFrom(of('a').pipe(withEnd(client), toArray()))).toEqual([
       { value: 'a', ended: false },
@@ -91,7 +81,7 @@ describe('withEnd', () => {
   });
 
   it('ends without a value when the request had none', async () => {
-    const { client } = fakeClient();
+    const { client } = answersOnlyClient();
 
     expect(await lastValueFrom(EMPTY.pipe(withEnd(client), toArray()))).toEqual([]);
   });
@@ -115,6 +105,19 @@ describe('retries', () => {
     );
   const down = 'wss://down.example.com';
   const up = 'wss://up.example.com';
+
+  it('connects again to the relays whose connection failed whatever the request is', async () => {
+    setRelayBehavior(down, 'refuse');
+    const client = clientOf([down]);
+    await vi.waitFor(() => expect(socketsTo(down)[0]?.readyState).toBe(3));
+    setRelayBehavior(down, 'ack');
+    const shared = retries(client);
+    shared.again(() => of('not a request to the relays')).subscribe();
+
+    shared.retry();
+
+    await vi.waitFor(() => expect(socketsTo(down)).toHaveLength(2));
+  });
 
   it('connects again to the relays whose connection failed before each retry', async () => {
     setRelayBehavior(down, 'refuse');

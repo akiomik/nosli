@@ -204,6 +204,29 @@ describe('the request for a list, as the list page makes it', () => {
   });
 });
 
+// rx-nostr ends a request on the last EOSE before it passes that EOSE on to those who watch every
+// message, as orMissing and withEnd do. With a single relay, that EOSE is the only answer.
+describe('a request that a single relay answers with nothing', () => {
+  it('ends as not found, not as unreachable, through orMissing', async () => {
+    const request = watch(findList(clientOf([a])));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(request.values).toEqual(['not-found']);
+    expect(request.endedAt).toBeLessThan(10);
+  });
+
+  it('ends as not found, not as unreachable, through withEnd', async () => {
+    const client = clientOf([a]);
+    const request = watch(
+      matomeDeletionRequestsStore({ client, author, ids: [list.id] }).pipe(withEnd(client))
+    );
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(request.values.at(-1)).toEqual({ value: [], ended: true, reason: 'not-found' });
+    expect(request.endedAt).toBeLessThan(10);
+  });
+});
+
 describe('versions of a list', () => {
   const version = (title: string, createdAt: number) =>
     signWith(key, {

@@ -1,4 +1,4 @@
-import { throwError } from 'rxjs';
+import { Subject, throwError } from 'rxjs';
 import type { ConnectionState, RxNostr } from 'rx-nostr';
 
 import { createClient } from '#lib/stores/client.js';
@@ -20,6 +20,20 @@ export const clientOf = (relays: string[]): RxNostr => {
 // A client without relays whose every request fails with `error`.
 export const failingClient = (error: Error): RxNostr =>
   Object.assign(clientOf([]), { use: () => throwError(() => error) });
+
+// A client with nothing but the relays' answers, which orMissing and withEnd watch. `answer` has a
+// relay answer a request, and `watched` tells whether anything still watches the answers.
+export const answersOnlyClient = () => {
+  const messages = new Subject<{ from: string; message: unknown[] }>();
+  const client = {
+    createAllMessageObservable: () => messages.asObservable()
+  } as unknown as RxNostr;
+  return {
+    client,
+    answer: (from: string) => messages.next({ from, message: ['EOSE', 'sub'] }),
+    watched: () => messages.observed
+  };
+};
 
 // Closes every client that clientOf made.
 export const disposeClients = () => {
