@@ -4,7 +4,7 @@ import { EMPTY, Subject, lastValueFrom, of, toArray } from 'rxjs';
 import NostrClient from '#lib/services/NostrClient.js';
 import { setRelayBehavior, setRelayEvents, socketsTo } from '#lib/testing/FakeWebSocket.js';
 import { KIND, publicKeyOf, signWith } from '#lib/testing/nostr.js';
-import { answersOnlyClient, clientOf, disposeClients, type RxNostr } from '#lib/testing/rxNostr.js';
+import { clientOf, disposeClients, eose, fakeClient, type RxNostr } from '#lib/testing/rxNostr.js';
 import { matomeStore } from './nostr';
 import { orMissing, retries, retryable, withEnd } from './missing';
 
@@ -19,47 +19,47 @@ afterEach(() => {
 
 describe('orMissing', () => {
   it('passes the values through, and adds nothing when there was one', async () => {
-    const { client } = answersOnlyClient();
+    const { client } = fakeClient();
 
     expect(await lastValueFrom(of(1, 2).pipe(orMissing(client), toArray()))).toEqual([1, 2]);
   });
 
   it('ends with not-found when a relay answered while the request ran', () => {
-    const { client, answer } = answersOnlyClient();
+    const { client, messages } = fakeClient();
     const request = new Subject<number>();
     const emitted: unknown[] = [];
     request.pipe(orMissing(client)).subscribe((value) => emitted.push(value));
 
-    answer('wss://a');
+    messages.next(eose('wss://a'));
     request.complete();
 
     expect(emitted).toEqual(['not-found']);
   });
 
   it('ends with unreachable when no relay answered while the request ran', () => {
-    const { client, answer, watched } = answersOnlyClient();
-    answer('wss://a');
+    const { client, messages } = fakeClient();
+    messages.next(eose('wss://a'));
     const request = new Subject<number>();
     const emitted: unknown[] = [];
     request.pipe(orMissing(client)).subscribe((value) => emitted.push(value));
 
     request.complete();
-    answer('wss://a');
+    messages.next(eose('wss://a'));
 
     expect(emitted).toEqual(['unreachable']);
-    expect(watched()).toBe(false);
+    expect(messages.observed).toBe(false);
   });
 });
 
 describe('withEnd', () => {
   it('marks each value as not ended, and the last one again as ended with the reason', () => {
-    const { client, answer, watched } = answersOnlyClient();
+    const { client, messages } = fakeClient();
     const request = new Subject<string>();
     const emitted: unknown[] = [];
     request.pipe(withEnd(client)).subscribe((value) => emitted.push(value));
 
     request.next('a');
-    answer('wss://a');
+    messages.next(eose('wss://a'));
     request.next('b');
     request.complete();
 
@@ -68,11 +68,11 @@ describe('withEnd', () => {
       { value: 'b', ended: false },
       { value: 'b', ended: true, reason: 'not-found' }
     ]);
-    expect(watched()).toBe(false);
+    expect(messages.observed).toBe(false);
   });
 
   it('ends as unreachable when no relay answered', async () => {
-    const { client } = answersOnlyClient();
+    const { client } = fakeClient();
 
     expect(await lastValueFrom(of('a').pipe(withEnd(client), toArray()))).toEqual([
       { value: 'a', ended: false },
@@ -81,7 +81,7 @@ describe('withEnd', () => {
   });
 
   it('ends without a value when the request had none', async () => {
-    const { client } = answersOnlyClient();
+    const { client } = fakeClient();
 
     expect(await lastValueFrom(EMPTY.pipe(withEnd(client), toArray()))).toEqual([]);
   });

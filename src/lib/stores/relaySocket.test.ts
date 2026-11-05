@@ -4,6 +4,7 @@ import {
   FakeWebSocket,
   dropConnectionsOf,
   requestsTo,
+  sendFrameFrom,
   setRelayBehavior,
   setRelayEvents,
   socketsTo
@@ -107,6 +108,31 @@ describe('RelaySocket', () => {
     socket.send(req);
 
     expect(requestsTo(url)).toHaveLength(3);
+  });
+
+  it('sends a REQ again once a CLOSED for it arrives, with whitespace in its frame', async () => {
+    setRelayBehavior(url, 'silent');
+    const { socket } = await opened();
+    const req = JSON.stringify(['REQ', 'one', { kinds: [1] }]);
+
+    socket.send(req);
+    sendFrameFrom(url, ' [ "CLOSED" , "one", "blocked" ]');
+    socket.send(req);
+
+    expect(requestsTo(url)).toHaveLength(2);
+  });
+
+  it('sends a REQ once, and again after a CLOSE, with whitespace in their frames', async () => {
+    setRelayBehavior(url, 'silent');
+    const { socket } = await opened();
+    const req = ' [ "REQ", "one", {"kinds": [1]} ]';
+
+    socket.send(req);
+    socket.send(req);
+    socket.send('[ "CLOSE", "one" ]');
+    socket.send(req);
+
+    expect(requestsTo(url)).toHaveLength(2);
   });
 
   it('sends a REQ again on a new socket', async () => {

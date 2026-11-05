@@ -23,9 +23,17 @@ const ABNORMAL_CLOSURE = 1006;
 type Listener = (event: never) => void;
 type EventType = 'open' | 'message' | 'close' | 'error';
 
+// How a REQ, CLOSE or CLOSED message starts, with any whitespace that JSON allows. Only a frame that
+// starts so is parsed, so that the events that a relay sends are not parsed twice.
+const starts = {
+  REQ: /^\s*\[\s*"REQ"/,
+  CLOSE: /^\s*\[\s*"CLOSE"/,
+  CLOSED: /^\s*\[\s*"CLOSED"/
+};
+
 // The subscription ID of a REQ, CLOSE or CLOSED message, if the message is one.
 const subscriptionOf = (data: unknown, type: 'REQ' | 'CLOSE' | 'CLOSED'): string | undefined => {
-  if (typeof data !== 'string' || !data.startsWith(`["${type}"`)) return undefined;
+  if (typeof data !== 'string' || !starts[type].test(data)) return undefined;
   try {
     const message: unknown = JSON.parse(data);
     return Array.isArray(message) && typeof message[1] === 'string' ? message[1] : undefined;
@@ -34,6 +42,9 @@ const subscriptionOf = (data: unknown, type: 'REQ' | 'CLOSE' | 'CLOSED'): string
   }
 };
 
+// RelaySocket differs from a real WebSocket in ways that rx-nostr 3.7.8 relies on none of: it calls
+// its listeners in a loop over a copy of them, close(code) takes no reason, and the events that it
+// dispatches for close, and for a socket that could not be made, are plain objects, not Events.
 export class RelaySocket {
   private readonly socket: WebSocket | undefined;
   private readonly listeners = new Map<EventType, Set<Listener>>();

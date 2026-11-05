@@ -21,19 +21,17 @@ export const clientOf = (relays: string[]): RxNostr => {
 export const failingClient = (error: Error): RxNostr =>
   Object.assign(clientOf([]), { use: () => throwError(() => error) });
 
-// A client with nothing but the relays' answers, which orMissing and withEnd watch. `answer` has a
-// relay answer a request, and `watched` tells whether anything still watches the answers.
-export const answersOnlyClient = () => {
+// A client whose relays send `messages`, the only part of a client that orMissing and withEnd
+// watch, and the message that a relay sends when it has answered a request.
+export const fakeClient = () => {
   const messages = new Subject<{ from: string; message: unknown[] }>();
   const client = {
     createAllMessageObservable: () => messages.asObservable()
   } as unknown as RxNostr;
-  return {
-    client,
-    answer: (from: string) => messages.next({ from, message: ['EOSE', 'sub'] }),
-    watched: () => messages.observed
-  };
+  return { client, messages };
 };
+
+export const eose = (from: string) => ({ from, message: ['EOSE', 'sub'] });
 
 // Closes every client that clientOf made.
 export const disposeClients = () => {
